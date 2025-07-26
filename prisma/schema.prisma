@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Character {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Informações Básicas
+  playerName    String?
+  characterName String
+  class         String?
+  race          String?
+  deity         String?
+  homeland      String?
+  alignment     String?
+  gender        String?
+  age           String?
+  weight        String?
+  height        String?
+  virtuePoints  String?
+
+  // Nível e XP
+  level     Int @default(0)
+  currentXP Int @default(0)
+
+  // Atributos (raça + classe + bônus)
+  // Json: { agilidade: { race: 10, class: 12, bonus: 2 }, carisma: { race: 8, class: 10, bonus: 1 }, ... }
+  attributes Json
+
+  // Vitalidade (calculada automaticamente)
+  // Json: { race: 200, class: 250 }
+  vitality Json
+
+  // Json: { notavel: 450, ferido: 430, gravementeFerido: 410, condenado: 390, incapacitado: 370, coma: 350 }
+  currentVitality Json
+
+  // Berkana (Mana)
+  maxBerkana     Int @default(100)
+  currentBerkana Int @default(100)
+  berkanaBonus   Int @default(0)
+
+  // Perícias
+  // Json: { acrobacia: { distributed: 5, bonus: 2 }, atuacao: { distributed: 0, bonus: 0 }, ... }
+  skills Json
+
+  // Equipamentos
+  // Json: Array até 3 armas ativas
+  // [{ name: "Espada Longa", level: 25, damage: { percent25: "1d6", percent50: "1d8", percent75: "1d10", percent100: "1d12", critical: "2d12" }, observations: "Encantada" }]
+  weapons Json
+
+  // Json: { name: "Armadura de Couro", description: "Resistente", totalVitality: 50, currentVitality: 45 }
+  armor Json
+
+  // Kit de Aventureiro
+  // Json: Array com itens e quantidades
+  // [{ name: "Cantil 3 Litros", quantity: 1, isDefault: true }, { name: "Poção de Cura", quantity: 3, isDefault: false }]
+  adventureKit Json
+
+  // Finanças
+  // Json: { ouro: 100, prata: 50, cobre: 25, imperano: 10, joias: 5 }
+  finances Json
+
+  // Linguagens
+  // Json: { standard: { comum: true, errante: false, elfico: true, sombrio: false, anao: false, sigilico: false }, custom: [{ name: "Dracônico", known: true }] }
+  languages Json
+
+  // Magias/Habilidades
+  // Json: Array de magias
+  // [{ name: "Bola de Fogo", level: 3, berkanaCost: 15, type: "Evocação", concentration: "Sim", duration: "Instantâneo", preparationTime: "1 ação", resistance: "Destreza", range: "45m", damage: "8d6", description: "Uma explosão..." }]
+  spells Json
+
+  // Talentos
+  // Json: Array de talentos
+  // [{ name: "Ataque Furtivo", level: 2, description: "Adiciona dano extra quando ataca pelas costas" }]
+  talents Json
+
+  // Anotações
+  notes String?
+
+  @@map("characters")
+}
