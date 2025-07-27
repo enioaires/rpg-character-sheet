@@ -1,11 +1,14 @@
 {
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
   "framework": "nextjs",
   "regions": ["gru1"],
   "functions": {
     "app/api/[[...route]]/route.ts": {
       "maxDuration": 30
     }
+  },
+  "env": {
+    "BUN_VERSION": "1.2.9"
   }
 }
