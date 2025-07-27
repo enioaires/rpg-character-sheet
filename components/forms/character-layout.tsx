@@ -11,13 +11,14 @@ import { SpellsTalentsTab } from '@/components/character/spells-talents-tab'
 interface CharacterLayoutProps {
   character: any
   characterId: string
+  isEditMode: boolean
 }
 
 // ============================================
 // COMPONENTE PRINCIPAL - COM TABS FIXAS
 // ============================================
 
-export function CharacterLayout({ character, characterId }: CharacterLayoutProps) {
+export function CharacterLayout({ character, characterId, isEditMode }: CharacterLayoutProps) {
   return (
     <div className="w-full">
       <Tabs defaultValue="basicos" className="w-full">
@@ -41,15 +42,15 @@ export function CharacterLayout({ character, characterId }: CharacterLayoutProps
         {/* Conteúdo das Tabs */}
         <div className="pt-6">
           <TabsContent value="basicos" className="mt-0">
-            <BasicInfoTab character={character} characterId={characterId} />
+            <BasicInfoTab character={character} characterId={characterId} isEditMode={isEditMode} />
           </TabsContent>
 
           <TabsContent value="pericias" className="mt-0">
-            <SkillsKitTab character={character} characterId={characterId} />
+            <SkillsKitTab character={character} characterId={characterId} isEditMode={isEditMode} />
           </TabsContent>
 
           <TabsContent value="magias" className="mt-0">
-            <SpellsTalentsTab character={character} characterId={characterId} />
+            <SpellsTalentsTab character={character} characterId={characterId} isEditMode={isEditMode} />
           </TabsContent>
         </div>
       </Tabs>

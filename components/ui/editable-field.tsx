@@ -149,6 +149,7 @@ interface EditableFieldProps {
   onSave?: (value: any) => Promise<void>
   formatDisplay?: (value: any) => string
   parseValue?: (value: string) => any
+  isEditMode?: boolean // Controle global de edição
 }
 
 // ============================================
@@ -171,7 +172,8 @@ export function EditableField({
   rows = 3,
   onSave,
   formatDisplay,
-  parseValue
+  parseValue,
+  isEditMode = true
 }: EditableFieldProps) {
   // ============================================
   // ESTADOS E REFS
@@ -217,7 +219,7 @@ export function EditableField({
   // ============================================
 
   const handleStartEdit = () => {
-    if (disabled) return
+    if (disabled || !isEditMode) return
     startEditing(section, field, value)
     setLocalValue(value || '')
     setHasChanges(false)
@@ -325,6 +327,9 @@ export function EditableField({
 
             // Disabled state  
             disabled && "cursor-not-allowed opacity-50",
+            
+            // Edit mode disabled (locked)
+            !isEditMode && "cursor-not-allowed bg-muted/30",
 
             // Multiline
             multiline && "min-h-[60px]",
@@ -332,7 +337,7 @@ export function EditableField({
             // Custom display classes
             displayClassName
           )}
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={disabled || !isEditMode ? -1 : 0}
         >
           {/* Conteúdo */}
           <span className={cn(

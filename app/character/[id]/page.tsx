@@ -1,11 +1,12 @@
 "use client"
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCharacter } from '@/lib/api/queries'
 import { CharacterLayout } from '@/components/forms/character-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Loader2, Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ============================================
@@ -16,6 +17,9 @@ export default function CharacterPage() {
   const params = useParams()
   const router = useRouter()
   const characterId = params.id as string
+  
+  // Estado do modo de edição (desbloqueado por padrão)
+  const [isEditMode, setIsEditMode] = useState(true)
 
   // React Query para buscar personagem - ÚNICO SOURCE OF TRUTH
   const {
@@ -40,6 +44,15 @@ export default function CharacterPage() {
     } catch (error) {
       toast.error('Erro ao atualizar personagem')
     }
+  }
+
+  const handleToggleEditMode = () => {
+    setIsEditMode(!isEditMode)
+    toast.success(
+      isEditMode 
+        ? 'Modo de edição desabilitado - Ficha bloqueada' 
+        : 'Modo de edição habilitado - Ficha desbloqueada'
+    )
   }
 
   // ============================================
@@ -163,14 +176,35 @@ export default function CharacterPage() {
           </div>
         </div>
 
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleToggleEditMode} 
+            variant={isEditMode ? "default" : "secondary"}
+            size="sm"
+            className={isEditMode ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"}
+          >
+            {isEditMode ? (
+              <>
+                <Unlock className="w-4 h-4 mr-2" />
+                Desbloqueado
+              </>
+            ) : (
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                Bloqueado
+              </>
+            )}
+          </Button>
+          
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Layout da Ficha */}
-      <CharacterLayout character={sanitizedCharacter} characterId={characterId} />
+      <CharacterLayout character={sanitizedCharacter} characterId={characterId} isEditMode={isEditMode} />
     </div>
   )
 }

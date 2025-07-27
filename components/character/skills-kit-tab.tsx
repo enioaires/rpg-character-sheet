@@ -17,9 +17,10 @@ import {
 interface SkillsKitTabProps {
   character: any
   characterId: string
+  isEditMode: boolean
 }
 
-export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
+export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   const [isSkillDistributionExpanded, setIsSkillDistributionExpanded] = useState(false)
 
@@ -82,6 +83,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={!isEditMode}
                   onClick={async () => {
                     try {
                       const updateData = {
@@ -101,6 +103,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={!isEditMode}
                   onClick={async () => {
                     try {
                       const newItem = { name: '', quantity: 1, isDefault: false }
@@ -146,6 +149,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                               value={item.name}
                               placeholder="Nome do item"
                               className="font-medium"
+                              isEditMode={isEditMode}
                             />
                             <div className="text-xs text-muted-foreground">Item customizado</div>
                           </div>
@@ -161,12 +165,14 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                           value={item.quantity || 1}
                           className="w-16 text-center"
                           min={0}
+                          isEditMode={isEditMode}
                         />
 
                         {!item.isDefault && (
                           <Button
                             size="sm"
                             variant="ghost"
+                            disabled={!isEditMode}
                             onClick={async () => {
                               try {
                                 const updatedKit = adventureKit.filter((_: any, i: number) => i !== index)
@@ -213,6 +219,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                   field="ouro"
                   value={finances.ouro || 0}
                   className="w-20 text-right"
+                  isEditMode={isEditMode}
                 />
               </div>
 
@@ -225,6 +232,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                   field="prata"
                   value={finances.prata || 0}
                   className="w-20 text-right"
+                  isEditMode={isEditMode}
                 />
               </div>
 
@@ -237,6 +245,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                   field="cobre"
                   value={finances.cobre || 0}
                   className="w-20 text-right"
+                  isEditMode={isEditMode}
                 />
               </div>
 
@@ -249,6 +258,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                   field="imperano"
                   value={finances.imperano || 0}
                   className="w-20 text-right"
+                  isEditMode={isEditMode}
                 />
               </div>
 
@@ -261,6 +271,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                   field="joias"
                   value={finances.joias || 0}
                   className="w-20 text-right"
+                  isEditMode={isEditMode}
                 />
               </div>
             </div>
@@ -358,6 +369,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                           value={skill.distributed || 0}
                           className="w-full text-center"
                           min={0}
+                          isEditMode={isEditMode}
                         />
                       </div>
 
@@ -370,6 +382,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                           field={`${skillKey}.bonus`}
                           value={skill.bonus || 0}
                           className="w-full text-center"
+                          isEditMode={isEditMode}
                         />
                       </div>
 
@@ -385,7 +398,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                         size="sm"
                         variant="outline"
                         onClick={() => handleQuickAdd(1)}
-                        disabled={updateCharacterMutation.isPending}
+                        disabled={updateCharacterMutation.isPending || !isEditMode}
                         className="h-6 px-2 text-xs"
                       >
                         +1
@@ -394,7 +407,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                         size="sm"
                         variant="outline"
                         onClick={() => handleQuickAdd(2)}
-                        disabled={updateCharacterMutation.isPending}
+                        disabled={updateCharacterMutation.isPending || !isEditMode}
                         className="h-6 px-2 text-xs"
                       >
                         +2
@@ -403,7 +416,7 @@ export function SkillsKitTab({ character, characterId }: SkillsKitTabProps) {
                         size="sm"
                         variant="outline"
                         onClick={() => handleQuickAdd(3)}
-                        disabled={updateCharacterMutation.isPending}
+                        disabled={updateCharacterMutation.isPending || !isEditMode}
                         className="h-6 px-2 text-xs"
                       >
                         +3

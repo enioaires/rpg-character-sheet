@@ -5,10 +5,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { EditableField, EditableNumberField, EditableTextArea } from '@/components/ui/editable-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
 import { useCharacterStore } from '@/lib/store/character'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Heart, Zap } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   ATTRIBUTES,
   ATTRIBUTE_LABELS,
@@ -24,11 +26,13 @@ import {
 interface BasicInfoTabProps {
   character: any
   characterId: string
+  isEditMode: boolean
 }
 
-export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
+export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   const [isAttributesExpanded, setIsAttributesExpanded] = useState(false)
+  const [damageValue, setDamageValue] = useState('')
 
   const {
     playerName, characterName, class: charClass, race, deity,
@@ -45,7 +49,77 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
     languages = {},
   } = character
 
-  // Debug removido - funcionando corretamente
+  // Funções para sistema de dano/cura da vitalidade
+  const applyDamage = async (damageAmount: number) => {
+    if (!damageAmount || damageAmount <= 0) {
+      toast.error('Digite um valor de dano válido')
+      return
+    }
+
+    try {
+      const calculatedVitality = calculateVitality(
+        vitality.race || 0,
+        vitality.class || 0,
+        level || 0
+      )
+
+      // Criar cópia dos valores atuais de vitalidade
+      let newCurrentVitality = { ...currentVitality }
+      let remainingDamage = damageAmount
+
+      // Aplicar dano de cima para baixo (do maior para o menor)
+      for (const vitalityKey of VITALITY_LEVELS) {
+        if (remainingDamage <= 0) break
+
+        const currentValue = newCurrentVitality[vitalityKey] || calculatedVitality[vitalityKey]
+        const damageToApply = Math.min(remainingDamage, currentValue)
+        
+        newCurrentVitality[vitalityKey] = Math.max(0, currentValue - damageToApply)
+        remainingDamage -= damageToApply
+      }
+
+      // Salvar no banco
+      const updateData = {
+        currentVitality: newCurrentVitality
+      }
+
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: updateData
+      })
+
+      toast.success(`${damageAmount} de dano aplicado!`)
+      setDamageValue('')
+    } catch (error) {
+      console.error('Erro ao aplicar dano:', error)
+      toast.error('Erro ao aplicar dano')
+    }
+  }
+
+  const restoreFullHealth = async () => {
+    try {
+      const calculatedVitality = calculateVitality(
+        vitality.race || 0,
+        vitality.class || 0,
+        level || 0
+      )
+
+      // Restaurar todos os níveis para o máximo
+      const updateData = {
+        currentVitality: calculatedVitality
+      }
+
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: updateData
+      })
+
+      toast.success('Vitalidade restaurada ao máximo!')
+    } catch (error) {
+      console.error('Erro ao restaurar vitalidade:', error)
+      toast.error('Erro ao restaurar vitalidade')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -65,6 +139,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={characterName}
                 label="Nome do Personagem"
                 placeholder="Digite o nome do personagem"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -74,6 +149,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={playerName}
                 label="Jogador"
                 placeholder="Digite o nome do jogador"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -83,6 +159,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={charClass}
                 label="Classe"
                 placeholder="Digite a classe"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -92,6 +169,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={race}
                 label="Raça"
                 placeholder="Digite a raça"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -101,6 +179,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={deity}
                 label="Divindade"
                 placeholder="Digite a divindade"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -110,6 +189,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={homeland}
                 label="Terra Natal"
                 placeholder="Digite a terra natal"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -119,6 +199,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={alignment}
                 label="Tendência"
                 placeholder="Digite a tendência"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -128,6 +209,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={gender}
                 label="Gênero"
                 placeholder="Digite o gênero"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -137,6 +219,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={age}
                 label="Idade"
                 placeholder="Digite a idade"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -146,6 +229,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={weight}
                 label="Peso"
                 placeholder="Digite o peso"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -155,6 +239,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={height}
                 label="Altura"
                 placeholder="Digite a altura"
+                isEditMode={isEditMode}
               />
 
               <EditableField
@@ -164,6 +249,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                 value={virtuePoints}
                 label="Pontos de Virtude"
                 placeholder="Digite os pontos de virtude"
+                isEditMode={isEditMode}
               />
             </div>
           </CardContent>
@@ -188,6 +274,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                     max={99}
                     className="text-center"
                     displayClassName="text-2xl font-bold text-primary"
+                    isEditMode={isEditMode}
                   />
                 </div>
               </div>
@@ -201,6 +288,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                     value={currentXP || 0}
                     className="text-center"
                     displayClassName="text-lg font-medium"
+                    isEditMode={isEditMode}
                   />
                 </div>
               </div>
@@ -305,6 +393,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                             field={`${attributeKey}.race`}
                             value={attr.race || 0}
                             className="text-center text-xs"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -316,6 +405,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                             field={`${attributeKey}.class`}
                             value={attr.class || 0}
                             className="text-center text-xs"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -327,6 +417,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                             field={`${attributeKey}.bonus`}
                             value={attr.bonus || 0}
                             className="text-center text-xs"
+                            isEditMode={isEditMode}
                           />
                         </div>
                       </div>
@@ -364,6 +455,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                   section="vitality"
                   field="race"
                   value={vitality.race || 0}
+                  isEditMode={isEditMode}
                 />
               </div>
               <div>
@@ -374,6 +466,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                   section="vitality"
                   field="class"
                   value={vitality.class || 0}
+                  isEditMode={isEditMode}
                 />
               </div>
             </div>
@@ -412,6 +505,54 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
 
             <Separator />
 
+            {/* Sistema de Dano/Cura */}
+            <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Sistema de Dano/Cura
+              </h4>
+              
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    placeholder="Valor do dano"
+                    value={damageValue}
+                    onChange={(e) => setDamageValue(e.target.value)}
+                    disabled={!isEditMode || updateCharacterMutation.isPending}
+                    className="text-center"
+                    min="0"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => applyDamage(parseInt(damageValue) || 0)}
+                  disabled={!isEditMode || !damageValue || updateCharacterMutation.isPending}
+                  className="px-4"
+                >
+                  <Zap className="w-3 h-3 mr-1" />
+                  Aplicar Dano
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={restoreFullHealth}
+                  disabled={!isEditMode || updateCharacterMutation.isPending}
+                  className="px-4"
+                >
+                  <Heart className="w-3 h-3 mr-1" />
+                  Vida Máxima
+                </Button>
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                O dano será aplicado de cima para baixo (do maior nível para o menor)
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Vitalidades calculadas */}
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Níveis de Vitalidade</h4>
@@ -433,6 +574,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                         field={vitalityKey}
                         value={currentVitality[vitalityKey] || calculatedVitality[vitalityKey]}
                         className="w-20 text-center text-sm"
+                        isEditMode={isEditMode}
                       />
                       <span className="text-xs text-muted-foreground">
                         / {calculatedVitality[vitalityKey]}
@@ -496,6 +638,7 @@ export function BasicInfoTab({ character, characterId }: BasicInfoTabProps) {
                         field="current"
                         value={currentBerkana}
                         className="text-lg font-bold"
+                        isEditMode={isEditMode}
                       />
                     </div>
                     <div>

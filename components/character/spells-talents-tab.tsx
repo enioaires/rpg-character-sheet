@@ -8,9 +8,10 @@ import { useUpdateCharacter } from '@/lib/api/queries'
 interface SpellsTalentsTabProps {
   character: any
   characterId: string
+  isEditMode: boolean
 }
 
-export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabProps) {
+export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsTalentsTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   
   const {
@@ -29,6 +30,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
               <CardTitle>Magias e Habilidades</CardTitle>
               <Button
                 size="sm"
+                disabled={!isEditMode || updateCharacterMutation.isPending}
                 onClick={async () => {
                   try {
                     const newSpell = {
@@ -54,7 +56,6 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                     console.error('Erro ao adicionar magia:', error)
                   }
                 }}
-                disabled={updateCharacterMutation.isPending}
               >
                 + Adicionar Magia
               </Button>
@@ -77,6 +78,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.name}
                             placeholder="Nome da magia"
                             className="font-medium"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div className="w-20">
@@ -88,6 +90,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.level || 0}
                             label="Nível"
                             className="text-center"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <Button
@@ -105,7 +108,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                               console.error('Erro ao remover magia:', error)
                             }
                           }}
-                          disabled={updateCharacterMutation.isPending}
+                          disabled={!isEditMode || updateCharacterMutation.isPending}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         >
                           ×
@@ -123,6 +126,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.berkanaCost || 0}
                             label="Custo Berkana"
                             className="text-center"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -134,6 +138,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.type}
                             placeholder="Tipo/Domínio"
                             label="Tipo"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -145,6 +150,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.concentration}
                             placeholder="Concentração"
                             label="Concentração"
+                            isEditMode={isEditMode}
                           />
                         </div>
                       </div>
@@ -160,6 +166,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.duration}
                             placeholder="Duração"
                             label="Duração"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -171,6 +178,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.prepTime}
                             placeholder="Tempo de Preparo"
                             label="Preparo"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -182,6 +190,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.resistance}
                             placeholder="Resistência"
                             label="Resistência"
+                            isEditMode={isEditMode}
                           />
                         </div>
                       </div>
@@ -197,6 +206,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.range}
                             placeholder="Alcance"
                             label="Alcance"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div>
@@ -208,6 +218,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={spell.damage}
                             placeholder="Dano"
                             label="Dano"
+                            isEditMode={isEditMode}
                           />
                         </div>
                       </div>
@@ -223,6 +234,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                           placeholder="Descrição da magia"
                           label="Descrição"
                           rows={3}
+                          isEditMode={isEditMode}
                         />
                       </div>
                     </div>
@@ -245,6 +257,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
               <CardTitle>Talentos</CardTitle>
               <Button
                 size="sm"
+                disabled={!isEditMode || updateCharacterMutation.isPending}
                 onClick={async () => {
                   try {
                     const newTalent = {
@@ -262,7 +275,6 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                     console.error('Erro ao adicionar talento:', error)
                   }
                 }}
-                disabled={updateCharacterMutation.isPending}
               >
                 + Adicionar Talento
               </Button>
@@ -286,6 +298,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             placeholder="Nome do talento"
                             label="Nome"
                             className="font-medium"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <div className="w-20">
@@ -297,6 +310,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                             value={talent.level || 0}
                             label="Nível"
                             className="text-center"
+                            isEditMode={isEditMode}
                           />
                         </div>
                         <Button
@@ -314,7 +328,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                               console.error('Erro ao remover talento:', error)
                             }
                           }}
-                          disabled={updateCharacterMutation.isPending}
+                          disabled={!isEditMode || updateCharacterMutation.isPending}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         >
                           ×
@@ -332,6 +346,7 @@ export function SpellsTalentsTab({ character, characterId }: SpellsTalentsTabPro
                           placeholder="Descrição do talento"
                           label="Descrição"
                           rows={3}
+                          isEditMode={isEditMode}
                         />
                       </div>
                     </div>
