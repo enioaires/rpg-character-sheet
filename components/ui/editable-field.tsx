@@ -19,24 +19,24 @@ import { useUpdateCharacter } from '@/lib/api/queries'
  */
 function buildUpdateData(section: string, field: string, value: any, currentData?: any): Record<string, any> {
   const updateData: Record<string, any> = {}
-  
+
   // Para campos básicos, usar diretamente
   if (section === 'basic') {
     updateData[field] = value
     return updateData
   }
-  
+
   // Para campos aninhados, preservar dados existentes
   const fieldPath = field.split('.')
-  
+
   if (fieldPath.length > 2) {
     // Campo tri-aninhado como "0.damage.d25"
     const [parentKey, middleKey, childKey] = fieldPath
-    
+
     // Preservar dados existentes
     const existingParentData = currentData?.[section]?.[parentKey] || {}
     const existingMiddleData = existingParentData[middleKey] || {}
-    
+
     const sectionData = {
       ...currentData?.[section],
       [parentKey]: {
@@ -47,7 +47,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
         }
       }
     }
-    
+
     // Para weapons, converter objeto para array
     if (section === 'weapons') {
       const weaponsArray = []
@@ -61,7 +61,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
       // Para arrays (adventureKit, spells, talents), converter objeto para array preservando todos os itens
       const currentArray = Array.isArray(currentData?.[section]) ? currentData[section] : []
       const resultArray = []
-      
+
       // Preservar todos os itens existentes
       for (let i = 0; i < currentArray.length; i++) {
         if (sectionData[i.toString()]) {
@@ -70,7 +70,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
           resultArray[i] = currentArray[i]
         }
       }
-      
+
       updateData[section] = resultArray
     } else {
       updateData[section] = sectionData
@@ -78,10 +78,10 @@ function buildUpdateData(section: string, field: string, value: any, currentData
   } else if (fieldPath.length > 1) {
     // Campo bi-aninhado como "agilidade.race" ou "0.name"
     const [parentKey, childKey] = fieldPath
-    
+
     // Preservar dados existentes do parent
     const existingParentData = currentData?.[section]?.[parentKey] || {}
-    
+
     const sectionData = {
       ...currentData?.[section],
       [parentKey]: {
@@ -89,7 +89,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
         [childKey]: value
       }
     }
-    
+
     // Para weapons, converter objeto para array
     if (section === 'weapons') {
       const weaponsArray = []
@@ -103,7 +103,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
       // Para arrays (adventureKit, spells, talents), converter objeto para array preservando todos os itens
       const currentArray = Array.isArray(currentData?.[section]) ? currentData[section] : []
       const resultArray = []
-      
+
       // Preservar todos os itens existentes
       for (let i = 0; i < currentArray.length; i++) {
         if (sectionData[i.toString()]) {
@@ -112,7 +112,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
           resultArray[i] = currentArray[i]
         }
       }
-      
+
       updateData[section] = resultArray
     } else {
       updateData[section] = sectionData
@@ -124,7 +124,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
       [field]: value
     }
   }
-  
+
   return updateData
 }
 
@@ -189,7 +189,7 @@ export function EditableField({
 
   // Mutation para update automático
   const updateCharacterMutation = useUpdateCharacter()
-  
+
   // Estados de loading e erro (priorizar mutation se disponível)
   const isSaving = characterId ? updateCharacterMutation.isPending : useCharacterStore(state => state.isSaving)
   const error = characterId ? updateCharacterMutation.error?.message : storeError
@@ -251,10 +251,10 @@ export function EditableField({
       } else if (characterId) {
         // Auto-save usando updateCharacter mutation
         const updateData = buildUpdateData(section, field, parsedValue, currentCharacterData)
-        
-        await updateCharacterMutation.mutateAsync({ 
-          id: characterId, 
-          data: updateData 
+
+        await updateCharacterMutation.mutateAsync({
+          id: characterId,
+          data: updateData
         })
       } else {
         // Usar store padrão (fallback)
@@ -327,7 +327,7 @@ export function EditableField({
 
             // Disabled state  
             disabled && "cursor-not-allowed opacity-50",
-            
+
             // Edit mode disabled (locked)
             !isEditMode && "cursor-not-allowed bg-muted/30",
 

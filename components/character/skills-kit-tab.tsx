@@ -74,6 +74,81 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
           </CardContent>
         </Card>
 
+        {/* Finanças */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Finanças</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Ouro:</span>
+                <EditableNumberField
+                  characterId={characterId}
+                  currentCharacterData={character}
+                  section="finances"
+                  field="ouro"
+                  value={finances.ouro || 0}
+                  className="w-20 text-right"
+                  isEditMode={isEditMode}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Prata:</span>
+                <EditableNumberField
+                  characterId={characterId}
+                  currentCharacterData={character}
+                  section="finances"
+                  field="prata"
+                  value={finances.prata || 0}
+                  className="w-20 text-right"
+                  isEditMode={isEditMode}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Cobre:</span>
+                <EditableNumberField
+                  characterId={characterId}
+                  currentCharacterData={character}
+                  section="finances"
+                  field="cobre"
+                  value={finances.cobre || 0}
+                  className="w-20 text-right"
+                  isEditMode={isEditMode}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Imperano:</span>
+                <EditableNumberField
+                  characterId={characterId}
+                  currentCharacterData={character}
+                  section="finances"
+                  field="imperano"
+                  value={finances.imperano || 0}
+                  className="w-20 text-right"
+                  isEditMode={isEditMode}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Jóias:</span>
+                <EditableNumberField
+                  characterId={characterId}
+                  currentCharacterData={character}
+                  section="finances"
+                  field="joias"
+                  value={finances.joias || 0}
+                  className="w-20 text-right"
+                  isEditMode={isEditMode}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Kit de Aventureiro */}
         <Card>
           <CardHeader>
@@ -200,81 +275,6 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
                 )}
               </div>
             </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Finanças */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Finanças</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Ouro:</span>
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="finances"
-                  field="ouro"
-                  value={finances.ouro || 0}
-                  className="w-20 text-right"
-                  isEditMode={isEditMode}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Prata:</span>
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="finances"
-                  field="prata"
-                  value={finances.prata || 0}
-                  className="w-20 text-right"
-                  isEditMode={isEditMode}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Cobre:</span>
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="finances"
-                  field="cobre"
-                  value={finances.cobre || 0}
-                  className="w-20 text-right"
-                  isEditMode={isEditMode}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Imperano:</span>
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="finances"
-                  field="imperano"
-                  value={finances.imperano || 0}
-                  className="w-20 text-right"
-                  isEditMode={isEditMode}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Jóias:</span>
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="finances"
-                  field="joias"
-                  value={finances.joias || 0}
-                  className="w-20 text-right"
-                  isEditMode={isEditMode}
-                />
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
