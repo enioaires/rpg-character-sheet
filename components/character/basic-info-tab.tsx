@@ -67,13 +67,20 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
       let newCurrentVitality = { ...currentVitality }
       let remainingDamage = damageAmount
 
+      // Inicializar currentVitality com valores máximos se ainda não foi definido
+      for (const vitalityKey of VITALITY_LEVELS) {
+        if (newCurrentVitality[vitalityKey] === undefined || newCurrentVitality[vitalityKey] === null) {
+          newCurrentVitality[vitalityKey] = calculatedVitality[vitalityKey]
+        }
+      }
+
       // Aplicar dano de cima para baixo (do maior para o menor)
       for (const vitalityKey of VITALITY_LEVELS) {
         if (remainingDamage <= 0) break
 
-        const currentValue = newCurrentVitality[vitalityKey] || calculatedVitality[vitalityKey]
+        const currentValue = newCurrentVitality[vitalityKey]
         const damageToApply = Math.min(remainingDamage, currentValue)
-        
+
         newCurrentVitality[vitalityKey] = Math.max(0, currentValue - damageToApply)
         remainingDamage -= damageToApply
       }
@@ -305,7 +312,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
 
       {/* Segunda linha - Atributos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Atributos - Resumo */}
         <Card>
           <CardHeader>
@@ -319,20 +326,19 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                 const total = (attr.race || 0) + (attr.class || 0) + (attr.bonus || 0) + levelBonus
 
                 return (
-                  <div 
-                    key={attributeKey} 
-                    className={`flex items-center py-1.5 px-2 rounded-sm transition-colors hover:bg-muted/50 ${
-                      index % 2 === 0 ? 'bg-muted/20' : 'bg-transparent'
-                    }`}
+                  <div
+                    key={attributeKey}
+                    className={`flex items-center py-1.5 px-2 rounded-sm transition-colors hover:bg-muted/50 ${index % 2 === 0 ? 'bg-muted/20' : 'bg-transparent'
+                      }`}
                   >
                     {/* Nome do Atributo */}
                     <span className="flex-1 text-left">
                       {ATTRIBUTE_LABELS[attributeKey]}
                     </span>
-                    
+
                     {/* Linha Pontilhada */}
                     <div className="flex-1 mx-3 border-b border-dotted border-muted-foreground/30"></div>
-                    
+
                     {/* Valor Total */}
                     <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded min-w-[2rem] text-center">
                       {total}
@@ -486,7 +492,10 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
 
               // Calcular vitalidade atual (soma dos valores atuais)
               const currentTotal = VITALITY_LEVELS.reduce((sum, vitalityKey) => {
-                return sum + (currentVitality[vitalityKey] || calculatedVitality[vitalityKey])
+                const currentValue = currentVitality[vitalityKey] !== undefined && currentVitality[vitalityKey] !== null
+                  ? currentVitality[vitalityKey]
+                  : calculatedVitality[vitalityKey]
+                return sum + currentValue
               }, 0)
 
               return (
@@ -511,7 +520,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                 <Zap className="w-4 h-4" />
                 Sistema de Dano/Cura
               </h4>
-              
+
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Input
@@ -545,7 +554,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                   Vida Máxima
                 </Button>
               </div>
-              
+
               <div className="text-xs text-muted-foreground">
                 O dano será aplicado de cima para baixo (do maior nível para o menor)
               </div>
@@ -572,7 +581,9 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                         currentCharacterData={character}
                         section="currentVitality"
                         field={vitalityKey}
-                        value={currentVitality[vitalityKey] || calculatedVitality[vitalityKey]}
+                        value={currentVitality[vitalityKey] !== undefined && currentVitality[vitalityKey] !== null
+                          ? currentVitality[vitalityKey]
+                          : calculatedVitality[vitalityKey]}
                         className="w-20 text-center text-sm"
                         isEditMode={isEditMode}
                       />
