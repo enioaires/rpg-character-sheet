@@ -114,12 +114,12 @@ export default function CharactersPage() {
     const totalPages = Math.ceil(total / limit)
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold">Personagens</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Personagens</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">
                         Gerencie suas fichas de personagem de RPG
                     </p>
                 </div>
@@ -167,48 +167,48 @@ export default function CharactersPage() {
             ) : (
                 <>
                     {/* Grid de Personagens */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
                         {characters.map((character) => (
-                            <Card key={character.id} className="hover:shadow-lg transition-shadow">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-start justify-between">
+                            <Card key={character.id} className="hover:shadow-lg transition-shadow mobile-tap">
+                                <CardHeader className="pb-3 mobile-card-compact">
+                                    <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-lg truncate">
+                                            <CardTitle className="text-base sm:text-lg truncate">
                                                 {character.characterName || 'Sem nome'}
                                             </CardTitle>
                                             {character.playerName && (
-                                                <p className="text-sm text-muted-foreground truncate">
+                                                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                                                     Jogador: {character.playerName}
                                                 </p>
                                             )}
                                         </div>
-                                        <Badge variant="secondary" className="ml-2">
+                                        <Badge variant="secondary" className="text-xs shrink-0">
                                             Nv. {character.level}
                                         </Badge>
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="space-y-3">
+                                <CardContent className="space-y-3 mobile-card-compact">
                                     {/* Informações do Personagem */}
-                                    <div className="space-y-2 text-sm">
+                                    <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
                                         {character.race && (
                                             <div className="flex items-center gap-2">
-                                                <User className="w-3 h-3 text-muted-foreground" />
+                                                <User className="w-3 h-3 text-muted-foreground shrink-0" />
                                                 <span className="text-muted-foreground">Raça:</span>
-                                                <span>{character.race}</span>
+                                                <span className="truncate">{character.race}</span>
                                             </div>
                                         )}
                                         {character.class && (
                                             <div className="flex items-center gap-2">
-                                                <Sword className="w-3 h-3 text-muted-foreground" />
+                                                <Sword className="w-3 h-3 text-muted-foreground shrink-0" />
                                                 <span className="text-muted-foreground">Classe:</span>
-                                                <span>{character.class}</span>
+                                                <span className="truncate">{character.class}</span>
                                             </div>
                                         )}
                                         <div className="flex items-center gap-2">
-                                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                                            <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
                                             <span className="text-muted-foreground">Atualizado:</span>
-                                            <span>
+                                            <span className="truncate">
                                                 {formatDistanceToNow(new Date(character.updatedAt), {
                                                     addSuffix: true,
                                                     locale: ptBR
@@ -223,10 +223,11 @@ export default function CharactersPage() {
                                             variant="default"
                                             size="sm"
                                             onClick={() => handleViewCharacter(character.id)}
-                                            className="flex-1"
+                                            className="flex-1 touch-target"
                                         >
                                             <Eye className="w-3 h-3 mr-1" />
-                                            Abrir
+                                            <span className="hidden sm:inline">Abrir</span>
+                                            <span className="sm:hidden">Ver</span>
                                         </Button>
 
                                         <AlertDialog>
@@ -234,12 +235,12 @@ export default function CharactersPage() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="text-destructive hover:text-destructive"
+                                                    className="text-destructive hover:text-destructive touch-target"
                                                 >
                                                     <Trash2 className="w-3 h-3" />
                                                 </Button>
                                             </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent className="mx-2 sm:mx-auto max-w-md">
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Deletar Personagem</AlertDialogTitle>
                                                     <AlertDialogDescription>
@@ -247,11 +248,11 @@ export default function CharactersPage() {
                                                         Esta ação não pode ser desfeita.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                                    <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
                                                     <AlertDialogAction
                                                         onClick={() => handleDeleteCharacter(character.id, character.characterName)}
-                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                                                         disabled={deleteCharacterMutation.isPending}
                                                     >
                                                         {deleteCharacterMutation.isPending ? (
@@ -270,25 +271,29 @@ export default function CharactersPage() {
 
                     {/* Paginação */}
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1 sm:gap-2">
                             <Button
                                 variant="outline"
+                                size="sm"
                                 onClick={() => setPage(page - 1)}
                                 disabled={page === 1}
+                                className="touch-target"
                             >
-                                Anterior
+                                <span className="hidden sm:inline">Anterior</span>
+                                <span className="sm:hidden">Ant</span>
                             </Button>
 
                             <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    const pageNum = Math.max(1, Math.min(totalPages - 4, page - 2)) + i
+                                {Array.from({ length: Math.min(window.innerWidth < 640 ? 3 : 5, totalPages) }, (_, i) => {
+                                    const maxVisible = window.innerWidth < 640 ? 3 : 5
+                                    const pageNum = Math.max(1, Math.min(totalPages - (maxVisible - 1), page - Math.floor(maxVisible / 2))) + i
                                     return (
                                         <Button
                                             key={pageNum}
                                             variant={pageNum === page ? "default" : "outline"}
                                             size="sm"
                                             onClick={() => setPage(pageNum)}
-                                            className="w-10"
+                                            className="w-8 sm:w-10 touch-target"
                                         >
                                             {pageNum}
                                         </Button>
@@ -298,10 +303,13 @@ export default function CharactersPage() {
 
                             <Button
                                 variant="outline"
+                                size="sm"
                                 onClick={() => setPage(page + 1)}
                                 disabled={page === totalPages}
+                                className="touch-target"
                             >
-                                Próxima
+                                <span className="hidden sm:inline">Próxima</span>
+                                <span className="sm:hidden">Prox</span>
                             </Button>
                         </div>
                     )}

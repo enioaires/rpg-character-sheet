@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   description: 'Sistema para digitalização de fichas de RPG - Uso em sessões presenciais',
   keywords: ['RPG', 'ficha', 'digital', 'personagem', 'aventura'],
   authors: [{ name: 'RPG Digital Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover'
+  },
 }
 
 export default function RootLayout({

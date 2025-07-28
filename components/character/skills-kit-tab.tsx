@@ -33,7 +33,7 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
 
         {/* Perícias - Resumo */}
         <Card>
@@ -322,7 +322,7 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
         </CardHeader>
         {isSkillDistributionExpanded && (
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {SKILLS.map((skillKey) => {
                 const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
                 const levelBonus = calculateSkillBonus(level || 0)
@@ -353,7 +353,7 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
                   <div key={skillKey} className="space-y-2 p-3 bg-muted/50 rounded">
                     <div className="font-medium text-sm">{SKILL_LABELS[skillKey]}</div>
 
-                    <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2 text-xs">
                       <div>
                         <label className="text-muted-foreground">Base:</label>
                         <div className="font-medium text-center">1</div>

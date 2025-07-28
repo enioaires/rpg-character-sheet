@@ -158,18 +158,18 @@ export default function CharacterPage() {
   // ============================================
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button onClick={handleBack} variant="outline" size="sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <Button onClick={handleBack} variant="outline" size="sm" className="w-fit">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{character.characterName}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{character.characterName}</h1>
             {character.playerName && (
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Jogador: {character.playerName}
               </p>
             )}
@@ -181,24 +181,27 @@ export default function CharacterPage() {
             onClick={handleToggleEditMode} 
             variant={isEditMode ? "default" : "secondary"}
             size="sm"
-            className={isEditMode ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"}
+            className={`${isEditMode ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"} flex-1 sm:flex-none`}
           >
             {isEditMode ? (
               <>
                 <Unlock className="w-4 h-4 mr-2" />
-                Desbloqueado
+                <span className="hidden sm:inline">Desbloqueado</span>
+                <span className="sm:hidden">Desbloq.</span>
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4 mr-2" />
-                Bloqueado
+                <span className="hidden sm:inline">Bloqueado</span>
+                <span className="sm:hidden">Bloq.</span>
               </>
             )}
           </Button>
           
-          <Button onClick={handleRefresh} variant="outline" size="sm">
+          <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-1 sm:flex-none">
             <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
+            <span className="hidden sm:inline">Atualizar</span>
+            <span className="sm:hidden">Atual.</span>
           </Button>
         </div>
       </div>

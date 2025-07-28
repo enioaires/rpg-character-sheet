@@ -57,16 +57,16 @@ export default function CreateCharacterPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-2xl">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button onClick={handleBack} variant="outline" size="sm">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-8">
+        <Button onClick={handleBack} variant="outline" size="sm" className="w-fit">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Criar Novo Personagem</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Criar Novo Personagem</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Preencha as informações básicas do seu personagem
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function CreateCharacterPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Informações Essenciais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="characterName">
                   Nome do Personagem *
@@ -109,7 +109,7 @@ export default function CreateCharacterPage() {
             </div>
 
             {/* Classe e Raça */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="class">Classe</Label>
                 <Input
@@ -132,7 +132,7 @@ export default function CreateCharacterPage() {
             </div>
 
             {/* Informações Adicionais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="deity">Divindade</Label>
                 <Input
@@ -154,7 +154,7 @@ export default function CreateCharacterPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="alignment">Tendência</Label>
                 <Input
@@ -177,7 +177,7 @@ export default function CreateCharacterPage() {
             </div>
 
             {/* Características Físicas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="age">Idade</Label>
                 <Input
@@ -210,19 +210,19 @@ export default function CreateCharacterPage() {
             </div>
 
             {/* Botões */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBack}
-                className="flex-1"
+                className="flex-1 order-2 sm:order-1"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={createCharacterMutation.isPending || !formData.characterName.trim()}
-                className="flex-1"
+                className="flex-1 order-1 sm:order-2"
               >
                 {createCharacterMutation.isPending ? (
                   <>

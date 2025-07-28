@@ -24,16 +24,19 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
       <Tabs defaultValue="basicos" className="w-full">
         {/* Navegação de Tabs Fixa */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-          <div className="container mx-auto px-4">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 my-4">
-              <TabsTrigger value="basicos" className="text-sm">
-                Dados Básicos
+          <div className="container mx-auto px-2 sm:px-4">
+            <TabsList className="grid w-full max-w-lg mx-auto grid-cols-3 my-2 sm:my-4 h-auto">
+              <TabsTrigger value="basicos" className="text-xs sm:text-sm px-2 py-2 sm:px-3 sm:py-2">
+                <span className="hidden sm:inline">Dados Básicos</span>
+                <span className="sm:hidden">Básicos</span>
               </TabsTrigger>
-              <TabsTrigger value="pericias" className="text-sm">
-                Perícias & Kit
+              <TabsTrigger value="pericias" className="text-xs sm:text-sm px-2 py-2 sm:px-3 sm:py-2">
+                <span className="hidden sm:inline">Perícias & Kit</span>
+                <span className="sm:hidden">Perícias</span>
               </TabsTrigger>
-              <TabsTrigger value="magias" className="text-sm">
-                Magias & Talentos
+              <TabsTrigger value="magias" className="text-xs sm:text-sm px-2 py-2 sm:px-3 sm:py-2">
+                <span className="hidden sm:inline">Magias & Talentos</span>
+                <span className="sm:hidden">Magias</span>
               </TabsTrigger>
             </TabsList>
           </div>

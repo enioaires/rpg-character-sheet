@@ -131,7 +131,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
             <CardTitle>Informações Básicas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <EditableField
                 characterId={characterId}
                 section="basic"
@@ -370,7 +370,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
           </CardHeader>
           {isAttributesExpanded && (
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {ATTRIBUTES.map((attributeKey) => {
                   const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
                   const levelBonus = calculateAttributeBonus(level || 0)
@@ -383,7 +383,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                         <div className="text-2xl font-bold text-primary">{total}</div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-3 gap-1 sm:gap-2 text-xs">
                         <div>
                           <label className="text-muted-foreground">Raça</label>
                           <EditableNumberField
