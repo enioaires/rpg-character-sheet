@@ -26,6 +26,19 @@ function buildUpdateData(section: string, field: string, value: any, currentData
     return updateData
   }
 
+  // Para campos de berkana, mapear para os nomes corretos no banco
+  if (section === 'berkana') {
+    const fieldMap: Record<string, string> = {
+      'current': 'currentBerkana',
+      'max': 'maxBerkana',
+      'bonus': 'berkanaBonus'
+    }
+    
+    const dbFieldName = fieldMap[field] || field
+    updateData[dbFieldName] = value
+    return updateData
+  }
+
   // Para campos aninhados, preservar dados existentes
   const fieldPath = field.split('.')
 

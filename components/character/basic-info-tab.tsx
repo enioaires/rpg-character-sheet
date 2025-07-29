@@ -606,14 +606,14 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
           <CardContent className="space-y-4">
             {(() => {
               const calculatedMax = calculateBerkana(level || 0, berkanaBonus || 0)
-              const updateCharacterMutation = useUpdateCharacter()
+              const actualMaxBerkana = maxBerkana || calculatedMax
 
               const handleBerkanaQuickEdit = async (action: 'fill' | 'minus30' | 'minus50') => {
                 let newValue = currentBerkana || 0
 
                 switch (action) {
                   case 'fill':
-                    newValue = calculatedMax
+                    newValue = actualMaxBerkana
                     break
                   case 'minus30':
                     newValue = Math.max(0, newValue - 30)
@@ -648,13 +648,22 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                         section="berkana"
                         field="current"
                         value={currentBerkana}
+                        max={actualMaxBerkana}
                         className="text-lg font-bold"
                         isEditMode={isEditMode}
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Máxima</label>
-                      <div className="text-lg font-bold text-primary">{calculatedMax}</div>
+                      <EditableNumberField
+                        characterId={characterId}
+                        currentCharacterData={character}
+                        section="berkana"
+                        field="max"
+                        value={actualMaxBerkana}
+                        className="text-lg font-bold text-primary"
+                        isEditMode={isEditMode}
+                      />
                     </div>
                   </div>
 
@@ -664,7 +673,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       size="sm"
                       variant="outline"
                       onClick={() => handleBerkanaQuickEdit('fill')}
-                      disabled={updateCharacterMutation.isPending}
+                      disabled={!isEditMode || updateCharacterMutation.isPending}
                       className="flex-1"
                     >
                       Berkana Máxima
@@ -673,7 +682,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       size="sm"
                       variant="outline"
                       onClick={() => handleBerkanaQuickEdit('minus30')}
-                      disabled={updateCharacterMutation.isPending}
+                      disabled={!isEditMode || updateCharacterMutation.isPending}
                       className="flex-1"
                     >
                       -30
@@ -682,7 +691,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       size="sm"
                       variant="outline"
                       onClick={() => handleBerkanaQuickEdit('minus50')}
-                      disabled={updateCharacterMutation.isPending}
+                      disabled={!isEditMode || updateCharacterMutation.isPending}
                       className="flex-1"
                     >
                       -50
@@ -697,11 +706,17 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       section="berkana"
                       field="bonus"
                       value={berkanaBonus}
+                      isEditMode={isEditMode}
                     />
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    Cálculo: 100 + ({level || 0} × 10) + {berkanaBonus || 0} = {calculatedMax}
+                    Cálculo sugerido: 100 + ({level || 0} × 10) + {berkanaBonus || 0} = {calculatedMax}
+                    {actualMaxBerkana !== calculatedMax && (
+                      <div className="text-amber-600 mt-1">
+                        Valor personalizado: {actualMaxBerkana}
+                      </div>
+                    )}
                   </div>
                 </>
               )
