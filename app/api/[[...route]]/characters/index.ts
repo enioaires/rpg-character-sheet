@@ -12,7 +12,6 @@ import {
   deleteCharacterResponseSchema
 } from "@/lib/schemas/character";
 import {
-  levelUpRequestSchema,
   levelUpResponseSchema,
   calculateVitalityRequestSchema,
   calculateVitalityResponseSchema,
@@ -26,7 +25,6 @@ import {
   calculateXPResponseSchema,
   calculateSkillPointsRequestSchema,
   calculateSkillPointsResponseSchema,
-  recalculateCharacterRequestSchema,
   recalculateCharacterResponseSchema
 } from "@/lib/schemas/calculations";
 

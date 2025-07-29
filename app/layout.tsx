@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Ficha Digital de RPG',
-  description: 'Sistema para digitalização de fichas de RPG - Uso em sessões presenciais',
+  title: 'Ficha Digital Obziammos',
+  description: 'Sistema para digitalização de fichas do RPG Obziammos - Uso em sessões presenciais',
   keywords: ['RPG', 'ficha', 'digital', 'personagem', 'aventura'],
-  authors: [{ name: 'RPG Digital Team' }],
+  authors: [{ name: 'Enio Aires' }],
   viewport: {
     width: 'device-width',
     initialScale: 1,
