@@ -667,7 +667,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       disabled={updateCharacterMutation.isPending}
                       className="flex-1"
                     >
-                      Encher
+                      Berkana Máxima
                     </Button>
                     <Button
                       size="sm"
