@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useUpdateCharacter } from '@/lib/api/queries'
-import { Plus, Edit, Trash2, FileText, Calendar, Search } from 'lucide-react'
+import { Plus, Edit, Trash2, FileText, Calendar, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Note {
@@ -248,6 +248,62 @@ export function NotesTab({ character, characterId, isEditMode }: NotesTabProps) 
         setNewNoteContent('')
     }
 
+    // Função para mover nota para cima
+    const moveNoteUp = async (noteId: string) => {
+        const currentIndex = allNotes.findIndex(note => note.id === noteId)
+        if (currentIndex <= 0) return // Já está no topo ou não encontrada
+
+        try {
+            const newNotesArray = [...allNotes]
+            // Trocar posições
+            const temp = newNotesArray[currentIndex - 1]
+            newNotesArray[currentIndex - 1] = newNotesArray[currentIndex]
+            newNotesArray[currentIndex] = temp
+
+            const notesJson = JSON.stringify(newNotesArray)
+
+            await updateCharacterMutation.mutateAsync({
+                id: characterId,
+                data: {
+                    notes: notesJson
+                }
+            })
+
+            toast.success('Posição da anotação atualizada!')
+        } catch (error) {
+            console.error('Erro ao mover anotação:', error)
+            toast.error('Erro ao mover anotação')
+        }
+    }
+
+    // Função para mover nota para baixo
+    const moveNoteDown = async (noteId: string) => {
+        const currentIndex = allNotes.findIndex(note => note.id === noteId)
+        if (currentIndex >= allNotes.length - 1 || currentIndex === -1) return // Já está no final ou não encontrada
+
+        try {
+            const newNotesArray = [...allNotes]
+            // Trocar posições
+            const temp = newNotesArray[currentIndex]
+            newNotesArray[currentIndex] = newNotesArray[currentIndex + 1]
+            newNotesArray[currentIndex + 1] = temp
+
+            const notesJson = JSON.stringify(newNotesArray)
+
+            await updateCharacterMutation.mutateAsync({
+                id: characterId,
+                data: {
+                    notes: notesJson
+                }
+            })
+
+            toast.success('Posição da anotação atualizada!')
+        } catch (error) {
+            console.error('Erro ao mover anotação:', error)
+            toast.error('Erro ao mover anotação')
+        }
+    }
+
     // Função de emergência para limpar dados corrompidos
     const clearCorruptedNotes = async () => {
         try {
@@ -455,83 +511,116 @@ export function NotesTab({ character, characterId, isEditMode }: NotesTabProps) 
 
                     {/* Grid de anotações */}
                     <div className="grid gap-4">
-                        {notes.map((note) => (
-                            <Card key={note.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                                <CardHeader className="pb-3">
-                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-base sm:text-lg break-words line-clamp-2">
-                                                {note.title}
-                                            </CardTitle>
-                                            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                                <div className="flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    <span>Criado: {formatDate(note.createdAt)}</span>
-                                                </div>
-                                                {note.updatedAt !== note.createdAt && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Separator orientation="vertical" className="h-3" />
-                                                        <span>Editado: {formatDate(note.updatedAt)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                        {notes.map((note) => {
+                            const noteIndex = allNotes.findIndex(n => n.id === note.id)
+                            const canMoveUp = noteIndex > 0
+                            const canMoveDown = noteIndex < allNotes.length - 1
+                            const showReorderButtons = isEditMode && searchTerm === '' // Só mostra quando não há filtro
 
-                                        {isEditMode && (
-                                            <div className="flex gap-1 shrink-0">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => openEditDialog(note)}
-                                                    className="h-8 w-8 p-0 hover:bg-primary/10"
-                                                    title="Editar anotação"
-                                                >
-                                                    <Edit className="w-3 h-3" />
-                                                </Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                            title="Excluir anotação"
-                                                        >
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent className="w-[95vw] max-w-md">
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Tem certeza que deseja excluir a anotação "{note.title}"? Esta ação não pode ser desfeita.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                                                            <AlertDialogCancel className="w-full sm:w-auto">
-                                                                Cancelar
-                                                            </AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleDeleteNote(note.id)}
-                                                                className="w-full sm:w-auto bg-destructive hover:bg-destructive/90"
-                                                            >
-                                                                Excluir
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                            return (
+                                <Card key={note.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <CardTitle className="text-base sm:text-lg break-words line-clamp-2">
+                                                    {note.title}
+                                                </CardTitle>
+                                                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                                    <div className="flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" />
+                                                        <span>Criado: {formatDate(note.createdAt)}</span>
+                                                    </div>
+                                                    {note.updatedAt !== note.createdAt && (
+                                                        <div className="flex items-center gap-1">
+                                                            <Separator orientation="vertical" className="h-3" />
+                                                            <span>Editado: {formatDate(note.updatedAt)}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="max-h-32 sm:max-h-48">
-                                        <div className="text-sm leading-relaxed break-words">
-                                            {renderFormattedText(note.content)}
+
+                                            {isEditMode && (
+                                                <div className="flex gap-1 shrink-0">
+                                                    {/* Botões de reordenação - só aparecem quando não há filtro */}
+                                                    {showReorderButtons && (
+                                                        <div className="flex flex-col gap-0.5 mr-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => moveNoteUp(note.id)}
+                                                                disabled={!canMoveUp || updateCharacterMutation.isPending}
+                                                                className="h-4 w-6 p-0 hover:bg-primary/10 disabled:opacity-30"
+                                                                title="Mover para cima"
+                                                            >
+                                                                <ChevronUp className="w-3 h-3" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => moveNoteDown(note.id)}
+                                                                disabled={!canMoveDown || updateCharacterMutation.isPending}
+                                                                className="h-4 w-6 p-0 hover:bg-primary/10 disabled:opacity-30"
+                                                                title="Mover para baixo"
+                                                            >
+                                                                <ChevronDown className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEditDialog(note)}
+                                                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                                                        title="Editar anotação"
+                                                    >
+                                                        <Edit className="w-3 h-3" />
+                                                    </Button>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                title="Excluir anotação"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent className="w-[95vw] max-w-md">
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Tem certeza que deseja excluir a anotação "{note.title}"? Esta ação não pode ser desfeita.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                                                <AlertDialogCancel className="w-full sm:w-auto">
+                                                                    Cancelar
+                                                                </AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleDeleteNote(note.id)}
+                                                                    className="w-full sm:w-auto bg-destructive hover:bg-destructive/90"
+                                                                >
+                                                                    Excluir
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
+                                            )}
                                         </div>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ScrollArea className="max-h-32 sm:max-h-48">
+                                            <div className="text-sm leading-relaxed break-words">
+                                                {renderFormattedText(note.content)}
+                                            </div>
+                                        </ScrollArea>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </div>
                 </div>
             )}

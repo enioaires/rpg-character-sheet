@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EditableField, EditableNumberField } from '@/components/ui/editable-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
-import { ChevronDown, ChevronUp, UndoIcon } from 'lucide-react'
+import { ChevronDown, ChevronUp, UndoIcon, Maximize2 } from 'lucide-react'
 import {
   SKILLS,
   SKILL_LABELS,
@@ -23,6 +24,7 @@ interface SkillsKitTabProps {
 export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   const [isSkillDistributionExpanded, setIsSkillDistributionExpanded] = useState(false)
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
 
   const {
     level,
@@ -38,7 +40,57 @@ export function SkillsKitTab({ character, characterId, isEditMode }: SkillsKitTa
         {/* Perícias - Resumo */}
         <Card>
           <CardHeader>
-            <CardTitle>Perícias - Resumo</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Perícias - Resumo</CardTitle>
+              <Dialog open={isSkillsModalOpen} onOpenChange={setIsSkillsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title="Expandir perícias"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[85vh]">
+                  <DialogHeader>
+                    <DialogTitle>Todas as Perícias</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] pr-4">
+                    <div className="space-y-0.5 text-sm">
+                      {SKILLS.map((skillKey, index) => {
+                        const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
+                        const levelBonus = calculateSkillBonus(level || 0)
+                        const total = 1 + (skill.distributed || 0) + (skill.bonus || 0) + levelBonus
+
+                        return (
+                          <div
+                            key={skillKey}
+                            className={`flex items-center py-1.5 px-2 rounded-sm transition-colors hover:bg-muted/50 ${
+                              index % 2 === 0 ? 'bg-muted/20' : 'bg-transparent'
+                            }`}
+                          >
+                            {/* Nome da Perícia */}
+                            <span className="flex-1 text-left">
+                              {SKILL_LABELS[skillKey]}
+                            </span>
+
+                            {/* Linha Pontilhada */}
+                            <div className="flex-1 mx-3 border-b border-dotted border-muted-foreground/30"></div>
+
+                            {/* Valor Total */}
+                            <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded min-w-[2rem] text-center">
+                              {total}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-96">
