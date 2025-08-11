@@ -7,17 +7,15 @@ import { EditableField, EditableTextArea, EditableNumberField } from '@/componen
 import { useUpdateCharacter } from '@/lib/api/queries'
 import { ChevronDown, ChevronRight, Sparkles, Zap } from 'lucide-react'
 
-interface SpellsTalentsTabProps {
-  character: any
-  characterId: string
-  isEditMode: boolean
-}
+import { CharacterTabProps } from './types'
+
+interface SpellsTalentsTabProps extends CharacterTabProps { }
 
 export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsTalentsTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   const [expandedSpells, setExpandedSpells] = useState<Set<number>>(new Set())
   const [expandedTalents, setExpandedTalents] = useState<Set<number>>(new Set())
-  
+
   const {
     spells = [],
     talents = [],

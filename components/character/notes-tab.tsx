@@ -23,11 +23,9 @@ interface Note {
     updatedAt: string
 }
 
-interface NotesTabProps {
-    character: any
-    characterId: string
-    isEditMode: boolean
-}
+import { CharacterTabProps } from './types'
+
+interface NotesTabProps extends CharacterTabProps {}
 
 export function NotesTab({ character, characterId, isEditMode }: NotesTabProps) {
     const updateCharacterMutation = useUpdateCharacter()

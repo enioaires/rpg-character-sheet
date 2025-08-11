@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { EditableField, EditableNumberField, EditableTextArea } from '@/components/ui/editable-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
 import { useCharacterStore } from '@/lib/store/character'
-import { ChevronDown, ChevronUp, Heart, Zap } from 'lucide-react'
+import { ChevronDown, ChevronUp, Heart, Zap, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   ATTRIBUTES,
@@ -23,13 +23,17 @@ import {
   calculateVitality
 } from '@/lib/constants/character'
 
-interface BasicInfoTabProps {
-  character: any
-  characterId: string
-  isEditMode: boolean
-}
+import { CharacterTabProps } from './types'
 
-export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTabProps) {
+interface BasicInfoTabProps extends CharacterTabProps {}
+
+export function BasicInfoTab({ 
+  character, 
+  characterId, 
+  isEditMode, 
+  isAttributesModalOpen = false, 
+  setIsAttributesModalOpen 
+}: BasicInfoTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
   const [isAttributesExpanded, setIsAttributesExpanded] = useState(false)
   const [damageValue, setDamageValue] = useState('')
@@ -316,7 +320,18 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
         {/* Atributos - Resumo */}
         <Card>
           <CardHeader>
-            <CardTitle>Atributos - Resumo</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Atributos - Resumo</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Expandir atributos"
+                onClick={() => setIsAttributesModalOpen?.(true)}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-0.5 text-sm">
@@ -446,7 +461,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Vitalidade */}
-        <Card>
+        <Card data-section="vitality">
           <CardHeader>
             <CardTitle>Vitalidade</CardTitle>
           </CardHeader>
@@ -599,7 +614,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
         </Card>
 
         {/* Berkana */}
-        <Card>
+        <Card data-section="berkana">
           <CardHeader>
             <CardTitle>Berkana</CardTitle>
           </CardHeader>
@@ -709,15 +724,6 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
                       isEditMode={isEditMode}
                     />
                   </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Cálculo sugerido: 100 + ({level || 0} × 10) + {berkanaBonus || 0} = {calculatedMax}
-                    {actualMaxBerkana !== calculatedMax && (
-                      <div className="text-amber-600 mt-1">
-                        Valor personalizado: {actualMaxBerkana}
-                      </div>
-                    )}
-                  </div>
                 </>
               )
             })()}
@@ -729,7 +735,7 @@ export function BasicInfoTab({ character, characterId, isEditMode }: BasicInfoTa
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Armas (Máximo 3) */}
-        <Card>
+        <Card data-section="weapons">
           <CardHeader>
             <CardTitle>Armas (Máximo 3)</CardTitle>
           </CardHeader>
