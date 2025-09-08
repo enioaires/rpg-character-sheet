@@ -6,7 +6,7 @@ import { useCharacter } from '@/lib/api/queries'
 import { CharacterLayout } from '@/components/forms/character-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, RefreshCw, Loader2, Lock, Unlock } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ============================================
@@ -177,27 +177,6 @@ export default function CharacterPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button 
-            onClick={handleToggleEditMode} 
-            variant={isEditMode ? "default" : "secondary"}
-            size="sm"
-            className={`${isEditMode ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"} flex-1 sm:flex-none`}
-          >
-            {isEditMode ? (
-              <>
-                <Unlock className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Desbloqueado</span>
-                <span className="sm:hidden">Desbloq.</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Bloqueado</span>
-                <span className="sm:hidden">Bloq.</span>
-              </>
-            )}
-          </Button>
-          
           <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-1 sm:flex-none">
             <RefreshCw className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Atualizar</span>
@@ -207,7 +186,12 @@ export default function CharacterPage() {
       </div>
 
       {/* Layout da Ficha */}
-      <CharacterLayout character={sanitizedCharacter} characterId={characterId} isEditMode={isEditMode} />
+      <CharacterLayout 
+        character={sanitizedCharacter} 
+        characterId={characterId} 
+        isEditMode={isEditMode}
+        onToggleEditMode={handleToggleEditMode}
+      />
     </div>
   )
 }

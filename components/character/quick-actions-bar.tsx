@@ -10,7 +10,9 @@ import {
   Eye,
   EyeOff,
   Target,
-  User
+  User,
+  Lock,
+  Unlock
 } from 'lucide-react'
 import {
   calculateVitality,
@@ -24,22 +26,21 @@ interface QuickActionsBarProps {
   onNavigate: (tab: string, section?: string) => void
   onOpenSkillsModal?: () => void
   onOpenAttributesModal?: () => void
+  isEditMode?: boolean
+  onToggleEditMode?: () => void
 }
 
-export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOpenAttributesModal }: QuickActionsBarProps) {
+export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOpenAttributesModal, isEditMode = true, onToggleEditMode }: QuickActionsBarProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   const {
     level = 1,
-    attributes = {},
     vitality = {},
     currentVitality = {},
     maxBerkana = 100,
     currentBerkana = 100,
     berkanaBonus = 0,
     weapons = {},
-    armor = {},
-    finances = {}
   } = character
 
   // Calcular valores
@@ -108,6 +109,14 @@ export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOp
       value: 'Atributos',
       color: 'default',
       onClick: () => onOpenAttributesModal?.()
+    },
+    {
+      id: 'editMode',
+      label: isEditMode ? 'Desbloqueado' : 'Bloqueado',
+      icon: isEditMode ? Unlock : Lock,
+      value: '',
+      color: isEditMode ? 'success' : 'destructive',
+      onClick: () => onToggleEditMode?.()
     }
   ]
 
@@ -152,11 +161,16 @@ export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOp
                     className={cn(
                       "h-8 px-0.5 text-xs",
                       action.color === 'destructive' && "text-red-600",
-                      action.color === 'warning' && "text-yellow-600"
+                      action.color === 'warning' && "text-yellow-600",
+                      action.color === 'success' && "text-green-600",
+                      action.color === 'secondary' && "text-muted-foreground"
                     )}
                   >
-                    <action.icon className="h-3 w-3 mr-1" />
-                    <span className="font-mono">{action.value}</span>
+                    <action.icon className={cn(
+                      "h-3 w-3",
+                      action.value ? "mr-1" : ""
+                    )} />
+                    {action.value && <span className="font-mono">{action.value}</span>}
                   </Button>
                   {index < quickActions.length - 1 && (
                     <Separator orientation="vertical" className="h-4 mx-1" />

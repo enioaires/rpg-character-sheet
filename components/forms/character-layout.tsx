@@ -16,13 +16,15 @@ import { AttributesModal } from '@/components/character/attributes-modal'
 // TIPOS
 // ============================================
 
-interface CharacterLayoutProps extends CharacterTabProps { }
-
 // ============================================
 // COMPONENTE PRINCIPAL - COM TABS FIXAS
 // ============================================
 
-export function CharacterLayout({ character, characterId, isEditMode }: CharacterLayoutProps) {
+interface CharacterLayoutProps extends CharacterTabProps {
+  onToggleEditMode?: () => void
+}
+
+export function CharacterLayout({ character, characterId, isEditMode, onToggleEditMode }: CharacterLayoutProps) {
   const [activeTab, setActiveTab] = useState('basicos')
   const tabsRef = useRef<HTMLDivElement>(null)
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
@@ -45,10 +47,14 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
         const sectionElement = document.querySelector(`[data-section="${section}"]`)
 
         if (sectionElement) {
-          sectionElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest'
+          // Calcular offset para compensar o header sticky
+          const headerHeight = 80 // Altura aproximada do header sticky (tabs + padding)
+          const elementPosition = sectionElement.getBoundingClientRect().top + window.pageYOffset
+          const offsetPosition = elementPosition - headerHeight
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
           })
         }
       }
@@ -103,9 +109,9 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
         {/* Conteúdo das Tabs */}
         <div className="pt-6">
           <TabsContent value="basicos" className="mt-0">
-            <BasicInfoTab 
-              character={character} 
-              characterId={characterId} 
+            <BasicInfoTab
+              character={character}
+              characterId={characterId}
               isEditMode={isEditMode}
               isAttributesModalOpen={isAttributesModalOpen}
               setIsAttributesModalOpen={setIsAttributesModalOpen}
@@ -113,9 +119,9 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
           </TabsContent>
 
           <TabsContent value="pericias" className="mt-0">
-            <SkillsKitTab 
-              character={character} 
-              characterId={characterId} 
+            <SkillsKitTab
+              character={character}
+              characterId={characterId}
               isEditMode={isEditMode}
               isSkillsModalOpen={isSkillsModalOpen}
               setIsSkillsModalOpen={setIsSkillsModalOpen}
@@ -123,17 +129,17 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
           </TabsContent>
 
           <TabsContent value="magias" className="mt-0">
-            <SpellsTalentsTab 
-              character={character} 
-              characterId={characterId} 
+            <SpellsTalentsTab
+              character={character}
+              characterId={characterId}
               isEditMode={isEditMode}
             />
           </TabsContent>
 
           <TabsContent value="anotacoes" className="mt-0">
-            <NotesTab 
-              character={character} 
-              characterId={characterId} 
+            <NotesTab
+              character={character}
+              characterId={characterId}
               isEditMode={isEditMode}
             />
           </TabsContent>
@@ -145,6 +151,8 @@ export function CharacterLayout({ character, characterId, isEditMode }: Characte
           onNavigate={handleNavigate}
           onOpenSkillsModal={handleOpenSkillsModal}
           onOpenAttributesModal={handleOpenAttributesModal}
+          isEditMode={isEditMode}
+          onToggleEditMode={onToggleEditMode}
         />
       </Tabs>
 

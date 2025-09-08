@@ -610,7 +610,7 @@ export function NotesTab({ character, characterId, isEditMode }: NotesTabProps) 
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        <ScrollArea className="max-h-32 sm:max-h-48">
+                                        <ScrollArea className="max-h-32 sm:max-h-80 scroll-auto">
                                             <div className="text-sm leading-relaxed break-words">
                                                 {renderFormattedText(note.content)}
                                             </div>
