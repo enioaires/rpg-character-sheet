@@ -700,11 +700,11 @@ export function NotesTab({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <ScrollArea className="h-32 sm:h-80">
-                      <div className="text-sm leading-relaxed break-words pr-4">
+                    <div className="max-h-32 sm:max-h-80 overflow-auto">
+                      <div className="text-sm leading-relaxed break-words pr-3">
                         {renderFormattedText(note.content)}
                       </div>
-                    </ScrollArea>
+                    </div>
                   </CardContent>
                 </Card>
               );
