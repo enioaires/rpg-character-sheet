@@ -6,7 +6,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { EditableField, EditableTextArea, EditableNumberField } from '@/components/ui/editable-field'
 import { EditableScalingField, ScalingData } from '@/components/ui/editable-scaling-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
-import { ChevronDown, ChevronRight, Sparkles, Zap } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ChevronDown, ChevronRight, Sparkles, Zap, RotateCcw } from 'lucide-react'
 
 import { CharacterTabProps } from './types'
 
@@ -41,6 +42,40 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
     }
     setExpandedTalents(newExpanded)
   }
+
+  // Toggle usedToday para um talento específico
+  const toggleTalentUsed = async (index: number, currentValue: boolean) => {
+    try {
+      const updatedTalents = talents.map((t: any, i: number) =>
+        i === index ? { ...t, usedToday: !currentValue } : t
+      )
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: { talents: updatedTalents }
+      })
+    } catch (error) {
+      console.error('Erro ao atualizar uso do talento:', error)
+    }
+  }
+
+  // Resetar todos os talentos usedToday para false
+  const resetAllTalentsUsage = async () => {
+    try {
+      const updatedTalents = talents.map((t: any) => ({
+        ...t,
+        usedToday: false
+      }))
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: { talents: updatedTalents }
+      })
+    } catch (error) {
+      console.error('Erro ao resetar talentos:', error)
+    }
+  }
+
+  // Verificar se há talentos com oncePerDay que foram usados
+  const hasUsedTalents = talents.some((t: any) => t.oncePerDay && t.usedToday)
 
   return (
     <div className="space-y-4">
@@ -311,15 +346,30 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Talentos</CardTitle>
-              <Button
-                size="sm"
-                disabled={!isEditMode || updateCharacterMutation.isPending}
-                onClick={async () => {
+              <div className="flex items-center gap-2">
+                {hasUsedTalents && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={updateCharacterMutation.isPending}
+                    onClick={resetAllTalentsUsage}
+                    title="Resetar usos diários"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Novo Dia
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  disabled={!isEditMode || updateCharacterMutation.isPending}
+                  onClick={async () => {
                   try {
                     const newTalent = {
                       name: '',
                       level: 0,
-                      description: ''
+                      description: '',
+                      oncePerDay: false,
+                      usedToday: false
                     }
                     const updatedTalents = [...talents, newTalent]
                     const updateData = { talents: updatedTalents }
@@ -334,6 +384,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
               >
                 + Adicionar Talento
               </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -353,15 +404,25 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
                               )}
-                              <Zap className="w-4 h-4 text-orange-500" />
+                              <Zap className={`w-4 h-4 ${talent.oncePerDay && talent.usedToday ? 'text-muted-foreground' : 'text-orange-500'}`} />
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">
+                                <div className={`font-medium truncate ${talent.oncePerDay && talent.usedToday ? 'text-muted-foreground line-through' : ''}`}>
                                   {talent.name || 'Novo Talento'}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Nível {talent.level || 0}
+                                  Nível {talent.level || 0}{talent.oncePerDay ? ' • 1x/dia' : ''}
                                 </div>
                               </div>
+                              {talent.oncePerDay && (
+                                <Checkbox
+                                  checked={talent.usedToday || false}
+                                  onCheckedChange={() => toggleTalentUsed(index, talent.usedToday || false)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  disabled={updateCharacterMutation.isPending}
+                                  className="mr-2"
+                                  title={talent.usedToday ? 'Marcar como disponível' : 'Marcar como usado'}
+                                />
+                              )}
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -415,6 +476,35 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                     isEditMode={isEditMode}
                                   />
                                 </div>
+                              </div>
+
+                              {/* 1x por dia */}
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`talent-${index}-oncePerDay`}
+                                  checked={talent.oncePerDay || false}
+                                  onCheckedChange={async (checked) => {
+                                    if (!isEditMode) return
+                                    try {
+                                      const updatedTalents = talents.map((t: any, i: number) =>
+                                        i === index ? { ...t, oncePerDay: checked, usedToday: checked ? t.usedToday : false } : t
+                                      )
+                                      await updateCharacterMutation.mutateAsync({
+                                        id: characterId,
+                                        data: { talents: updatedTalents }
+                                      })
+                                    } catch (error) {
+                                      console.error('Erro ao atualizar talento:', error)
+                                    }
+                                  }}
+                                  disabled={!isEditMode || updateCharacterMutation.isPending}
+                                />
+                                <label
+                                  htmlFor={`talent-${index}-oncePerDay`}
+                                  className="text-sm text-muted-foreground cursor-pointer"
+                                >
+                                  Uso limitado (1x por dia)
+                                </label>
                               </div>
 
                               {/* Descrição */}
