@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EditableField, EditableTextArea, EditableNumberField } from '@/components/ui/editable-field'
+import { EditableScalingField, ScalingData } from '@/components/ui/editable-scaling-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
 import { ChevronDown, ChevronRight, Sparkles, Zap } from 'lucide-react'
 
@@ -61,11 +62,11 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                       berkanaCost: 0,
                       type: '',
                       concentration: '',
-                      duration: '',
+                      duration: { base: '', perLevel: null },
                       prepTime: '',
                       resistance: '',
                       range: '',
-                      damage: '',
+                      damage: { base: 0, perLevel: null },
                       description: ''
                     }
                     const updatedSpells = [...spells, newSpell]
@@ -204,20 +205,8 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                 </div>
                               </div>
 
-                              {/* Duração, Preparo e Resistência */}
-                              <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                  <EditableField
-                                    characterId={characterId}
-                                    currentCharacterData={character}
-                                    section="spells"
-                                    field={`${index}.duration`}
-                                    value={spell.duration}
-                                    placeholder="Duração"
-                                    label="Duração"
-                                    isEditMode={isEditMode}
-                                  />
-                                </div>
+                              {/* Preparo e Resistência */}
+                              <div className="grid grid-cols-2 gap-2">
                                 <div>
                                   <EditableField
                                     characterId={characterId}
@@ -244,32 +233,46 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                 </div>
                               </div>
 
-                              {/* Alcance e Dano */}
+                              {/* Alcance */}
+                              <div>
+                                <EditableField
+                                  characterId={characterId}
+                                  currentCharacterData={character}
+                                  section="spells"
+                                  field={`${index}.range`}
+                                  value={spell.range}
+                                  placeholder="Alcance"
+                                  label="Alcance"
+                                  isEditMode={isEditMode}
+                                />
+                              </div>
+
+                              {/* Dano e Duração com Escalonamento */}
                               <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <EditableField
-                                    characterId={characterId}
-                                    currentCharacterData={character}
-                                    section="spells"
-                                    field={`${index}.range`}
-                                    value={spell.range}
-                                    placeholder="Alcance"
-                                    label="Alcance"
-                                    isEditMode={isEditMode}
-                                  />
-                                </div>
-                                <div>
-                                  <EditableField
-                                    characterId={characterId}
-                                    currentCharacterData={character}
-                                    section="spells"
-                                    field={`${index}.damage`}
-                                    value={spell.damage}
-                                    placeholder="Dano"
-                                    label="Dano"
-                                    isEditMode={isEditMode}
-                                  />
-                                </div>
+                                <EditableScalingField
+                                  characterId={characterId}
+                                  currentCharacterData={character}
+                                  section="spells"
+                                  field={`${index}.damage`}
+                                  scalingData={spell.damage || { base: 0, perLevel: null }}
+                                  spellLevel={spell.level || 0}
+                                  characterLevel={character.level || 0}
+                                  label="Dano"
+                                  type="damage"
+                                  isEditMode={isEditMode}
+                                />
+                                <EditableScalingField
+                                  characterId={characterId}
+                                  currentCharacterData={character}
+                                  section="spells"
+                                  field={`${index}.duration`}
+                                  scalingData={spell.duration || { base: '', perLevel: null }}
+                                  spellLevel={spell.level || 0}
+                                  characterLevel={character.level || 0}
+                                  label="Duração"
+                                  type="duration"
+                                  isEditMode={isEditMode}
+                                />
                               </div>
 
                               {/* Descrição */}
