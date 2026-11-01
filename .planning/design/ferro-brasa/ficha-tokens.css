@@ -1,0 +1,104 @@
+/* Ficha de RPG — tokens (nomes do shadcn/ui + extras de jogo).
+   Cole em app/globals.css no lugar dos blocos :root e .dark atuais.
+   Em @theme inline, mapeie os extras: --color-vitality-*: var(--vitality-*); --color-berkana: var(--berkana); etc. */
+@import url("https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --radius: 0.25rem;
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Spectral", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-numeric: "Barlow Semi Condensed", "Barlow", sans-serif; /* sempre com tabular-nums */
+
+  /* Claro — pergaminho e ferro */
+  --background: oklch(0.972 0.005 75);
+  --foreground: oklch(0.21 0.012 50);
+  --card: oklch(0.992 0.003 75);
+  --card-foreground: oklch(0.21 0.012 50);
+  --popover: oklch(0.992 0.003 75);
+  --popover-foreground: oklch(0.21 0.012 50);
+  --primary: oklch(0.5 0.16 38);
+  --primary-foreground: oklch(0.985 0.004 75);
+  --secondary: oklch(0.925 0.007 70);
+  --secondary-foreground: oklch(0.25 0.012 50);
+  --muted: oklch(0.942 0.006 70);
+  --muted-foreground: oklch(0.47 0.012 55);
+  --accent: oklch(0.93 0.025 55);
+  --accent-foreground: oklch(0.3 0.06 40);
+  --destructive: oklch(0.52 0.2 27);
+  --destructive-foreground: oklch(0.985 0.004 75);
+  --border: oklch(0.87 0.008 65);
+  --input: oklch(0.8 0.01 65);
+  --ring: oklch(0.55 0.15 40);
+  --chart-1: oklch(0.5 0.16 38);
+  --chart-2: oklch(0.48 0.13 255);
+  --chart-3: oklch(0.5 0.12 150);
+  --chart-4: oklch(0.55 0.12 85);
+  --chart-5: oklch(0.45 0.01 60);
+
+  /* Extras de estado */
+  --vitality-notavel: oklch(0.5 0.12 150);
+  --vitality-ferido: oklch(0.52 0.11 88);
+  --vitality-grave: oklch(0.53 0.14 55);
+  --vitality-condenado: oklch(0.5 0.17 33);
+  --vitality-incapacitado: oklch(0.45 0.18 20);
+  --vitality-coma: oklch(0.45 0.09 300);
+  --vitality-track: oklch(0.9 0.008 65);
+  --berkana: oklch(0.48 0.13 255);
+  --berkana-foreground: oklch(0.985 0.004 75);
+  --berkana-track: oklch(0.91 0.02 255);
+  --success: oklch(0.5 0.12 150);
+  --warning: oklch(0.55 0.13 75);
+  --overlay: oklch(0.2 0.01 50 / 0.45);
+
+  --shadow-card: 0 1px 0 oklch(0 0 0 / 0.04), 0 1px 2px oklch(0.3 0.02 50 / 0.06);
+  --shadow-lg: 0 10px 30px -8px oklch(0.3 0.02 50 / 0.25);
+}
+
+.dark {
+  /* Escuro — ferro e brasa (modo principal à mesa) */
+  --background: oklch(0.155 0.006 55);
+  --foreground: oklch(0.92 0.012 75);
+  --card: oklch(0.195 0.007 55);
+  --card-foreground: oklch(0.92 0.012 75);
+  --popover: oklch(0.225 0.008 55);
+  --popover-foreground: oklch(0.92 0.012 75);
+  --primary: oklch(0.7 0.16 50);
+  --primary-foreground: oklch(0.16 0.01 50);
+  --secondary: oklch(0.265 0.008 55);
+  --secondary-foreground: oklch(0.92 0.012 75);
+  --muted: oklch(0.235 0.007 55);
+  --muted-foreground: oklch(0.7 0.012 70);
+  --accent: oklch(0.28 0.035 45);
+  --accent-foreground: oklch(0.92 0.03 65);
+  --destructive: oklch(0.66 0.19 27);
+  --destructive-foreground: oklch(0.16 0.01 50);
+  --border: oklch(0.3 0.008 55);
+  --input: oklch(0.38 0.01 55);
+  --ring: oklch(0.7 0.16 50);
+  --chart-1: oklch(0.7 0.16 50);
+  --chart-2: oklch(0.74 0.11 245);
+  --chart-3: oklch(0.76 0.13 150);
+  --chart-4: oklch(0.82 0.14 95);
+  --chart-5: oklch(0.6 0.01 60);
+
+  --vitality-notavel: oklch(0.76 0.13 150);
+  --vitality-ferido: oklch(0.84 0.14 95);
+  --vitality-grave: oklch(0.76 0.15 65);
+  --vitality-condenado: oklch(0.7 0.18 38);
+  --vitality-incapacitado: oklch(0.65 0.2 22);
+  --vitality-coma: oklch(0.7 0.09 300);
+  --vitality-track: oklch(0.27 0.008 55);
+  --berkana: oklch(0.74 0.11 245);
+  --berkana-foreground: oklch(0.16 0.01 50);
+  --berkana-track: oklch(0.27 0.025 250);
+  --success: oklch(0.76 0.13 150);
+  --warning: oklch(0.82 0.13 85);
+  --overlay: oklch(0.08 0.005 55 / 0.7);
+
+  --shadow-card: inset 0 1px 0 oklch(1 0 0 / 0.035), 0 1px 2px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0 16px 40px -8px oklch(0 0 0 / 0.7), inset 0 1px 0 oklch(1 0 0 / 0.05);
+}
+
+@keyframes ficha-pulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+@keyframes ficha-spin { to { transform: rotate(360deg) } }

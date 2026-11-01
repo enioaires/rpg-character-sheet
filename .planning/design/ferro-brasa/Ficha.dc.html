@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="./ficha-tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/lucide-static@0.460.0/font/lucide.css">
+<style>
+html,body{margin:0;height:100%}
+a{color:var(--primary)} a:hover{color:var(--foreground)}
+button,input,textarea{font:inherit;color:inherit}
+input::placeholder{color:var(--muted-foreground)}
+</style>
+</helmet>
+<div class="{{ themeClass }}" style="height:100%;width:100%">
+<div style="position:relative;height:100%;width:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased">
+
+<!-- ============ LISTA ============ -->
+<sc-if value="{{ isLista }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:none;padding:20px 16px 12px;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--border);background:var(--background)">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0;font-family:var(--font-serif);font-size:30px;font-weight:600;line-height:1.1">Personagens</h1>
+        <span style="font-size:14px;color:var(--muted-foreground)">{{ listCountLabel }}</span>
+      </div>
+      <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ goCriar }}" style="height:44px;padding:0 18px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:8px;cursor:pointer"><i class="icon-plus" style="font-size:18px"></i>Criar personagem</button>
+      </sc-if>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border:1px solid var(--input);border-radius:var(--radius);background:var(--card)">
+      <i class="icon-search" style="font-size:18px;color:var(--muted-foreground)"></i>
+      <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="Buscar por nome, jogador ou classe" style="flex:1;min-width:0;border:none;background:transparent;outline:none;font-size:16px;height:100%">
+    </label>
+  </div>
+  <div style="flex:1;overflow:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px">
+    <sc-if value="{{ listHasItems }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:10px">
+        <sc-for list="{{ chars }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;align-items:stretch;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card)">
+            <button onClick="{{ c.open }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;padding:14px 4px 14px 16px;border:none;background:transparent;text-align:left;cursor:pointer">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <span style="font-family:var(--font-serif);font-size:20px;font-weight:600;line-height:1.15">{{ c.name }}</span>
+                <span style="font-size:14px;color:var(--muted-foreground)">{{ c.player }}</span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <span style="font-size:13px;padding:2px 8px;border-radius:var(--radius);background:var(--secondary);color:var(--secondary-foreground)">{{ c.klass }}</span>
+                  <span style="font-size:13px;padding:2px 8px;border-radius:var(--radius);border:1px solid var(--border);color:var(--muted-foreground)">{{ c.race }}</span>
+                </div>
+              </div>
+              <div style="flex:none;display:flex;flex-direction:column;align-items:center;min-width:48px">
+                <span style="font-size:11px;letter-spacing:.1em;color:var(--muted-foreground)">NÍVEL</span>
+                <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:30px;font-weight:600;line-height:1;color:var(--primary)">{{ c.level }}</span>
+              </div>
+            </button>
+            <button onClick="{{ c.del }}" aria-label="Excluir" style="flex:none;width:48px;border:none;border-left:1px solid var(--border);background:transparent;color:var(--muted-foreground);display:grid;place-items:center;cursor:pointer"><i class="icon-trash-2" style="font-size:18px"></i></button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px">
+        <button style="height:44px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--muted-foreground);display:inline-flex;align-items:center;gap:6px;opacity:.5"><i class="icon-chevron-left" style="font-size:18px"></i>Anterior</button>
+        <span style="font-size:14px;color:var(--muted-foreground);font-variant-numeric:tabular-nums">Página 1 de 2</span>
+        <button style="height:44px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;display:inline-flex;align-items:center;gap:6px;cursor:pointer">Próxima<i class="icon-chevron-right" style="font-size:18px"></i></button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ listEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:40px 12px">
+        <div style="width:64px;height:64px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;color:var(--muted-foreground)"><i class="icon-scroll-text" style="font-size:28px"></i></div>
+        <h2 style="margin:0;font-family:var(--font-serif);font-size:22px;font-weight:600">{{ emptyTitle }}</h2>
+        <p style="margin:0;max-width:280px;color:var(--muted-foreground);font-size:15px;text-wrap:pretty">{{ emptyText }}</p>
+      </div>
+    </sc-if>
+  </div>
+  <sc-if value="{{ narrow }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:none;padding:12px 16px 20px;border-top:1px solid var(--border);background:var(--card)">
+      <button onClick="{{ goCriar }}" style="width:100%;height:52px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-plus" style="font-size:20px"></i>Criar personagem</button>
+    </div>
+  </sc-if>
+</sc-if>
+
+<!-- ============ CRIAR ============ -->
+<sc-if value="{{ isCriar }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:none;display:flex;align-items:center;gap:4px;padding:8px 8px;border-bottom:1px solid var(--border)">
+    <button onClick="{{ goLista }}" aria-label="Voltar" style="width:44px;height:44px;border:none;background:transparent;display:grid;place-items:center;cursor:pointer"><i class="icon-arrow-left" style="font-size:22px"></i></button>
+    <span style="font-family:var(--font-serif);font-size:20px;font-weight:600">Novo personagem</span>
+  </div>
+  <div style="flex:1;overflow:auto;padding:24px 16px;display:flex;justify-content:center">
+    <div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:22px">
+      <p style="margin:0;color:var(--muted-foreground);font-size:15px;text-wrap:pretty">Comece pelo nome. Atributos, perícias e o resto da ficha você preenche depois, direto na ficha.</p>
+      <label style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:14px;font-weight:600">Nome do personagem</span>
+        <input value="{{ newName }}" onChange="{{ onNewName }}" placeholder="Ex.: Varg Helsumg" style="height:52px;padding:0 14px;border:1px solid var(--input);border-radius:var(--radius);background:var(--card);font-size:17px;outline:none">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:14px;font-weight:600">Nome do jogador</span>
+        <input value="{{ newPlayer }}" onChange="{{ onNewPlayer }}" placeholder="Ex.: Enio Aires" style="height:52px;padding:0 14px;border:1px solid var(--input);border-radius:var(--radius);background:var(--card);font-size:17px;outline:none">
+      </label>
+      <div style="display:flex;flex-direction:column;gap:10px;padding-top:6px">
+        <button onClick="{{ doCriar }}" disabled="{{ createDisabled }}" style="height:52px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-weight:600;font-size:17px;cursor:pointer;opacity:{{ createOpacity }}">Criar personagem</button>
+        <button onClick="{{ goLista }}" style="height:48px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;font-size:16px;cursor:pointer">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ ERROS / CARREGANDO ============ -->
+<sc-if value="{{ isErro }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:none;display:flex;align-items:center;padding:8px;border-bottom:1px solid var(--border)">
+    <button onClick="{{ goLista }}" aria-label="Voltar" style="width:44px;height:44px;border:none;background:transparent;display:grid;place-items:center;cursor:pointer"><i class="icon-arrow-left" style="font-size:22px"></i></button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px">
+    <div style="width:64px;height:64px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;color:var(--destructive)"><i class="{{ erro.icon }}" style="font-size:28px"></i></div>
+    <h2 style="margin:0;font-family:var(--font-serif);font-size:24px;font-weight:600">{{ erro.title }}</h2>
+    <p style="margin:0;max-width:300px;color:var(--muted-foreground);font-size:15px;text-wrap:pretty">{{ erro.text }}</p>
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;padding-top:8px">
+      <sc-if value="{{ erro.retry }}" hint-placeholder-val="{{ false }}">
+        <button style="height:48px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-refresh-cw" style="font-size:18px"></i>Tentar de novo</button>
+      </sc-if>
+      <button onClick="{{ goLista }}" style="height:48px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer">Voltar para a lista</button>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isCarregando }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:none;display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+    <div style="width:32px;height:32px;border-radius:var(--radius);background:var(--muted);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="width:60%;height:18px;border-radius:var(--radius);background:var(--muted);animation:ficha-pulse 1.6s ease-in-out infinite"></div><div style="width:35%;height:12px;border-radius:var(--radius);background:var(--muted);animation:ficha-pulse 1.6s ease-in-out infinite"></div></div>
+  </div>
+  <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 16px;border-bottom:1px solid var(--border)">
+    <div style="height:24px;background:var(--muted);border-radius:var(--radius)"></div><div style="height:24px;background:var(--muted);border-radius:var(--radius)"></div><div style="height:24px;background:var(--muted);border-radius:var(--radius)"></div><div style="height:24px;background:var(--muted);border-radius:var(--radius)"></div>
+  </div>
+  <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+    <div style="height:230px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div style="width:40%;height:18px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+      <div style="width:70%;height:48px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+      <div style="height:10px;background:var(--muted);border-radius:var(--radius)"></div>
+      <div style="width:90%;height:14px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+      <div style="width:80%;height:14px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+    </div>
+    <div style="height:150px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div style="width:30%;height:18px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+      <div style="width:50%;height:36px;background:var(--muted);border-radius:var(--radius);animation:ficha-pulse 1.6s ease-in-out infinite"></div>
+    </div>
+  </div>
+  <div style="flex:none;height:118px;border-top:1px solid var(--border);background:var(--card)"></div>
+</sc-if>
+
+<!-- ============ FICHA ============ -->
+<sc-if value="{{ isFicha }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:none;background:var(--background);border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 6px 2px;max-width:1200px;margin:0 auto">
+      <button onClick="{{ goLista }}" aria-label="Voltar" style="flex:none;width:44px;height:44px;border:none;background:transparent;display:grid;place-items:center;cursor:pointer"><i class="icon-arrow-left" style="font-size:22px"></i></button>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <span style="font-family:var(--font-serif);font-size:21px;font-weight:600;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Varg Helsumg</span>
+        <span style="font-size:13px;color:var(--muted-foreground)">Enio Aires · Caçador Errante · Nv 7</span>
+      </div>
+      <button onClick="{{ onRefresh }}" aria-label="Atualizar" style="flex:none;width:44px;height:44px;border:none;background:transparent;color:var(--muted-foreground);display:grid;place-items:center;cursor:pointer"><i class="icon-refresh-cw" style="font-size:20px"></i></button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:720px;margin:0 auto">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <button onClick="{{ t.onClick }}" style="height:46px;border:none;background:transparent;border-bottom:2px solid {{ t.bar }};color:{{ t.fg }};font-weight:600;font-size:15px;cursor:pointer;padding:0 4px">{{ t.label }}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;height:30px;background:var(--accent);color:var(--accent-foreground);font-size:13px;font-weight:500"><i class="icon-pencil" style="font-size:14px"></i>Modo edição · as alterações são salvas sozinhas</div>
+    </sc-if>
+  </div>
+
+  <div style="flex:1;overflow:auto">
+    <div style="max-width:1200px;margin:0 auto;padding:12px;column-width:340px;column-gap:12px">
+
+    <!-- ===== BÁSICOS ===== -->
+    <sc-if value="{{ tBasicos }}" hint-placeholder-val="{{ true }}">
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Vitalidade</h2></div>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--radius);border:1px solid {{ stage.color }};color:{{ stage.color }};font-size:14px;font-weight:600"><i class="{{ stage.icon }}" style="font-size:16px"></i>{{ stage.label }}<span style="opacity:.8;font-family:var(--font-numeric)">{{ stage.pos }}</span></span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:56px;font-weight:600;line-height:.95;letter-spacing:-.01em">{{ vitCur }}</span>
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:22px;color:var(--muted-foreground)">/ {{ vitMax }}</span>
+        </div>
+        <div style="display:flex;gap:3px;height:10px">
+          <sc-for list="{{ vitRows }}" as="r" hint-placeholder-count="6">
+            <div style="flex:1;background:var(--vitality-track);border-radius:1px;overflow:hidden;display:flex;justify-content:flex-end"><div style="width:{{ r.pct }};background:{{ r.color }}"></div></div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onClick="{{ openVit }}" style="height:48px;border:1px solid var(--destructive);border-radius:var(--radius);background:transparent;color:var(--destructive);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-swords" style="font-size:18px"></i>Dano</button>
+          <button onClick="{{ openVit }}" style="height:48px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);color:var(--secondary-foreground);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-heart-pulse" style="font-size:18px"></i>Cura</button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ vitRows }}" as="r" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;min-height:44px;padding:0 8px;margin:0 -8px;border-radius:var(--radius);background:{{ r.bg }}">
+              <i class="{{ r.icon }}" style="font-size:18px;color:{{ r.color }}"></i>
+              <span style="font-size:15px;font-weight:{{ r.weight }};display:flex;align-items:center;gap:8px;min-width:0">{{ r.label }}<sc-if value="{{ r.isCurrent }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)">atual</span></sc-if></span>
+              <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;text-align:right">{{ r.cur }}<span style="color:var(--muted-foreground);font-weight:500;font-size:14px"> / {{ r.max }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:var(--muted-foreground)">Base: raça 250 + classe 200, × 8 (nível 7 + 1). O dano desce do Notável até o Coma.</span>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--berkana);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Berkana</h2></div>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--berkana)"><i class="{{ berkState.icon }}" style="font-size:16px"></i>{{ berkState.label }}</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:44px;font-weight:600;line-height:1">{{ berkCur }}</span>
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:20px;color:var(--muted-foreground)">/ {{ berkMax }}</span>
+        </div>
+        <div style="height:10px;background:var(--berkana-track);border-radius:1px;overflow:hidden"><div style="height:100%;width:{{ berkPct }};background:var(--berkana)"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onClick="{{ openBerk }}" style="height:48px;border:1px solid var(--berkana);border-radius:var(--radius);background:transparent;color:var(--berkana);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-sparkles" style="font-size:18px"></i>Gastar</button>
+          <button onClick="{{ openBerk }}" style="height:48px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="icon-rotate-ccw" style="font-size:18px"></i>Recuperar</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted-foreground)"><span>Máximo = 100 + 10 × nível + bônus</span><span>Bônus <b style="font-family:var(--font-numeric);color:var(--foreground)">0</b></span></div>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Armas</h2></div>
+        <sc-for list="{{ weapons }}" as="w" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-family:var(--font-serif);font-size:17px;font-weight:600">{{ w.name }}</span>
+              <span style="font-size:13px;padding:2px 8px;border-radius:var(--radius);background:var(--secondary);font-family:var(--font-numeric);font-weight:600">Nv {{ w.level }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px">
+              <sc-for list="{{ w.cells }}" as="d" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:var(--radius);background:{{ d.bg }}">
+                  <span style="font-size:12px;color:var(--muted-foreground)">{{ d.label }}</span>
+                  <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:{{ d.fg }}">{{ d.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--muted-foreground)">Máximo de 3 armas.</span></sc-if>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Atributos</h2></div>
+          <span style="font-size:13px;color:var(--muted-foreground)">inclui +1 de nível</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px">
+          <sc-for list="{{ attrs }}" as="a" hint-placeholder-count="14">
+            <div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--muted)">
+              <span style="font-size:13px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.label }}</span>
+              <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;line-height:1.1">{{ a.total }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleAttr }}" style="height:44px;display:flex;align-items:center;justify-content:space-between;border:none;border-top:1px solid var(--border);background:transparent;padding:0;font-weight:600;font-size:15px;cursor:pointer">Distribuição (raça + classe + bônus + nível)<i class="{{ attrChevron }}" style="font-size:18px"></i></button>
+        <sc-if value="{{ attrOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;font-size:14px">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,40px);gap:2px;padding:0 0 6px;color:var(--muted-foreground);font-size:12px;text-align:center"><span style="text-align:left">Atributo</span><span>Raça</span><span>Cla.</span><span>Bôn.</span><span>Nív.</span><span>Total</span></div>
+            <sc-for list="{{ attrs }}" as="a" hint-placeholder-count="14">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,40px);gap:2px;align-items:center;min-height:36px;border-top:1px solid var(--border);font-family:var(--font-numeric);font-variant-numeric:tabular-nums;text-align:center;font-size:16px">
+                <span style="text-align:left;font-family:var(--font-sans);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.label }}</span><span>{{ a.race }}</span><span>{{ a.klass }}</span><span>{{ a.bonus }}</span><span style="color:var(--muted-foreground)">1</span><span style="font-weight:700;color:var(--primary)">{{ a.total }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Experiência e Nível</h2></div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:72px;height:72px;border:1px solid var(--primary);border-radius:var(--radius);flex:none">
+            <span style="font-size:11px;letter-spacing:.1em;color:var(--muted-foreground)">NÍVEL</span>
+            <span style="font-family:var(--font-numeric);font-size:34px;font-weight:600;line-height:1;color:var(--primary)">7</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:14px;color:var(--muted-foreground)">XP</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600">57<span style="color:var(--muted-foreground);font-size:15px"> / 80</span></span></div>
+            <div style="height:8px;background:var(--vitality-track);border-radius:1px;overflow:hidden"><div style="width:71%;height:100%;background:var(--primary)"></div></div>
+            <span style="font-size:13px;color:var(--muted-foreground)">Faltam 23 XP para o nível 8</span>
+          </div>
+        </div>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Armadura</h2></div>
+          <i class="icon-shield" style="font-size:18px;color:var(--muted-foreground)"></i>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <div style="display:flex;flex-direction:column"><span style="font-family:var(--font-serif);font-size:17px;font-weight:600">Traje</span><span style="font-size:14px;color:var(--muted-foreground)">Couro e Aço</span></div>
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600">1.500<span style="color:var(--muted-foreground);font-size:16px"> / 1.500</span></span>
+        </div>
+        <div style="height:8px;background:var(--vitality-track);border-radius:1px;overflow:hidden"><div style="width:100%;height:100%;background:var(--chart-5)"></div></div>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Informações Básicas</h2></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px">
+          <sc-for list="{{ infoFields }}" as="f" hint-placeholder-count="11">
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)">{{ f.label }}</span>
+              <sc-if value="{{ f.isRead }}" hint-placeholder-val="{{ true }}"><span style="font-size:16px;min-height:28px;display:flex;align-items:center">{{ f.value }}</span></sc-if>
+              <sc-if value="{{ f.isIdle }}" hint-placeholder-val="{{ false }}"><button onClick="{{ f.onEdit }}" style="min-height:44px;padding:0 10px;text-align:left;border:1px dashed var(--input);border-radius:var(--radius);background:transparent;font-size:16px;cursor:text">{{ f.value }}</button></sc-if>
+              <sc-if value="{{ f.isEditing }}" hint-placeholder-val="{{ false }}"><input autoFocus="{{ true }}" defaultValue="{{ f.value }}" onBlur="{{ f.onSave }}" onKeyDown="{{ f.onKey }}" style="min-height:44px;padding:0 10px;border:1px solid var(--ring);box-shadow:0 0 0 3px color-mix(in oklch, var(--ring) 30%, transparent);border-radius:var(--radius);background:var(--background);font-size:16px;outline:none;min-width:0"></sc-if>
+              <sc-if value="{{ f.isSaving }}" hint-placeholder-val="{{ false }}"><div style="min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--input);border-radius:var(--radius);font-size:16px;color:var(--muted-foreground)"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.value }}</span><i class="icon-loader-circle" style="font-size:16px;animation:ficha-spin 1s linear infinite"></i></div></sc-if>
+              <sc-if value="{{ f.isSaved }}" hint-placeholder-val="{{ false }}"><div style="min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--success);border-radius:var(--radius);font-size:16px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.value }}</span><i class="icon-check" style="font-size:16px;color:var(--success)"></i></div></sc-if>
+              <sc-if value="{{ f.isError }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:4px"><div style="min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--destructive);border-radius:var(--radius);font-size:16px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.value }}</span><i class="icon-cloud-off" style="font-size:16px;color:var(--destructive)"></i></div><button onClick="{{ f.onEdit }}" style="border:none;background:transparent;padding:0;text-align:left;font-size:13px;color:var(--destructive);cursor:pointer">Não salvou · tentar de novo</button></div></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Linguagens</h2></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ langs }}" as="l" hint-placeholder-count="7">
+            <button onClick="{{ l.toggle }}" aria-pressed="{{ l.known }}" style="min-height:44px;padding:0 14px;display:inline-flex;align-items:center;gap:6px;border:1px solid {{ l.border }};border-radius:var(--radius);background:{{ l.bg }};color:{{ l.fg }};font-size:15px;font-weight:500;cursor:pointer"><i class="{{ l.icon }}" style="font-size:16px"></i>{{ l.name }}</button>
+          </sc-for>
+          <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}"><button style="min-height:44px;padding:0 14px;display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--input);border-radius:var(--radius);background:transparent;color:var(--muted-foreground);font-size:15px;cursor:pointer"><i class="icon-plus" style="font-size:16px"></i>Outra</button></sc-if>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== PERÍCIAS & KIT ===== -->
+    <sc-if value="{{ tPericias }}" hint-placeholder-val="{{ false }}">
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Perícias</h2></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border);border-radius:var(--radius)">
+          <div style="padding:8px 10px;display:flex;flex-direction:column"><span style="font-size:12px;color:var(--muted-foreground)">Disponíveis</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600">80</span></div>
+          <div style="padding:8px 10px;display:flex;flex-direction:column;border-left:1px solid var(--border)"><span style="font-size:12px;color:var(--muted-foreground)">Gastos</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600">{{ usedPts }}</span></div>
+          <div style="padding:8px 10px;display:flex;flex-direction:column;border-left:1px solid var(--border)"><span style="font-size:12px;color:var(--muted-foreground)">Restantes</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;color:{{ remColor }}">{{ remPts }}</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;padding:3px;background:var(--muted);border-radius:var(--radius)">
+          <sc-for list="{{ skillFilters }}" as="sf" hint-placeholder-count="2">
+            <button onClick="{{ sf.onClick }}" style="height:40px;border:none;border-radius:var(--radius);background:{{ sf.bg }};color:{{ sf.fg }};font-weight:600;font-size:15px;cursor:pointer;box-shadow:{{ sf.shadow }}">{{ sf.label }}</button>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:var(--muted-foreground)">Total = 1 + distribuídos + bônus + 1 de nível</span>
+        <sc-for list="{{ skillGroups }}" as="g" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground);font-weight:600"><span>{{ g.name }}</span><span>{{ g.count }}</span></div>
+            <sc-for list="{{ g.rows }}" as="s" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;border-top:1px solid var(--border)">
+                <button onClick="{{ s.toggle }}" style="display:grid;grid-template-columns:minmax(0,1fr) auto 44px;align-items:center;gap:10px;min-height:46px;padding:0;border:none;background:transparent;text-align:left;cursor:pointer;color:{{ s.fg }}">
+                  <span style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</span>
+                  <span style="font-size:13px;color:var(--muted-foreground);font-family:var(--font-numeric);font-variant-numeric:tabular-nums">{{ s.detail }}</span>
+                  <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;text-align:right">{{ s.total }}</span>
+                </button>
+                <sc-if value="{{ s.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0 12px">
+                    <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--muted-foreground)">Distribuídos</span>
+                      <div style="display:grid;grid-template-columns:44px 1fr 44px;border:1px solid var(--input);border-radius:var(--radius);height:44px"><button onClick="{{ s.decD }}" style="border:none;background:transparent;cursor:pointer"><i class="icon-minus"></i></button><span style="display:grid;place-items:center;font-family:var(--font-numeric);font-size:19px;font-weight:600;border-left:1px solid var(--border);border-right:1px solid var(--border)">{{ s.d }}</span><button onClick="{{ s.incD }}" style="border:none;background:transparent;cursor:pointer"><i class="icon-plus"></i></button></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--muted-foreground)">Bônus</span>
+                      <div style="display:grid;grid-template-columns:44px 1fr 44px;border:1px solid var(--input);border-radius:var(--radius);height:44px"><button onClick="{{ s.decB }}" style="border:none;background:transparent;cursor:pointer"><i class="icon-minus"></i></button><span style="display:grid;place-items:center;font-family:var(--font-numeric);font-size:19px;font-weight:600;border-left:1px solid var(--border);border-right:1px solid var(--border)">{{ s.b }}</span><button onClick="{{ s.incB }}" style="border:none;background:transparent;cursor:pointer"><i class="icon-plus"></i></button></div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Finanças</h2></div><i class="icon-coins" style="font-size:18px;color:var(--muted-foreground)"></i></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px">
+          <sc-for list="{{ finances }}" as="m" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--muted)"><span style="font-size:13px;color:var(--muted-foreground)">{{ m.label }}</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600">{{ m.value }}</span></div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:19px;font-weight:600">Kit de Aventureiro</h2></div><i class="icon-backpack" style="font-size:18px;color:var(--muted-foreground)"></i></div>
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground);font-weight:600;padding-top:4px">Personalizados · 1</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-top:1px solid var(--border)"><span style="font-size:15px">Lamparina de Cinto</span><span style="font-family:var(--font-numeric);font-size:17px;font-weight:600">×1</span></div>
+        <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}"><button style="height:44px;border:1px dashed var(--input);border-radius:var(--radius);background:transparent;color:var(--muted-foreground);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer"><i class="icon-plus"></i>Adicionar item</button></sc-if>
+        <button onClick="{{ toggleKit }}" style="height:44px;display:flex;align-items:center;justify-content:space-between;border:none;border-top:1px solid var(--border);background:transparent;padding:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground);font-weight:600;cursor:pointer">Itens padrão · 23<i class="{{ kitChevron }}" style="font-size:18px"></i></button>
+        <sc-if value="{{ kitOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ kit }}" as="k" hint-placeholder-count="23">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;border-top:1px solid var(--border)"><span style="font-size:15px">{{ k.name }}</span><span style="font-family:var(--font-numeric);font-size:16px;font-weight:600;color:var(--muted-foreground)">×{{ k.q }}</span></div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ===== MAGIAS & TALENTOS ===== -->
+    <sc-if value="{{ tMagias }}" hint-placeholder-val="{{ false }}">
+      <div style="column-span:all;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-width:720px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;padding:3px;background:var(--muted);border-radius:var(--radius)">
+          <sc-for list="{{ magTabs }}" as="mt" hint-placeholder-count="2">
+            <button onClick="{{ mt.onClick }}" style="height:42px;border:none;border-radius:var(--radius);background:{{ mt.bg }};color:{{ mt.fg }};box-shadow:{{ mt.shadow }};font-weight:600;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="{{ mt.icon }}" style="font-size:16px"></i>{{ mt.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border:1px solid var(--input);border-radius:var(--radius);background:var(--card)">
+            <i class="icon-search" style="font-size:18px;color:var(--muted-foreground)"></i>
+            <input value="{{ magQ }}" onChange="{{ onMagQ }}" placeholder="{{ magPlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;outline:none;font-size:16px;height:100%">
+          </label>
+          <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}"><button aria-label="Nova" style="flex:none;width:46px;height:46px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;cursor:pointer"><i class="icon-plus" style="font-size:20px"></i></button></sc-if>
+        </div>
+        <div style="display:flex;gap:6px;overflow-x:auto;margin:0 -12px;padding:0 12px;scrollbar-width:none">
+          <sc-for list="{{ levelChips }}" as="lc" hint-placeholder-count="6">
+            <button onClick="{{ lc.onClick }}" style="flex:none;height:38px;padding:0 14px;border:1px solid {{ lc.border }};border-radius:19px;background:{{ lc.bg }};color:{{ lc.fg }};font-family:var(--font-numeric);font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">{{ lc.label }}</button>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:var(--muted-foreground)">{{ magCountLabel }}</span>
+      </div>
+      <sc-if value="{{ magEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="column-span:all;padding:32px 12px;text-align:center;color:var(--muted-foreground);font-size:15px">Nada encontrado com esse filtro.</div>
+      </sc-if>
+      <sc-for list="{{ magGroups }}" as="g" hint-placeholder-count="3">
+        <section style="break-inside:avoid;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:{{ g.mark }};transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:18px;font-weight:600">{{ g.title }}</h2></div>
+            <span style="font-size:13px;color:var(--muted-foreground)">{{ g.count }}</span>
+          </div>
+          <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+            <div style="border-top:1px solid var(--border);background:{{ r.bg }}">
+              <button onClick="{{ r.toggle }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto 20px;align-items:center;gap:12px;min-height:60px;padding:8px 16px;border:none;background:transparent;text-align:left;cursor:pointer">
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                  <span style="font-size:13px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sub }}</span>
+                </span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                  <sc-if value="{{ r.isSpell }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:4px;color:var(--berkana);font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:18px;font-weight:600"><i class="icon-sparkles" style="font-size:14px"></i>{{ r.cost }}</span></sc-if>
+                  <sc-if value="{{ r.once }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;padding:1px 7px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-weight:600;white-space:nowrap">1× ao dia</span></sc-if>
+                </span>
+                <i class="{{ r.chevron }}" style="font-size:18px;color:var(--muted-foreground)"></i>
+              </button>
+              <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+                  <sc-if value="{{ r.isSpell }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:var(--radius)"><span style="font-size:13px;color:var(--muted-foreground)">Dano</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;text-align:right">{{ r.damage }}</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px">
+                      <sc-for list="{{ r.stats }}" as="st" hint-placeholder-count="6">
+                        <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">{{ st.k }}</span><span style="font-size:15px;font-weight:500">{{ st.v }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <p style="margin:0;font-size:15px;line-height:1.55;white-space:pre-line;text-wrap:pretty">{{ r.desc }}</p>
+                  <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:8px">
+                      <button style="height:44px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);display:inline-flex;align-items:center;gap:6px;cursor:pointer"><i class="icon-pencil"></i>Editar</button>
+                      <button style="height:44px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--destructive);display:inline-flex;align-items:center;gap:6px;cursor:pointer"><i class="icon-trash-2"></i>Excluir</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </section>
+      </sc-for>
+    </sc-if>
+
+    <!-- ===== ANOTAÇÕES ===== -->
+    <sc-if value="{{ tNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="column-span:all;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-width:720px">
+        <sc-if value="{{ notesCorrupt }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:12px;padding:14px;border:1px solid var(--destructive);border-radius:var(--radius);background:color-mix(in oklch, var(--destructive) 10%, var(--card))">
+            <i class="icon-file-warning" style="font-size:22px;color:var(--destructive);flex:none"></i>
+            <div style="display:flex;flex-direction:column;gap:8px"><b style="font-size:15px">Anotações corrompidas</b><span style="font-size:14px;color:var(--muted-foreground)">Não foi possível ler as anotações desta ficha. Elas estão em somente leitura para não perder nada.</span><button style="align-self:flex-start;height:44px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);display:inline-flex;align-items:center;gap:6px;cursor:pointer"><i class="icon-copy"></i>Copiar texto original</button></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notesOld }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:12px;padding:14px;border:1px solid var(--warning);border-radius:var(--radius);background:color-mix(in oklch, var(--warning) 10%, var(--card))">
+            <i class="icon-history" style="font-size:22px;color:var(--warning);flex:none"></i>
+            <div style="display:flex;flex-direction:column;gap:8px"><b style="font-size:15px">Anotações no formato antigo</b><span style="font-size:14px;color:var(--muted-foreground)">Migre para poder editar, ordenar e usar títulos. O conteúdo não muda.</span><button style="align-self:flex-start;height:44px;padding:0 14px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-weight:600;cursor:pointer">Migrar anotações</button></div>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;background:var(--primary);transform:rotate(45deg)"></span><h2 style="margin:0;font-family:var(--font-serif);font-size:21px;font-weight:600">Anotações</h2><span style="font-size:14px;color:var(--muted-foreground)">{{ notesCount }}</span></div>
+          <sc-if value="{{ canEditNotes }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:6px">
+              <button onClick="{{ toggleReorder }}" style="height:44px;padding:0 12px;border:1px solid {{ reorderBtn.border }};border-radius:var(--radius);background:{{ reorderBtn.bg }};color:{{ reorderBtn.fg }};display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer"><i class="{{ reorderBtn.icon }}"></i>{{ reorderBtn.label }}</button>
+              <button aria-label="Nova anotação" style="width:44px;height:44px;border:none;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;cursor:pointer"><i class="icon-plus" style="font-size:20px"></i></button>
+            </div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ notReordering }}" hint-placeholder-val="{{ true }}">
+          <label style="display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border:1px solid var(--input);border-radius:var(--radius);background:var(--card)">
+            <i class="icon-search" style="font-size:18px;color:var(--muted-foreground)"></i>
+            <input value="{{ notesQ }}" onChange="{{ onNotesQ }}" placeholder="Buscar em títulos e textos" style="flex:1;min-width:0;border:none;background:transparent;outline:none;font-size:16px;height:100%">
+          </label>
+        </sc-if>
+        <sc-if value="{{ reordering }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:var(--muted-foreground)">Use as setas para mudar a ordem. Toque em Concluir quando terminar.</span></sc-if>
+        <sc-if value="{{ notesEmpty }}" hint-placeholder-val="{{ false }}"><span style="padding:24px 0;text-align:center;color:var(--muted-foreground)">Nenhuma anotação com “{{ notesQ }}”.</span></sc-if>
+      </div>
+      <sc-for list="{{ notes }}" as="n" hint-placeholder-count="4">
+        <section style="break-inside:avoid;margin-bottom:8px;background:var(--card);border:1px solid {{ n.border }};border-radius:var(--radius);box-shadow:var(--shadow-card)">
+          <sc-if value="{{ n.normal }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ n.toggle }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1fr) 20px;align-items:center;gap:12px;min-height:60px;padding:10px 16px;border:none;background:transparent;text-align:left;cursor:pointer">
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-family:var(--font-serif);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.title }}</span>
+                <sc-if value="{{ n.closed }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.preview }}</span></sc-if>
+              </span>
+              <i class="{{ n.chevron }}" style="font-size:18px;color:var(--muted-foreground)"></i>
+            </button>
+          </sc-if>
+          <sc-if value="{{ n.reorder }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:20px minmax(0,1fr) 44px 44px;align-items:center;gap:6px;min-height:56px;padding:0 6px 0 14px">
+              <i class="icon-grip-vertical" style="font-size:18px;color:var(--muted-foreground)"></i>
+              <span style="font-family:var(--font-serif);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.title }}</span>
+              <button onClick="{{ n.up }}" aria-label="Subir" style="width:44px;height:44px;border:none;background:transparent;cursor:pointer;opacity:{{ n.upOp }}"><i class="icon-arrow-up" style="font-size:18px"></i></button>
+              <button onClick="{{ n.down }}" aria-label="Descer" style="width:44px;height:44px;border:none;background:transparent;cursor:pointer;opacity:{{ n.downOp }}"><i class="icon-arrow-down" style="font-size:18px"></i></button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ n.open }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.55">
+              <sc-for list="{{ n.paras }}" as="p" hint-placeholder-count="1">
+                <p style="margin:0;text-wrap:pretty"><sc-for list="{{ p.lines }}" as="ln" hint-placeholder-count="1"><span style="display:block"><sc-for list="{{ ln.spans }}" as="sp" hint-placeholder-count="1"><sc-if value="{{ sp.b }}" hint-placeholder-val="{{ false }}"><strong style="font-weight:700;color:var(--foreground)">{{ sp.t }}</strong></sc-if><sc-if value="{{ sp.plain }}" hint-placeholder-val="{{ true }}"><span>{{ sp.t }}</span></sc-if></sc-for></span></sc-for></p>
+              </sc-for>
+              <sc-if value="{{ canEditNotes }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:8px;padding-top:4px">
+                  <button style="height:44px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);display:inline-flex;align-items:center;gap:6px;cursor:pointer"><i class="icon-pencil"></i>Editar</button>
+                  <button style="height:44px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--destructive);display:inline-flex;align-items:center;gap:6px;cursor:pointer"><i class="icon-trash-2"></i>Excluir</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </section>
+      </sc-for>
+    </sc-if>
+    </div>
+  </div>
+
+  <!-- Barra de ações rápidas -->
+  <div style="flex:none;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -8px 24px -12px oklch(0 0 0 / .5)">
+    <div style="max-width:720px;margin:0 auto;padding:8px 10px 14px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:6px">
+        <button onClick="{{ openVit }}" style="display:flex;align-items:center;gap:10px;height:56px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--background);text-align:left;cursor:pointer">
+          <i class="{{ stage.icon }}" style="font-size:22px;color:{{ stage.color }}"></i>
+          <span style="display:flex;flex-direction:column;min-width:0;line-height:1.1"><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600">{{ vitCur }}</span><span style="font-size:12px;color:{{ stage.color }};font-weight:600;white-space:nowrap">{{ stage.short }}</span></span>
+        </button>
+        <button onClick="{{ openBerk }}" style="display:flex;align-items:center;gap:10px;height:56px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--background);text-align:left;cursor:pointer">
+          <i class="{{ berkState.icon }}" style="font-size:22px;color:var(--berkana)"></i>
+          <span style="display:flex;flex-direction:column;min-width:0;line-height:1.1"><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600">{{ berkCur }}<span style="font-size:15px;color:var(--muted-foreground)">/{{ berkMax }}</span></span><span style="font-size:12px;color:var(--berkana);font-weight:600">Berkana</span></span>
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <button onClick="{{ openArma }}" style="height:48px;border:none;border-radius:var(--radius);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted-foreground);cursor:pointer"><i class="icon-sword" style="font-size:20px;color:var(--foreground)"></i>Armas</button>
+        <button onClick="{{ openPericias }}" style="height:48px;border:none;border-radius:var(--radius);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted-foreground);cursor:pointer"><i class="icon-target" style="font-size:20px;color:var(--foreground)"></i>Perícias</button>
+        <button onClick="{{ openAtributos }}" style="height:48px;border:none;border-radius:var(--radius);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted-foreground);cursor:pointer"><i class="icon-user-round" style="font-size:20px;color:var(--foreground)"></i>Atributos</button>
+        <button onClick="{{ toggleLock }}" aria-pressed="{{ locked }}" style="height:48px;border:1px solid {{ lock.border }};border-radius:var(--radius);background:{{ lock.bg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:{{ lock.fg }};cursor:pointer"><i class="{{ lock.icon }}" style="font-size:20px"></i>{{ lock.label }}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ TOAST ============ -->
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;left:12px;right:12px;top:58px;display:flex;justify-content:center;z-index:30;pointer-events:none">
+    <div style="pointer-events:auto;width:100%;max-width:420px;display:flex;gap:12px;align-items:flex-start;padding:14px;background:var(--popover);color:var(--popover-foreground);border:1px solid {{ toastData.border }};border-radius:var(--radius);box-shadow:var(--shadow-lg)">
+      <i class="{{ toastData.icon }}" style="font-size:20px;color:{{ toastData.color }};flex:none;animation:{{ toastData.anim }}"></i>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">{{ toastData.title }}</b><span style="font-size:14px;color:var(--muted-foreground)">{{ toastData.text }}</span></div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ SHEETS / DIALOGS ============ -->
+<sc-if value="{{ hasSheet }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:var(--overlay);z-index:40"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;z-index:41;display:flex;justify-content:center;pointer-events:none">
+    <div style="pointer-events:auto;width:100%;max-width:480px;max-height:88%;overflow:auto;background:var(--popover);color:var(--popover-foreground);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;box-shadow:var(--shadow-lg);padding:8px 16px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="align-self:center;width:40px;height:4px;border-radius:2px;background:var(--input)"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <h3 style="margin:0;font-family:var(--font-serif);font-size:22px;font-weight:600">{{ sheetTitle }}</h3>
+        <button onClick="{{ closeSheet }}" aria-label="Fechar" style="width:44px;height:44px;margin-right:-10px;border:none;background:transparent;color:var(--muted-foreground);cursor:pointer"><i class="icon-x" style="font-size:22px"></i></button>
+      </div>
+
+      <sc-if value="{{ sheetVit }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:34px;font-weight:600">{{ vitCur }}<span style="font-size:18px;color:var(--muted-foreground)"> / {{ vitMax }}</span></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:{{ stage.color }};font-weight:600;font-size:14px"><i class="{{ stage.icon }}" style="font-size:16px"></i>{{ stage.label }}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ sheetBerk }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:34px;font-weight:600">{{ berkCur }}<span style="font-size:18px;color:var(--muted-foreground)"> / {{ berkMax }}</span></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:var(--berkana);font-weight:600;font-size:14px"><i class="{{ berkState.icon }}" style="font-size:16px"></i>{{ berkState.label }}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ sheetAmount }}" hint-placeholder-val="{{ false }}">
+        <input value="{{ amount }}" onChange="{{ onAmount }}" inputMode="numeric" placeholder="0" style="height:72px;border:1px solid var(--input);border-radius:var(--radius);background:var(--background);text-align:center;font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:44px;font-weight:600;outline:none;min-width:0">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="4">
+            <button onClick="{{ ch.onClick }}" style="height:44px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;cursor:pointer">{{ ch.label }}</button>
+          </sc-for>
+        </div>
+        <span style="font-size:14px;color:var(--muted-foreground);min-height:20px">{{ preview }}</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onClick="{{ actA.onClick }}" style="height:56px;border:none;border-radius:var(--radius);background:{{ actA.bg }};color:{{ actA.fg }};font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="{{ actA.icon }}" style="font-size:20px"></i>{{ actA.label }}</button>
+          <button onClick="{{ actB.onClick }}" style="height:56px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);color:var(--secondary-foreground);font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="{{ actB.icon }}" style="font-size:20px"></i>{{ actB.label }}</button>
+        </div>
+        <button onClick="{{ restore }}" style="height:44px;border:none;background:transparent;color:var(--primary);font-weight:600;cursor:pointer">{{ restoreLabel }}</button>
+      </sc-if>
+
+      <sc-if value="{{ sheetArma }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ weapons }}" as="w" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between"><span style="font-family:var(--font-serif);font-size:17px;font-weight:600">{{ w.name }}</span><span style="font-family:var(--font-numeric);font-weight:600;color:var(--muted-foreground)">Nv {{ w.level }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px">
+              <sc-for list="{{ w.cells }}" as="d" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;align-items:center;padding:6px 2px;border-radius:var(--radius);background:{{ d.bg }}"><span style="font-size:12px;color:var(--muted-foreground)">{{ d.label }}</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:18px;font-weight:600;color:{{ d.fg }}">{{ d.value }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </sc-if>
+
+      <sc-if value="{{ sheetAtributos }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">
+          <sc-for list="{{ attrs }}" as="a" hint-placeholder-count="14">
+            <div style="display:flex;flex-direction:column;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--muted)"><span style="font-size:13px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.label }}</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;line-height:1.1">{{ a.total }}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sheetPericias }}" hint-placeholder-val="{{ false }}">
+        <span style="font-size:13px;color:var(--muted-foreground);margin-top:-6px">Em uso · as outras valem 2</span>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px">
+          <sc-for list="{{ usedSkills }}" as="s" hint-placeholder-count="16">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:38px;border-bottom:1px solid var(--border)"><span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</span><span style="font-family:var(--font-numeric);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600">{{ s.total }}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasAlert }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:var(--overlay);z-index:40"></div>
+  <div style="position:absolute;inset:0;z-index:41;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none">
+    <div role="alertdialog" style="pointer-events:auto;width:100%;max-width:400px;background:var(--popover);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <h3 style="margin:0;font-family:var(--font-serif);font-size:22px;font-weight:600">Excluir {{ delName }}?</h3>
+      <p style="margin:0;font-size:15px;color:var(--muted-foreground);text-wrap:pretty">A ficha e todas as anotações serão apagadas. Essa ação não pode ser desfeita.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:6px">
+        <button onClick="{{ closeSheet }}" style="height:48px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onClick="{{ confirmDel }}" style="height:48px;border:none;border-radius:var(--radius);background:var(--destructive);color:var(--destructive-foreground);font-weight:700;cursor:pointer">Excluir</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;lista&quot;,&quot;vazia&quot;,&quot;criar&quot;,&quot;ficha&quot;,&quot;carregando&quot;,&quot;naoEncontrado&quot;,&quot;erroRede&quot;],&quot;default&quot;:&quot;ficha&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;basicos&quot;,&quot;pericias&quot;,&quot;magias&quot;,&quot;anotacoes&quot;],&quot;default&quot;:&quot;basicos&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;magView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;magias&quot;,&quot;talentos&quot;],&quot;default&quot;:&quot;magias&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;muitos&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;locked&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;stage&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:5,&quot;step&quot;:1,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;berkana&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:170,&quot;step&quot;:5,&quot;default&quot;:140,&quot;tsType&quot;:&quot;number&quot;},&quot;sheet&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;nenhum&quot;,&quot;vit&quot;,&quot;berk&quot;,&quot;arma&quot;,&quot;atributos&quot;,&quot;pericias&quot;,&quot;excluir&quot;],&quot;default&quot;:&quot;nenhum&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;toast&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;nenhum&quot;,&quot;atualizado&quot;,&quot;conflito&quot;,&quot;erro&quot;],&quot;default&quot;:&quot;nenhum&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;notesState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ok&quot;,&quot;corrompidas&quot;,&quot;antigas&quot;],&quot;default&quot;:&quot;ok&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;fieldError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;wide&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const fmt = n => Number(n || 0).toLocaleString('pt-BR');
+const VMAX = [3600, 3440, 3280, 3120, 2960, 2800];
+const VTOTAL = VMAX.reduce((a, b) => a + b, 0);
+const STAGE_DMG = [0, 4100, 7900, 11000, 14000, 17500];
+const STAGES = [
+  { label: 'Notável', short: 'Notável', icon: 'icon-heart', color: 'var(--vitality-notavel)' },
+  { label: 'Ferido', short: 'Ferido', icon: 'icon-heart-crack', color: 'var(--vitality-ferido)' },
+  { label: 'Gravemente Ferido', short: 'Grav. Ferido', icon: 'icon-droplets', color: 'var(--vitality-grave)' },
+  { label: 'Condenado', short: 'Condenado', icon: 'icon-skull', color: 'var(--vitality-condenado)' },
+  { label: 'Incapacitado', short: 'Incapacitado', icon: 'icon-link', color: 'var(--vitality-incapacitado)' },
+  { label: 'Coma', short: 'Coma', icon: 'icon-moon', color: 'var(--vitality-coma)' },
+];
+const pools = dmg => { let r = Math.max(0, Math.min(VTOTAL, dmg)); return VMAX.map(m => { const d = Math.min(r, m); r -= d; return m - d; }); };
+const stageOf = p => { const i = p.findIndex(v => v > 0); return i < 0 ? 5 : i; };
+const BERK_MAX = 170;
+const ATTRS = [['Agilidade', 8, 6], ['Carisma', 15, 7], ['Coragem', 10, 10], ['Destreza', 8, 7], ['Esquiva', 7, 8], ['Força', 8, 10], ['Inteligência', 10, 10], ['Iniciativa', 8, 7], ['Intimidar', 10, 9], ['Manobra', 6, 7], ['Reflexos', 7, 8], ['Sabedoria', 9, 10], ['Vigor', 8, 8], ['Vontade', 10, 10]];
+const GROUPS = [
+  ['Combate', [['ataqueSurpresa', 'Ataque Surpresa'], ['combateDesarmado', 'Combate (Desarmado)'], ['duelo', 'Duelo']]],
+  ['Físicas', [['acrobacia', 'Acrobacia'], ['cavalgar', 'Cavalgar'], ['equilibrio', 'Equilíbrio'], ['escalar', 'Escalar'], ['nadar', 'Nadar'], ['suportar', 'Suportar'], ['velocidade', 'Velocidade']]],
+  ['Mente e Arcano', [['concentracao', 'Concentração'], ['controleArcano', 'Controle Arcano'], ['controleEmocional', 'Controle Emocional'], ['discernir', 'Discernir'], ['percepcao', 'Percepção'], ['prontidao', 'Prontidão']]],
+  ['Sociais', [['atuacao', 'Atuação'], ['blefar', 'Blefar'], ['diplomacia', 'Diplomacia'], ['dissimulacao', 'Dissimulação'], ['dissuadir', 'Dissuadir'], ['empatia', 'Empatia'], ['persuadir', 'Persuadir']]],
+  ['Conhecimentos', [['conhecimentoArcano', 'Arcano'], ['conhecimentoHistorico', 'Histórico'], ['conhecimentoMilitar', 'Militar'], ['conhecimentoNatureza', 'Da Natureza'], ['conhecimentoPolitico', 'Político'], ['conhecimentoReligioso', 'Religioso']]],
+  ['Ofícios e Ermos', [['avaliar', 'Avaliar'], ['cura', 'Cura'], ['furtar', 'Furtar'], ['furtividade', 'Furtividade'], ['oficios', 'Ofícios'], ['salvar', 'Salvar'], ['sobrevivencia', 'Sobrevivência']]],
+];
+const SKILLS0 = { duelo: [13, 7], salvar: [8, 0], discernir: [2, 0], furtividade: [1, 6], percepcao: [17, 0], ataqueSurpresa: [6, 0], concentracao: [17, 0], dissimulacao: [3, 0], sobrevivencia: [0, 5], combateDesarmado: [13, 7], conhecimentoArcano: [0, 3], conhecimentoMilitar: [0, 3], conhecimentoNatureza: [0, 3], conhecimentoPolitico: [0, 3], conhecimentoHistorico: [0, 3], conhecimentoReligioso: [0, 3] };
+const WEAPONS = [
+  { name: 'Espada Longa', level: 37, d: [3000, 4000, 5000, 6000], crit: 7000 },
+  { name: 'Adaga', level: 23, d: [500, 600, 700, 800], crit: 900 },
+  { name: 'Lança de Vorax', level: 53, d: [3000, 4000, 5000, 6000], crit: 7000 },
+];
+const KIT = ['Cantil 3 Litros', 'Cera 1 frasco', 'Chifre-polvora 400g', 'Espelho', 'Faca multiuso', 'Frasco 12 unidades', 'Frasco de anula faro 4 unidades', 'Frasco de oleo 3 litros', 'Lente de aumento', 'Corda 15 metros', 'Saco de linhagem', 'Saco de dormir', 'Martelo multiuso', 'Kit de acampamento para 4 pessoas', 'Kit de banho', 'Kit de costura', 'Kit escalada', 'Kit panelas', 'Kit primeiros-socorros', 'Kit provisoes', 'Kit iluminação', 'Kit dissimulados', 'Kit reparo de forja'];
+const SPELLS = [
+  { name: 'Velocidade Alterada', type: 'Alteração de Combate', level: 0, range: 'Pessoal', damage: '2000 +', duration: '—', prep: 'Inst.', res: 'Especial', cost: 30, conc: '50%', desc: 'Amplifica deslocamento e velocidade. Realize +2 ataques com bônus de dano. Alvo sofre +3 nas jogadas para evitar.' },
+  { name: 'Desvastar', type: 'Alteração de Combate', level: 1, range: 'Pessoal', damage: '+2000 + 1000 P/N', duration: 'Inst.', prep: 'Inst.', res: 'Especial', cost: 30, conc: '50%', desc: 'Cria aura de fogo vermelho nas armas até o fim da luta. Dobra dano contra licantropos, vampiros e mortos-vivos.' },
+  { name: 'Detruição das Trevas', type: 'Alteração de Combate', level: 2, range: '4 Metros', damage: '5000 + 1000 P/N', duration: '1d12 Rodadas', prep: 'Inst.', res: 'Reflexos 50%', cost: 30, conc: '50%', desc: 'Transforma corpo similar ao monstro atacado. +2000 nos ataques físicos. Uma vez por combate: explosão de fogo em 4m de raio (não afeta aliados).' },
+  { name: 'Catoação', type: '—', level: 3, range: 'Raio 30 Metros', damage: '5000 + 1000 P/N', duration: 'Especial', prep: 'Inst.', res: 'Especial', cost: 30, conc: '50%', desc: 'Detecta criaturas errantes e demônios em 30m. Contra demônios: aura de dano surpresa (resistência Vontade 50%). Outras criaturas apenas identificadas.' },
+];
+const TALENTS = [
+  { name: 'Caçador Independente', level: 0, desc: 'Conhecimentos +3\nCombate +3\nDuelo +3' },
+  { name: 'Lutador Treinado', level: 1, desc: 'Combate +4\nDuelo +4' },
+  { name: 'Treinamento de Cura', level: 2, desc: 'Cura +5\nSobrevivência +5\n\nQuando usar habilidade de cura em alguem, vai curar uma vitalidade a mais.' },
+  { name: 'Movimentação Errante', level: 3, desc: 'Furtividade +6\n\nTanto caminhando quanto correndo sou completamente silencioso.' },
+];
+const NOTES = [
+  { title: 'Poções', content: '**Cura Plena**: 2 goles' },
+  { title: 'Variados', content: 'Chifre grande de dragão vermelho\nLamparina de fogo Espiritual (VailFire)\nPergaminho Bola de Fogo (alcance: 9m raio: 9m dano: 8000)' },
+  { title: 'Golem do Espelho', content: 'Tenho um **GOLEM** que me segue, possui a aparência do cavaleiro do espelho de Dark Souls.\n\n**HDano**: 6000/8000/10000/12000/14000\n**Uma vez ao dia** pode refletir uma magia.\nPosso me transportar pelo espelho(Se deixar ele em um lugar e eu em outro, posso sair pelo espelho)' },
+  { title: 'Colar da Petrificação', content: 'Um colar, com um pendente de pedra contendo uma **runa** vermelha no centro.\n\nPosso despetrificar qualquer coisa sobre a maldição da petrificação.\n\nMe torna **imune** a petrificação.' },
+];
+const SP = (name, level, type, damage, range, duration, res, cost, desc) => ({ name, level, type, damage, range, duration, prep: 'Inst.', res, cost, conc: '50%', desc });
+const EXTRA_SPELLS = [
+  SP('Corrente Infernal', 4, 'Controle', '6000 + 1000 P/N', '10 Metros', '1d6 Rodadas', 'Força 50%', 40, 'Correntes em brasa prendem o alvo ao chão. Enquanto preso, sofre dano a cada rodada e não pode se deslocar.'),
+  SP('Brasa Errante', 4, 'Alteração de Combate', '4000 + 1000 P/N', 'Pessoal', 'Fim da luta', 'Especial', 30, 'Os golpes deixam brasas no alvo. Cada acerto seguinte soma +500 de dano.'),
+  SP('Marca do Caçador', 5, 'Detecção', '—', '50 Metros', '1 Dia', 'Vontade 50%', 20, 'Marca uma criatura. Você sabe a direção e a distância dela até o fim do dia.'),
+  SP('Grilhões de Cinza', 5, 'Controle', '3000 + 1000 P/N', '6 Metros', '1d4 Rodadas', 'Reflexos 50%', 45, 'Cinzas se solidificam em volta dos membros do alvo. Ataques contra ele têm +3.'),
+  SP('Véu Sombrio', 5, 'Proteção', '—', 'Pessoal', '3 Rodadas', 'Especial', 35, 'Você some nas sombras. O próximo ataque contra você erra automaticamente.'),
+  SP('Lâmina Rubra', 6, 'Alteração de Combate', '8000 + 1000 P/N', 'Toque', 'Inst.', 'Especial', 50, 'A arma brilha em vermelho por um golpe. Ignora armadura.'),
+  SP('Sentinela de Ferro', 6, 'Invocação', '5000', '3 Metros', '1 Hora', 'Especial', 60, 'Invoca uma armadura vazia que vigia o acampamento e luta ao seu lado.'),
+  SP('Fôlego de Forja', 6, 'Cura', '—', 'Toque', 'Inst.', 'Especial', 40, 'Cura 3000 de vitalidade de um aliado. Não funciona em mortos-vivos.'),
+  SP('Juramento das Correntes', 7, 'Proteção', '—', '10 Metros', 'Fim da luta', 'Especial', 70, 'Liga você a um aliado. Metade do dano que ele sofrer passa para você.'),
+  SP('Chama Penitente', 7, 'Evocação', '12000 + 1000 P/N', 'Raio 8 Metros', 'Inst.', 'Reflexos 50%', 80, 'Explosão de fogo infernal. Demônios sofrem o dobro.\n\nNão afeta aliados.'),
+  SP('Olho do Abismo', 7, 'Detecção', '—', 'Raio 100 Metros', '10 Minutos', 'Especial', 30, 'Revela portais, selos e criaturas invisíveis na área.'),
+  SP('Queda do Condenado', 7, 'Evocação', '28000', 'Toque', 'Inst.', 'Vigor 50%', 120, 'Golpe final. Só pode ser usado em um alvo Condenado ou pior. Uma vez ao dia.'),
+];
+const EXTRA_TALENTS = [
+  { name: 'Faro de Demônio', level: 4, desc: 'Percepção +4\n\nSente o cheiro de enxofre de demônios a até 30m.' },
+  { name: 'Pele de Couro', level: 4, desc: 'Armadura +500 de vitalidade total.' },
+  { name: 'Golpe Acorrentado', level: 5, desc: 'Duelo +3\n\nUma vez ao dia, prende a arma do inimigo e o desarma.' },
+  { name: 'Sangue Frio', level: 5, desc: 'Controle Emocional +5\nConcentração +3' },
+  { name: 'Caçador de Mortos', level: 6, desc: 'Dano +2000 contra mortos-vivos.' },
+  { name: 'Segunda Chance', level: 6, desc: 'Uma vez ao dia, ao chegar no Coma, volta com 1000 de vitalidade no Condenado.' },
+  { name: 'Passo Errante', level: 7, desc: 'Velocidade +4\nAcrobacia +3\n\nPode se mover depois de atacar.' },
+  { name: 'Vontade de Ferro', level: 7, desc: 'Vontade +2\n\nImune a medo de origem mágica.' },
+];
+const EXTRA_NOTES = [
+  { title: 'Montaria: Cinza', content: '**Cavalo de guerra**, pelagem cinza-escura.\nVitalidade 4000\nCarrega até 200kg.' },
+  { title: 'Anel do Errante', content: 'Anel de ferro com runa sigílica.\n**Uma vez ao dia**: teletransporte de até 20m.' },
+  { title: 'Poções compradas em Varhel', content: '3× Poção menor de cura (1000)\n1× Antídoto\n2× Óleo inflamável' },
+  { title: 'Dívida com a Guilda', content: 'Devo **40 ouro** para Mestre Odran. Prazo: fim do inverno.' },
+  { title: 'Mapa da Torre Partida', content: 'Entrada pelo esgoto ao norte.\nTerceiro andar tem selo demoníaco, **não tocar** sem Olho do Abismo.' },
+  { title: 'Inimigos conhecidos', content: '**Kharn, o Acorrentado**: demônio maior, fraco a fogo sagrado.\n**Irmãs da Cinza**: seita, usam máscaras de ferro.' },
+  { title: 'Pergaminhos', content: 'Bola de Fogo ×1\nLuz Contínua ×2' },
+  { title: 'Frases do Golem', content: 'O golem não fala, mas reage ao nome **Espelho**.' },
+];
+const md = src => src.split(/\n{2,}/).map(par => ({ lines: par.split('\n').map(line => ({ spans: line.split('**').map((t, i) => ({ t, b: i % 2 === 1, plain: i % 2 === 0 })).filter(s => s.t) })) }));
+const INFO = [['jogador', 'Jogador', 'Enio Aires'], ['classe', 'Classe', 'Caçador Errante'], ['raca', 'Raça', 'Keltay'], ['divindade', 'Divindade', 'Aerys'], ['terra', 'Terra natal', 'Não sei'], ['alinhamento', 'Alinhamento', 'Leal e Bom'], ['genero', 'Gênero', 'Masc'], ['idade', 'Idade', '27'], ['peso', 'Peso', '77kg'], ['altura', 'Altura', '1.85m'], ['virtude', 'Pontos de virtude', '0']];
+const CHARS = [
+  { name: 'Varg Helsumg', player: 'Enio Aires', klass: 'Caçador Errante', race: 'Keltay', level: 7 },
+  { name: 'Ilsa Morvaine', player: 'Bruna Lopes', klass: 'Clériga das Cinzas', race: 'Humana', level: 6 },
+  { name: 'Dro Kael', player: 'Rafael Tavares', klass: 'Guerreiro Acorrentado', race: 'Anão', level: 7 },
+  { name: 'Seren Vhal', player: 'Lia Castro', klass: 'Feiticeira Sigílica', race: 'Élfica', level: 5 },
+];
+const LANGS0 = [['Comum', true], ['Errante', true], ['Élfico', true], ['Sombrio', false], ['Anão', false], ['Sigílico', true], ['Malashin', false]];
+
+class Component extends DCLogic {
+  state = this.fromProps(this.props, {
+    amount: '', info: Object.fromEntries(INFO.map(i => [i[0], i[2]])), fieldStatus: {}, skills: { ...SKILLS0 },
+    skillFilter: 'uso', openSkill: null, openSpell: {}, attrOpen: false, kitOpen: false,
+    langs: LANGS0.map(l => [...l]), search: '', newName: '', newPlayer: '', chars: CHARS, delIdx: 0,
+    magView: 'magias', magQ: '', magLevel: 'todos', openMag: null, notesQ: '', openNote: null, reorder: false,
+  });
+
+  fromProps(p, base = {}) {
+    return {
+      ...base,
+      screen: p.screen ?? 'ficha', tab: p.tab ?? 'basicos', locked: p.locked ?? false,
+      dmg: STAGE_DMG[p.stage ?? 0] ?? 0, berk: p.berkana ?? 140, sheet: p.sheet && p.sheet !== 'nenhum' ? p.sheet : null,
+      toast: p.toast && p.toast !== 'nenhum' ? p.toast : null, notesState: p.notesState ?? 'ok', notes: p.muitos ? [...NOTES, ...EXTRA_NOTES] : NOTES, magView: p.tab === 'magias' && p.magView ? p.magView : (base.magView || 'magias'),
+      fieldStatus: p.fieldError ? { divindade: 'error' } : (base.fieldStatus || {}),
+    };
+  }
+  componentDidUpdate(prev) {
+    const keys = ['screen', 'tab', 'locked', 'stage', 'berkana', 'sheet', 'toast', 'notesState', 'fieldError', 'muitos', 'magView'];
+    if (keys.some(k => prev[k] !== this.props[k])) this.setState(s => this.fromProps(this.props, s));
+  }
+  flash(toast, ms = 2600) { this.setState({ toast }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: null }), ms); }
+
+  renderVals() {
+    const s = this.state, p = this.props;
+    const wide = !!p.wide;
+    const edit = !s.locked;
+    const set = o => () => this.setState(o);
+
+    const pl = pools(s.dmg), si = stageOf(pl), cur = pl.reduce((a, b) => a + b, 0);
+    const stage = { ...STAGES[si], pos: `${si + 1}/6` };
+    const vitRows = STAGES.map((st, i) => ({
+      ...st, cur: fmt(pl[i]), max: fmt(VMAX[i]), pct: `${(pl[i] / VMAX[i]) * 100}%`,
+      isCurrent: i === si, bg: i === si ? 'var(--muted)' : 'transparent', weight: i === si ? 700 : 400,
+    }));
+    const berkPctN = s.berk / BERK_MAX;
+    const berkState = s.berk <= 0 ? { label: 'Esgotada', icon: 'icon-circle-off' } : s.berk >= BERK_MAX ? { label: 'Cheia', icon: 'icon-sparkles' } : berkPctN <= 0.5 ? { label: 'Pela metade', icon: 'icon-sparkle' } : { label: 'Disponível', icon: 'icon-sparkles' };
+
+    const tabDefs = [['basicos', 'Básicos', 'Dados Básicos'], ['pericias', 'Perícias', 'Perícias & Kit'], ['magias', 'Magias', 'Magias & Talentos'], ['anotacoes', 'Notas', 'Anotações']];
+    const tabs = tabDefs.map(([k, sh, lg]) => ({ label: wide ? lg : sh, onClick: set({ tab: k }), bar: s.tab === k ? 'var(--primary)' : 'transparent', fg: s.tab === k ? 'var(--foreground)' : 'var(--muted-foreground)' }));
+
+    const attrs = ATTRS.map(([label, race, klass]) => ({ label, race, klass, bonus: 0, total: race + klass + 1 }));
+    const weapons = WEAPONS.map(w => ({ ...w, cells: [...w.d.map((v, i) => ({ label: ['25%', '50%', '75%', '100%'][i], value: fmt(v), bg: 'var(--muted)', fg: 'var(--foreground)' })), { label: 'Crít.', value: fmt(w.crit), bg: 'var(--accent)', fg: 'var(--primary)' }] }));
+
+    const sk = s.skills;
+    const used = Object.values(sk).reduce((a, v) => a + v[0], 0);
+    const inUse = k => sk[k] && (sk[k][0] > 0 || sk[k][1] > 0);
+    const adj = (k, idx, dv) => () => this.setState(st => { const v = [...(st.skills[k] || [0, 0])]; v[idx] = Math.max(0, v[idx] + dv); return { skills: { ...st.skills, [k]: v } }; });
+    const skillGroups = GROUPS.map(([name, list]) => {
+      const rows = list.filter(([k]) => s.skillFilter === 'todas' || inUse(k)).map(([k, label]) => {
+        const [d, b] = sk[k] || [0, 0];
+        return { label, d, b, total: 2 + d + b, detail: d || b ? `${d} + ${b}` : '', fg: inUse(k) ? 'var(--foreground)' : 'var(--muted-foreground)', open: edit && s.openSkill === k,
+          toggle: () => edit && this.setState(st => ({ openSkill: st.openSkill === k ? null : k })), incD: adj(k, 0, 1), decD: adj(k, 0, -1), incB: adj(k, 1, 1), decB: adj(k, 1, -1) };
+      });
+      return { name, rows, count: rows.length };
+    }).filter(g => g.rows.length);
+    const usedCount = Object.keys(sk).filter(inUse).length;
+    const usedSkills = GROUPS.flatMap(g => g[1]).filter(([k]) => inUse(k)).map(([k, label]) => ({ label: GROUPS[4][1].some(x => x[0] === k) ? 'Conh. ' + label : label, total: 2 + sk[k][0] + sk[k][1] }));
+    const skillFilters = [['uso', `Em uso · ${usedCount}`], ['todas', 'Todas · 36']].map(([k, label]) => ({ label, onClick: set({ skillFilter: k }), bg: s.skillFilter === k ? 'var(--card)' : 'transparent', fg: s.skillFilter === k ? 'var(--foreground)' : 'var(--muted-foreground)', shadow: s.skillFilter === k ? 'var(--shadow-card)' : 'none' }));
+
+    const infoFields = INFO.map(([k, label]) => {
+      const st = s.fieldStatus[k];
+      const editing = s.editing === k;
+      const save = e => {
+        const v = e.target.value;
+        this.setState(o => ({ editing: null, info: { ...o.info, [k]: v }, fieldStatus: { ...o.fieldStatus, [k]: 'saving' } }));
+        setTimeout(() => this.setState(o => ({ fieldStatus: { ...o.fieldStatus, [k]: 'saved' } })), 900);
+        setTimeout(() => this.setState(o => ({ fieldStatus: { ...o.fieldStatus, [k]: null } })), 2200);
+      };
+      return {
+        label, value: s.info[k] || '—',
+        isRead: !edit && st !== 'error', isEditing: edit && editing,
+        isIdle: edit && !editing && !st, isSaving: edit && !editing && st === 'saving', isSaved: edit && !editing && st === 'saved', isError: st === 'error' && !editing,
+        onEdit: () => this.setState(o => ({ editing: k, fieldStatus: { ...o.fieldStatus, [k]: null } })), onSave: save, onKey: e => { if (e.key === 'Enter') e.target.blur(); },
+      };
+    });
+
+    const langs = s.langs.map(([name, known], i) => ({
+      name, known, icon: known ? 'icon-check' : 'icon-minus', bg: known ? 'var(--secondary)' : 'transparent', fg: known ? 'var(--foreground)' : 'var(--muted-foreground)', border: known ? 'var(--input)' : 'var(--border)',
+      toggle: () => edit && this.setState(o => ({ langs: o.langs.map((l, j) => j === i ? [l[0], !l[1]] : l) })),
+    }));
+
+    const allSpells = p.muitos ? [...SPELLS, ...EXTRA_SPELLS] : SPELLS;
+    const allTalents = p.muitos ? [...TALENTS, ...EXTRA_TALENTS] : TALENTS;
+    const isMag = s.magView === 'magias';
+    const pool = (isMag ? allSpells : allTalents).map((x, i) => ({ ...x, id: (isMag ? 'm' : 't') + i }));
+    const mq = s.magQ.trim().toLowerCase();
+    const lvls = [...new Set(pool.map(x => x.level))].sort((x, y) => x - y);
+    const filtered = pool.filter(x => (s.magLevel === 'todos' || x.level === s.magLevel) && (!mq || (x.name + ' ' + (x.type || '') + ' ' + x.desc).toLowerCase().includes(mq)));
+    const magGroups = [...new Set(filtered.map(x => x.level))].sort((x, y) => x - y).map(lv => {
+      const items = filtered.filter(x => x.level === lv);
+      return { title: 'Nível ' + lv, count: items.length + (isMag ? (items.length > 1 ? ' magias' : ' magia') : (items.length > 1 ? ' talentos' : ' talento')), mark: isMag ? 'var(--berkana)' : 'var(--primary)',
+        rows: items.map(x => {
+          const open = s.openMag === x.id;
+          return { name: x.name, open, isSpell: isMag, once: /uma vez/i.test(x.desc), cost: x.cost, damage: x.damage, desc: x.desc,
+            sub: isMag ? [x.damage !== '—' ? 'Dano ' + x.damage : null, x.range].filter(Boolean).join(' · ') : x.desc.split('\n')[0],
+            stats: isMag ? [{ k: 'Tipo', v: x.type }, { k: 'Alcance', v: x.range }, { k: 'Duração', v: x.duration }, { k: 'Preparo', v: x.prep }, { k: 'Resistência', v: x.res }, { k: 'Concentração', v: x.conc }] : [],
+            chevron: open ? 'icon-chevron-up' : 'icon-chevron-down', bg: open ? 'var(--muted)' : 'transparent',
+            toggle: () => this.setState(o => ({ openMag: o.openMag === x.id ? null : x.id })) };
+        }) };
+    });
+    const chip = (active) => ({ bg: active ? 'var(--foreground)' : 'transparent', fg: active ? 'var(--background)' : 'var(--foreground)', border: active ? 'var(--foreground)' : 'var(--border)' });
+    const levelChips = [{ label: 'Todos', ...chip(s.magLevel === 'todos'), onClick: set({ magLevel: 'todos' }) }, ...lvls.map(l => ({ label: 'Nv ' + l, ...chip(s.magLevel === l), onClick: set({ magLevel: l }) }))];
+    const magTabs = [['magias', 'Magias', allSpells.length, 'icon-sparkles'], ['talentos', 'Talentos', allTalents.length, 'icon-award']].map(([k, l, n, icon]) => ({ label: l + ' · ' + n, icon, onClick: set({ magView: k, magLevel: 'todos', magQ: '', openMag: null }), bg: s.magView === k ? 'var(--card)' : 'transparent', fg: s.magView === k ? 'var(--foreground)' : 'var(--muted-foreground)', shadow: s.magView === k ? 'var(--shadow-card)' : 'none' }));
+
+    const notesCorrupt = s.notesState === 'corrompidas';
+    const canEditNotes = edit && s.notesState === 'ok';
+    const reordering = s.reorder && canEditNotes;
+    const nq = s.notesQ.trim().toLowerCase();
+    const move = (i, d) => () => this.setState(o => { const n = [...o.notes]; const j = i + d; if (j < 0 || j >= n.length) return null; [n[i], n[j]] = [n[j], n[i]]; return { notes: n }; });
+    const notes = s.notes.map((n, i) => ({ n, i })).filter(({ n }) => reordering || !nq || (n.title + ' ' + n.content).toLowerCase().includes(nq)).map(({ n, i }) => {
+      const open = !reordering && s.openNote === n.title;
+      return { title: n.title, preview: (n.content.replace(/\*\*/g, '').split('\n').find(l => l.trim()) || ''), paras: md(n.content), open, closed: !open,
+        normal: !reordering, reorder: reordering, border: open ? 'var(--input)' : 'var(--border)', chevron: open ? 'icon-chevron-up' : 'icon-chevron-down',
+        toggle: () => this.setState(o => ({ openNote: o.openNote === n.title ? null : n.title })),
+        up: move(i, -1), down: move(i, 1), upOp: i === 0 ? 0.3 : 1, downOp: i === s.notes.length - 1 ? 0.3 : 1 };
+    });
+
+    // sheet / amount
+    const amt = parseInt(String(s.amount).replace(/\D/g, ''), 10) || 0;
+    const isVit = s.sheet === 'vit', isBerk = s.sheet === 'berk';
+    let preview = '', actA = {}, actB = {}, chips = [], restore = null, restoreLabel = '';
+    const closeAnd = (o, toast) => { this.setState({ ...o, sheet: null, amount: '' }); if (toast) this.flash(toast); };
+    if (isVit) {
+      chips = [100, 500, 1000, 5000].map(v => ({ label: '+' + fmt(v), onClick: () => this.setState(o => ({ amount: String((parseInt(o.amount, 10) || 0) + v) })) }));
+      if (amt) { const pd = pools(s.dmg + amt), ph = pools(Math.max(0, s.dmg - amt)); preview = `Dano → ${fmt(pd.reduce((a, b) => a + b, 0))} (${STAGES[stageOf(pd)].label}) · Cura → ${fmt(ph.reduce((a, b) => a + b, 0))}`; }
+      else preview = 'Digite o valor ou use os atalhos.';
+      actA = { label: 'Dano', icon: 'icon-swords', bg: 'var(--destructive)', fg: 'var(--destructive-foreground)', onClick: () => amt && closeAnd({ dmg: Math.min(VTOTAL, s.dmg + amt) }) };
+      actB = { label: 'Cura', icon: 'icon-heart-pulse', onClick: () => amt && closeAnd({ dmg: Math.max(0, s.dmg - amt) }) };
+      restore = () => closeAnd({ dmg: 0 }); restoreLabel = 'Restaurar vitalidade máxima';
+    }
+    if (isBerk) {
+      chips = [10, 30, 50, 100].map(v => ({ label: '+' + v, onClick: () => this.setState(o => ({ amount: String((parseInt(o.amount, 10) || 0) + v) })) }));
+      preview = amt ? `Gastar → ${Math.max(0, s.berk - amt)} · Recuperar → ${Math.min(BERK_MAX, s.berk + amt)}` : 'Magias de Varg custam 30.';
+      actA = { label: 'Gastar', icon: 'icon-sparkles', bg: 'var(--berkana)', fg: 'var(--berkana-foreground)', onClick: () => amt && closeAnd({ berk: Math.max(0, s.berk - amt) }) };
+      actB = { label: 'Recuperar', icon: 'icon-rotate-ccw', onClick: () => amt && closeAnd({ berk: Math.min(BERK_MAX, s.berk + amt) }) };
+      restore = () => closeAnd({ berk: BERK_MAX }); restoreLabel = 'Restaurar Berkana ao máximo';
+    }
+    const sheetTitles = { vit: 'Vitalidade', berk: 'Berkana', arma: 'Armas', atributos: 'Atributos', pericias: 'Perícias' };
+
+    const toasts = {
+      atualizado: { icon: 'icon-check', color: 'var(--success)', border: 'var(--border)', title: 'Ficha atualizada', text: 'Você está vendo a versão mais recente.', anim: 'none' },
+      conflito: { icon: 'icon-refresh-cw', color: 'var(--warning)', border: 'var(--warning)', title: 'A ficha foi alterada em outro aparelho', text: 'Recarregando… sua última edição não foi aplicada.', anim: 'ficha-spin 1.2s linear infinite' },
+      erro: { icon: 'icon-cloud-off', color: 'var(--destructive)', border: 'var(--destructive)', title: 'Não foi possível salvar', text: 'Sem conexão. Toque no campo para tentar de novo.', anim: 'none' },
+      bloqueado: { icon: 'icon-lock', color: 'var(--muted-foreground)', border: 'var(--border)', title: 'Ficha bloqueada', text: 'Modo leitura. Toque no cadeado para editar.', anim: 'none' },
+      editando: { icon: 'icon-lock-open', color: 'var(--primary)', border: 'var(--border)', title: 'Ficha desbloqueada', text: 'Toque em um campo para editar.', anim: 'none' },
+    };
+
+    const q = s.search.trim().toLowerCase();
+    const chars = s.chars.filter(c => !q || (c.name + c.player + c.klass).toLowerCase().includes(q)).map((c, i) => ({ ...c, open: set({ screen: 'ficha', tab: 'basicos' }), del: set({ sheet: 'excluir', delIdx: s.chars.indexOf(c) }) }));
+    const listForcedEmpty = s.screen === 'vazia';
+    const listHasItems = !listForcedEmpty && chars.length > 0;
+    const erros = {
+      naoEncontrado: { icon: 'icon-skull', title: 'Personagem não encontrado', text: 'Esta ficha pode ter sido excluída ou o link está errado.', retry: false },
+      erroRede: { icon: 'icon-wifi-off', title: 'Sem conexão', text: 'Não foi possível carregar a ficha. Confira a internet e tente de novo.', retry: true },
+    };
+
+    return {
+      themeClass: (p.theme ?? 'dark') === 'dark' ? 'dark' : '',
+      wide, narrow: !wide,
+      isLista: s.screen === 'lista' || listForcedEmpty, isCriar: s.screen === 'criar', isFicha: s.screen === 'ficha',
+      isCarregando: s.screen === 'carregando', isErro: !!erros[s.screen], erro: erros[s.screen] || erros.erroRede,
+      goLista: set({ screen: 'lista', sheet: null }), goCriar: set({ screen: 'criar' }),
+      search: s.search, onSearch: e => this.setState({ search: e.target.value }),
+      chars, listHasItems, listEmpty: !listHasItems,
+      listCountLabel: listForcedEmpty ? 'Nenhuma ficha ainda' : `${s.chars.length} fichas · 6 no total`,
+      emptyTitle: listForcedEmpty ? 'Nenhum personagem ainda' : 'Nada encontrado',
+      emptyText: listForcedEmpty ? 'Crie a primeira ficha. Só precisa do nome do personagem e do jogador.' : `Nenhuma ficha com “${s.search}”. Tente outro nome.`,
+      newName: s.newName, newPlayer: s.newPlayer, onNewName: e => this.setState({ newName: e.target.value }), onNewPlayer: e => this.setState({ newPlayer: e.target.value }),
+      createDisabled: !s.newName.trim(), createOpacity: s.newName.trim() ? 1 : 0.5, doCriar: set({ screen: 'ficha', tab: 'basicos' }),
+      onRefresh: () => this.flash('atualizado'),
+      tabs, tBasicos: s.tab === 'basicos', tPericias: s.tab === 'pericias', tMagias: s.tab === 'magias', tNotas: s.tab === 'anotacoes',
+      editMode: edit, locked: s.locked,
+      stage, vitRows, vitCur: fmt(cur), vitMax: fmt(VTOTAL),
+      berkCur: s.berk, berkMax: BERK_MAX, berkPct: `${berkPctN * 100}%`, berkState,
+      weapons, attrs, attrOpen: s.attrOpen, toggleAttr: () => this.setState(o => ({ attrOpen: !o.attrOpen })), attrChevron: s.attrOpen ? 'icon-chevron-up' : 'icon-chevron-down',
+      infoFields, langs,
+      usedPts: used, remPts: 80 - used, remColor: 80 - used < 0 ? 'var(--destructive)' : 'var(--foreground)', skillFilters, skillGroups, usedSkills,
+      finances: [['Ouro', 100], ['Prata', 8], ['Cobre', 5], ['Imperano', 0], ['Joias', 0]].map(([label, v]) => ({ label, value: fmt(v) })),
+      kit: KIT.map(name => ({ name, q: 1 })), kitOpen: s.kitOpen, toggleKit: () => this.setState(o => ({ kitOpen: !o.kitOpen })), kitChevron: s.kitOpen ? 'icon-chevron-up' : 'icon-chevron-down',
+      magTabs, levelChips, magGroups, magQ: s.magQ, onMagQ: e => this.setState({ magQ: e.target.value }), magEmpty: filtered.length === 0,
+      magPlaceholder: isMag ? 'Buscar magia, tipo ou efeito' : 'Buscar talento ou efeito',
+      magCountLabel: filtered.length === pool.length ? `${pool.length} ${isMag ? 'magias' : 'talentos'}, por nível · toque para ver detalhes` : `${filtered.length} de ${pool.length}`,
+      notes, notesCount: s.notes.length, notesCorrupt, notesOld: s.notesState === 'antigas', canEditNotes, notesQ: s.notesQ, onNotesQ: e => this.setState({ notesQ: e.target.value }),
+      notesEmpty: notes.length === 0, reordering, notReordering: !reordering, toggleReorder: () => this.setState(o => ({ reorder: !o.reorder, openNote: null })),
+      reorderBtn: reordering ? { label: 'Concluir', icon: 'icon-check', bg: 'var(--accent)', fg: 'var(--accent-foreground)', border: 'var(--primary)' } : { label: 'Ordenar', icon: 'icon-arrow-up-down', bg: 'transparent', fg: 'var(--foreground)', border: 'var(--border)' },
+      lock: s.locked ? { icon: 'icon-lock', label: 'Bloqueado', bg: 'transparent', fg: 'var(--muted-foreground)', border: 'var(--border)' } : { icon: 'icon-lock-open', label: 'Editando', bg: 'var(--accent)', fg: 'var(--accent-foreground)', border: 'var(--primary)' },
+      toggleLock: () => { const nl = !s.locked; this.setState({ locked: nl, editing: null, openSkill: null }); this.flash(nl ? 'bloqueado' : 'editando', 1800); },
+      openVit: set({ sheet: 'vit', amount: '' }), openBerk: set({ sheet: 'berk', amount: '' }), openArma: set({ sheet: 'arma' }), openPericias: set({ sheet: 'pericias' }), openAtributos: set({ sheet: 'atributos' }),
+      closeSheet: set({ sheet: null }),
+      hasSheet: !!s.sheet && s.sheet !== 'excluir', hasAlert: s.sheet === 'excluir', sheetTitle: sheetTitles[s.sheet] || '',
+      sheetVit: isVit, sheetBerk: isBerk, sheetAmount: isVit || isBerk, sheetArma: s.sheet === 'arma', sheetAtributos: s.sheet === 'atributos', sheetPericias: s.sheet === 'pericias',
+      amount: s.amount, onAmount: e => this.setState({ amount: e.target.value.replace(/\D/g, '') }), chips, preview, actA, actB, restore, restoreLabel,
+      delName: (s.chars[s.delIdx] || CHARS[0]).name, confirmDel: () => this.setState(o => ({ sheet: null, chars: o.chars.filter((_, i) => i !== o.delIdx) })),
+      hasToast: !!s.toast && !!toasts[s.toast], toastData: toasts[s.toast] || toasts.atualizado,
+    };
+  }
+}
+</script>
+</body>
+</html>
+
