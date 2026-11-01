@@ -5,8 +5,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { useCharacter } from '@/lib/api/queries'
 import { CharacterLayout } from '@/components/forms/character-layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react'
+import {
+  CharacterLoadErrorState,
+  CharacterNotFoundState,
+  CharacterSheetSkeleton,
+  isCharacterNotFoundError,
+} from '@/components/character/sheet-states'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ============================================
@@ -60,65 +65,22 @@ export default function CharacterPage() {
   // ============================================
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Carregando personagem...</p>
-          </div>
-        </div>
-      </div>
-    )
+    return <CharacterSheetSkeleton />
   }
 
   if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <h2 className="text-xl font-semibold text-destructive">
-                Erro ao carregar personagem
-              </h2>
-              <p className="text-muted-foreground">
-                {error.message || 'Personagem não encontrado'}
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={handleBack} variant="outline">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Voltar
-                </Button>
-                <Button onClick={handleRefresh}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Tentar Novamente
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    // 404 → não encontrado; rede/500 → falha ao carregar
+    return isCharacterNotFoundError(error) ? (
+      <CharacterNotFoundState onBack={handleBack} onRetry={handleRefresh} />
+    ) : (
+      <CharacterLoadErrorState onBack={handleBack} onRetry={handleRefresh} />
     )
   }
 
   // Garantir que os dados existem e são válidos
   const character = characterResponse?.character
   if (!character) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <h2 className="text-xl font-semibold">Personagem não encontrado</h2>
-              <Button onClick={handleBack} variant="outline">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar para Lista
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <CharacterNotFoundState onBack={handleBack} />
   }
 
   // Sanitizar dados para evitar erros de map/undefined
