@@ -146,7 +146,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
 // ============================================
 
 interface EditableFieldProps {
-  characterId?: string // ID do personagem para auto-save
+  characterId: string // ID do personagem para auto-save (obrigatório)
   section: string
   field: string
   value: any
@@ -197,15 +197,15 @@ export function EditableField({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   // Store Zustand
-  const { startEditing, cancelEditing, saveField, error: storeError } = useCharacterStore()
+  const { startEditing, cancelEditing } = useCharacterStore()
   const isEditing = useIsFieldEditing(section, field)
 
   // Mutation para update automático
   const updateCharacterMutation = useUpdateCharacter()
 
-  // Estados de loading e erro (priorizar mutation se disponível)
-  const isSaving = characterId ? updateCharacterMutation.isPending : useCharacterStore(state => state.isSaving)
-  const error = characterId ? updateCharacterMutation.error?.message : storeError
+  // Estados de loading e erro vêm da mutation
+  const isSaving = updateCharacterMutation.isPending
+  const error = updateCharacterMutation.error?.message
 
   // ============================================
   // EFEITOS
@@ -261,7 +261,7 @@ export function EditableField({
       if (onSave) {
         // Callback customizado
         await onSave(parsedValue)
-      } else if (characterId) {
+      } else {
         // Auto-save usando updateCharacter mutation
         const updateData = buildUpdateData(section, field, parsedValue, currentCharacterData)
 
@@ -269,10 +269,6 @@ export function EditableField({
           id: characterId,
           data: updateData
         })
-      } else {
-        // Usar store padrão (fallback)
-        useCharacterStore.getState().updateField(parsedValue)
-        await saveField()
       }
 
       setHasChanges(false)

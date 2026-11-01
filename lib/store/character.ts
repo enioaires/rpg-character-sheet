@@ -15,29 +15,16 @@ interface EditingField {
 interface CharacterState {
   // Estado do personagem
   character: CharacterFull | null
-  isLoading: boolean
-  error: string | null
 
   // Estado de edição
   editingField: EditingField | null
-  pendingChanges: Record<string, any>
-  isSaving: boolean
 
   // Ações
   setCharacter: (character: CharacterFull) => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
 
   // Edição inline
   startEditing: (section: string, field: string, currentValue: any) => void
   cancelEditing: () => void
-  updateField: (value: any) => void
-  saveField: () => Promise<void>
-
-  // Mudanças em lote
-  addPendingChange: (field: string, value: any) => void
-  savePendingChanges: () => Promise<void>
-  clearPendingChanges: () => void
 
   // Reset
   reset: () => void
@@ -54,141 +41,37 @@ export const useCharacterStore = create<CharacterState>()(
       // ESTADO INICIAL
       // ============================================
       character: null,
-      isLoading: false,
-      error: null,
       editingField: null,
-      pendingChanges: {},
-      isSaving: false,
 
       // ============================================
       // AÇÕES BÁSICAS
       // ============================================
-      setCharacter: (character) => set({ character, error: null }),
-
-      setLoading: (isLoading) => set({ isLoading }),
-
-      setError: (error) => set({ error }),
+      setCharacter: (character) => set({ character }),
 
       // ============================================
       // EDIÇÃO INLINE
       // ============================================
       startEditing: (section, field, originalValue) => {
         set({
-          editingField: { section, field, originalValue },
-          error: null
+          editingField: { section, field, originalValue }
         })
       },
 
       cancelEditing: () => {
         const { editingField } = get()
         if (editingField) {
-          // Restaurar valor original se necessário
           set({
-            editingField: null,
-            error: null
+            editingField: null
           })
         }
       },
-
-      updateField: (value) => {
-        const { editingField, character } = get()
-        if (!editingField || !character) return
-
-        // Atualizar valor temporariamente no personagem
-        const updatedCharacter = { ...character }
-
-        // Navegação aninhada para campos como attributes.agilidade.race
-        const fieldPath = editingField.field.split('.')
-        let current = updatedCharacter as any
-
-        for (let i = 0; i < fieldPath.length - 1; i++) {
-          if (!current[fieldPath[i]]) current[fieldPath[i]] = {}
-          current = current[fieldPath[i]]
-        }
-
-        current[fieldPath[fieldPath.length - 1]] = value
-
-        set({ character: updatedCharacter })
-      },
-
-      saveField: async () => {
-        const { editingField, character } = get()
-        if (!editingField || !character) return
-
-        set({ isSaving: true, error: null })
-
-        try {
-          // Aqui integraremos com as APIs de update
-          // Por enquanto, vamos simular
-          await new Promise(resolve => setTimeout(resolve, 500))
-
-          // Sucesso - limpar estado de edição
-          set({
-            editingField: null,
-            isSaving: false
-          })
-        } catch (error) {
-          // Erro - restaurar valor original e mostrar erro
-          const { editingField: currentEditingField } = get()
-          if (currentEditingField) {
-            // Restaurar valor original
-            get().updateField(currentEditingField.originalValue)
-
-            set({
-              error: error instanceof Error ? error.message : 'Erro ao salvar',
-              isSaving: false
-            })
-          }
-        }
-      },
-
-      // ============================================
-      // MUDANÇAS EM LOTE
-      // ============================================
-      addPendingChange: (field, value) => {
-        const { pendingChanges } = get()
-        set({
-          pendingChanges: {
-            ...pendingChanges,
-            [field]: value
-          }
-        })
-      },
-
-      savePendingChanges: async () => {
-        const { pendingChanges, character } = get()
-        if (!character || Object.keys(pendingChanges).length === 0) return
-
-        set({ isSaving: true, error: null })
-
-        try {
-          // Aqui integraremos com a API de update em lote
-          await new Promise(resolve => setTimeout(resolve, 1000))
-
-          set({
-            pendingChanges: {},
-            isSaving: false
-          })
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Erro ao salvar mudanças',
-            isSaving: false
-          })
-        }
-      },
-
-      clearPendingChanges: () => set({ pendingChanges: {} }),
 
       // ============================================
       // RESET
       // ============================================
       reset: () => set({
         character: null,
-        isLoading: false,
-        error: null,
-        editingField: null,
-        pendingChanges: {},
-        isSaving: false
+        editingField: null
       })
     }),
     {
@@ -209,34 +92,6 @@ export const useIsFieldEditing = (section: string, field: string) => {
     state.editingField?.section === section &&
     state.editingField?.field === field
   )
-}
-
-/**
- * Hook para verificar se há mudanças pendentes
- */
-export const useHasPendingChanges = () => {
-  return useCharacterStore(state =>
-    Object.keys(state.pendingChanges).length > 0
-  )
-}
-
-/**
- * Hook para obter valor de um campo específico
- */
-export const useFieldValue = (fieldPath: string) => {
-  return useCharacterStore(state => {
-    if (!state.character) return null
-
-    const path = fieldPath.split('.')
-    let current = state.character as any
-
-    for (const key of path) {
-      if (current == null) return null
-      current = current[key]
-    }
-
-    return current
-  })
 }
 
 /**
