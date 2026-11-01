@@ -115,6 +115,28 @@ export function migrateLegacyNotes(
   return [createNote({ title: 'Anotações Antigas', content: legacyText }, now)]
 }
 
+// Só 'ok' e 'empty' podem ser sobrescritos; 'legacy' e 'corrupted' são somente leitura
+export function canWriteNotes(parsed: ParsedNotes): boolean {
+  return parsed.status === 'ok' || parsed.status === 'empty'
+}
+
+// Nova lista com a nota trocada com o vizinho; null quando não há movimento
+export function moveNote(
+  notes: Note[],
+  id: string,
+  direction: 'up' | 'down',
+): Note[] | null {
+  const index = notes.findIndex((note) => note.id === id)
+  if (index === -1) return null
+  const target = direction === 'up' ? index - 1 : index + 1
+  if (target < 0 || target >= notes.length) return null
+
+  const result = [...notes]
+  result[index] = notes[target]
+  result[target] = notes[index]
+  return result
+}
+
 // Escopo de módulo (e não de componente): sobrevive ao Strict Mode e a
 // remontagens da aba enquanto a gravação está em andamento
 const claimedLegacyMigrations = new Set<string>()

@@ -100,3 +100,42 @@ describe('NotesTab render purity', () => {
     }
   })
 })
+
+describe('NotesTab dados corrompidos ou em formato antigo', () => {
+  const CREATE_CONTROLS = [
+    'Nenhuma anotação ainda',
+    'Criar primeira anotação',
+    'Nova Anotação',
+  ]
+
+  it('F: JSON corrompido mostra aviso, texto escapado e nenhum controle de criação', async () => {
+    const raw = '{"x":"<img src=x onerror=alert(1)>"}'
+    const html = await render({ notes: raw, isEditMode: true })
+    expect(html).toContain('Não foi possível ler as anotações')
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).not.toContain('<img')
+    for (const text of CREATE_CONTROLS) {
+      expect(html).not.toContain(text)
+    }
+    expect(mutateAsync).toHaveBeenCalledTimes(0)
+  })
+
+  it('G: texto antigo é exibido somente leitura, sem controles de criação', async () => {
+    for (const isEditMode of [false, true]) {
+      const html = await render({ notes: LEGACY_TEXT, isEditMode })
+      expect(html).toContain('Anotações em formato antigo')
+      expect(html).toContain(LEGACY_TEXT)
+      for (const text of CREATE_CONTROLS) {
+        expect(html).not.toContain(text)
+      }
+      expect(mutateAsync).toHaveBeenCalledTimes(0)
+    }
+  })
+
+  it('H: controle - notas vazias graváveis mantêm o estado vazio e os botões de criar', async () => {
+    const html = await render({ notes: '[]', isEditMode: true })
+    for (const text of CREATE_CONTROLS) {
+      expect(html).toContain(text)
+    }
+  })
+})

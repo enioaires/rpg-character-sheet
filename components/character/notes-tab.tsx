@@ -29,8 +29,11 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUpdateCharacter } from "@/lib/api/queries";
 import {
+  canWriteNotes,
   claimLegacyMigration,
+  createNote,
   migrateLegacyNotes,
+  moveNote,
   parseNotes,
   serializeNotes,
   type Note,
@@ -67,6 +70,18 @@ export function NotesTab({
   // Leitura da coluna `notes` (pura: sem setState nem efeitos durante o render)
   const parsed = useMemo(() => parseNotes(character.notes), [character.notes]);
   const allNotes = parsed.notes;
+  const canWrite = canWriteNotes(parsed);
+
+  // Recusa gravações enquanto o valor salvo é ilegível ou ainda não foi migrado
+  const guardWrite = (): boolean => {
+    if (canWrite) return true;
+    toast.error(
+      parsed.status === "legacy"
+        ? "Aguarde a conversão das anotações antigas."
+        : "As anotações salvas estão corrompidas. Nenhuma alteração será salva para não sobrescrever o conteúdo original.",
+    );
+    return false;
+  };
 
   // Migra anotações antigas (texto simples) para o novo formato, uma vez por sessão
   useEffect(() => {
@@ -109,17 +124,13 @@ export function NotesTab({
       return;
     }
 
-    try {
-      const newNote: Note = {
-        id: Date.now().toString(),
-        title: newNoteTitle.trim(),
-        content: newNoteContent.trim(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    if (!guardWrite()) return;
 
-      const updatedNotes = [...allNotes, newNote];
-      const notesJson = JSON.stringify(updatedNotes);
+    try {
+      const notesJson = serializeNotes([
+        ...allNotes,
+        createNote({ title: newNoteTitle, content: newNoteContent }),
+      ]);
 
       await updateCharacterMutation.mutateAsync({
         id: characterId,
@@ -144,6 +155,8 @@ export function NotesTab({
       return;
     }
 
+    if (!guardWrite()) return;
+
     try {
       const updatedNotes = allNotes.map((note) =>
         note.id === editingNote.id
@@ -156,7 +169,7 @@ export function NotesTab({
           : note,
       );
 
-      const notesJson = JSON.stringify(updatedNotes);
+      const notesJson = serializeNotes(updatedNotes);
 
       await updateCharacterMutation.mutateAsync({
         id: characterId,
@@ -176,9 +189,11 @@ export function NotesTab({
   };
 
   const handleDeleteNote = async (noteId: string) => {
+    if (!guardWrite()) return;
+
     try {
       const updatedNotes = allNotes.filter((note) => note.id !== noteId);
-      const notesJson = JSON.stringify(updatedNotes);
+      const notesJson = serializeNotes(updatedNotes);
 
       await updateCharacterMutation.mutateAsync({
         id: characterId,
@@ -206,24 +221,18 @@ export function NotesTab({
     setNewNoteContent("");
   };
 
-  // Função para mover nota para cima
-  const moveNoteUp = async (noteId: string) => {
-    const currentIndex = allNotes.findIndex((note) => note.id === noteId);
-    if (currentIndex <= 0) return; // Já está no topo ou não encontrada
+  // Troca a nota de posição; sem gravação quando o movimento é impossível
+  const moveNoteBy = async (noteId: string, direction: "up" | "down") => {
+    if (!guardWrite()) return;
+
+    const reordered = moveNote(allNotes, noteId, direction);
+    if (!reordered) return; // Já está na ponta ou não encontrada
 
     try {
-      const newNotesArray = [...allNotes];
-      // Trocar posições
-      const temp = newNotesArray[currentIndex - 1];
-      newNotesArray[currentIndex - 1] = newNotesArray[currentIndex];
-      newNotesArray[currentIndex] = temp;
-
-      const notesJson = JSON.stringify(newNotesArray);
-
       await updateCharacterMutation.mutateAsync({
         id: characterId,
         data: {
-          notes: notesJson,
+          notes: serializeNotes(reordered),
         },
       });
 
@@ -234,33 +243,8 @@ export function NotesTab({
     }
   };
 
-  // Função para mover nota para baixo
-  const moveNoteDown = async (noteId: string) => {
-    const currentIndex = allNotes.findIndex((note) => note.id === noteId);
-    if (currentIndex >= allNotes.length - 1 || currentIndex === -1) return; // Já está no final ou não encontrada
-
-    try {
-      const newNotesArray = [...allNotes];
-      // Trocar posições
-      const temp = newNotesArray[currentIndex];
-      newNotesArray[currentIndex] = newNotesArray[currentIndex + 1];
-      newNotesArray[currentIndex + 1] = temp;
-
-      const notesJson = JSON.stringify(newNotesArray);
-
-      await updateCharacterMutation.mutateAsync({
-        id: characterId,
-        data: {
-          notes: notesJson,
-        },
-      });
-
-      toast.success("Posição da anotação atualizada!");
-    } catch (error) {
-      console.error("Erro ao mover anotação:", error);
-      toast.error("Erro ao mover anotação");
-    }
-  };
+  const moveNoteUp = (noteId: string) => moveNoteBy(noteId, "up");
+  const moveNoteDown = (noteId: string) => moveNoteBy(noteId, "down");
 
   // Função de emergência para limpar dados corrompidos
   const clearCorruptedNotes = async () => {
@@ -268,7 +252,7 @@ export function NotesTab({
       await updateCharacterMutation.mutateAsync({
         id: characterId,
         data: {
-          notes: JSON.stringify([]),
+          notes: serializeNotes([]),
         },
       });
       toast.success("Dados de anotações limpos com sucesso!");
@@ -348,7 +332,7 @@ export function NotesTab({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          {isEditMode && (
+          {isEditMode && canWrite && (
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full sm:w-auto">
@@ -450,7 +434,32 @@ export function NotesTab({
       </div>
 
       {/* Lista de anotações */}
-      {allNotes.length === 0 ? (
+      {!canWrite ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              {parsed.status === "legacy"
+                ? "Anotações em formato antigo"
+                : "Não foi possível ler as anotações"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {parsed.status === "legacy"
+                ? "Este conteúdo será convertido em uma anotação ao entrar no modo de edição."
+                : "O conteúdo salvo foi preservado e nenhuma alteração será salva até que ele seja corrigido."}
+            </p>
+            <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-muted rounded p-3 max-h-64 overflow-auto">
+              {parsed.status === "legacy"
+                ? parsed.legacyText
+                : parsed.status === "corrupted"
+                  ? parsed.raw
+                  : ""}
+            </pre>
+          </CardContent>
+        </Card>
+      ) : allNotes.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">

@@ -5,8 +5,11 @@
 
 import { describe, expect, it } from 'bun:test'
 import {
+  canWriteNotes,
   claimLegacyMigration,
+  createNote,
   migrateLegacyNotes,
+  moveNote,
   parseNotes,
   serializeNotes,
   type Note,
@@ -147,5 +150,50 @@ describe('claimLegacyMigration', () => {
     expect(claimLegacyMigration('claim-char-A', 'txt')).toBe(false)
     expect(claimLegacyMigration('claim-char-B', 'txt')).toBe(true)
     expect(claimLegacyMigration('claim-char-A', 'outro')).toBe(true)
+  })
+})
+
+describe('canWriteNotes', () => {
+  it('é true para empty e ok', () => {
+    expect(canWriteNotes(parseNotes(null))).toBe(true)
+    expect(canWriteNotes(parseNotes('[]'))).toBe(true)
+    expect(canWriteNotes(parseNotes(JSON.stringify([NOTE_A])))).toBe(true)
+  })
+
+  it('é false para legacy e corrupted', () => {
+    expect(canWriteNotes(parseNotes('texto antigo'))).toBe(false)
+    expect(canWriteNotes(parseNotes('{"x":1}'))).toBe(false)
+  })
+})
+
+describe('createNote', () => {
+  it('apara título e conteúdo e usa um único instante', () => {
+    const now = new Date('2024-02-03T04:05:06.000Z')
+    const note = createNote({ title: '  T  ', content: '  C  ' }, now)
+    expect(note.title).toBe('T')
+    expect(note.content).toBe('C')
+    expect(note.id).toBe(String(now.getTime()))
+    expect(note.createdAt).toBe(now.toISOString())
+    expect(note.updatedAt).toBe(now.toISOString())
+  })
+})
+
+describe('moveNote', () => {
+  const a = { ...NOTE_A, id: 'a' }
+  const b = { ...NOTE_A, id: 'b' }
+  const c = { ...NOTE_A, id: 'c' }
+
+  it('troca com o vizinho sem mutar a entrada', () => {
+    const input = [a, b, c]
+    expect(moveNote(input, 'b', 'up')).toEqual([b, a, c])
+    expect(moveNote(input, 'b', 'down')).toEqual([a, c, b])
+    expect(input).toEqual([a, b, c])
+  })
+
+  it('retorna null quando não há movimento possível', () => {
+    expect(moveNote([a, b, c], 'a', 'up')).toBeNull()
+    expect(moveNote([a, b, c], 'c', 'down')).toBeNull()
+    expect(moveNote([a, b, c], 'zzz', 'up')).toBeNull()
+    expect(moveNote([a, b, c], 'zzz', 'down')).toBeNull()
   })
 })
