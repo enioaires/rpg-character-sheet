@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  attributeValueSchema,
+  skillValueSchema,
+  vitalityBaseSchema,
+  vitalityLevelsSchema,
+} from '@/lib/schemas/calculations'
 
 // Schema para query parameters do GET /characters
 export const getCharactersQuerySchema = z.object({
@@ -127,6 +133,97 @@ export const weaponSchema = jsonObject({
 // Itens nulos: buildUpdateData gera array esparso quando uma arma posterior é editada primeiro
 export const weaponsFieldSchema = z.array(weaponSchema.nullable()).max(3)
 
+// Entradas parciais: buildUpdateData grava só a chave editada quando o registro salvo não a tem
+export const attributesFieldSchema = z.record(
+  z.string(),
+  attributeValueSchema.partial().catchall(jsonExtra),
+)
+
+export const vitalityFieldSchema = vitalityBaseSchema.partial().catchall(jsonExtra)
+
+// Sem mínimo: restoreFullHealth grava estágios negativos quando raça + classe < 100
+export const currentVitalityFieldSchema = vitalityLevelsSchema.partial().catchall(jsonExtra)
+
+// distributed >= 0 é garantido por todos os escritores de perícias
+export const skillsFieldSchema = z.record(
+  z.string(),
+  skillValueSchema.partial().catchall(jsonExtra),
+)
+
+export const armorFieldSchema = jsonObject({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  totalVitality: z.number().optional(),
+  currentVitality: z.number().optional(),
+})
+
+export const adventureKitItemSchema = jsonObject({
+  name: z.string().optional(),
+  quantity: z.number().optional(),
+  isDefault: z.boolean().optional(),
+})
+
+export const adventureKitFieldSchema = z.array(adventureKitItemSchema)
+
+export const financesFieldSchema = jsonObject({
+  ouro: z.number().optional(),
+  prata: z.number().optional(),
+  cobre: z.number().optional(),
+  imperano: z.number().optional(),
+  joias: z.number().optional(),
+})
+
+export const customLanguageSchema = jsonObject({
+  name: z.string().optional(),
+  known: z.boolean().optional(),
+})
+
+// custom aceita array ou objeto indexado ("0", "1", ...): editar o nome de um idioma
+// pelo buildUpdateData (caminho de 3 segmentos) transforma o array em objeto
+export const languagesFieldSchema = jsonObject({
+  standard: z.record(z.string(), z.boolean()).optional(),
+  custom: z
+    .union([z.array(customLanguageSchema), z.record(z.string(), customLanguageSchema)])
+    .optional(),
+})
+
+// Espelha normalizeScalingData: objeto { base, perLevel }, string legada, número ou null
+export const scalingValueSchema = z.union([
+  jsonObject({
+    base: z.union([z.number(), z.string()]).optional(),
+    perLevel: z.number().nullable().optional(),
+  }),
+  z.string(),
+  z.number(),
+  z.null(),
+])
+
+export const spellSchema = jsonObject({
+  name: z.string().optional(),
+  type: z.string().optional(),
+  concentration: z.string().optional(),
+  prepTime: z.string().optional(),
+  resistance: z.string().optional(),
+  range: z.string().optional(),
+  description: z.string().optional(),
+  level: z.number().optional(),
+  berkanaCost: z.number().optional(),
+  damage: scalingValueSchema.optional(),
+  duration: scalingValueSchema.optional(),
+})
+
+export const spellsFieldSchema = z.array(spellSchema)
+
+export const talentSchema = jsonObject({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  level: z.number().optional(),
+  oncePerDay: z.boolean().optional(),
+  usedToday: z.boolean().optional(),
+})
+
+export const talentsFieldSchema = z.array(talentSchema)
+
 // Schema para atualização de personagem - todos os campos opcionais
 export const updateCharacterSchema = z.object({
   // Informações Básicas
@@ -149,18 +246,18 @@ export const updateCharacterSchema = z.object({
   maxBerkana: z.number().min(0).optional(),
   currentBerkana: z.number().min(0).optional(),
   berkanaBonus: z.number().optional(),
-  // Dados Json (aceitar qualquer estrutura)
-  attributes: z.any().optional(),
-  vitality: z.any().optional(),
-  currentVitality: z.any().optional(),
-  skills: z.any().optional(),
+  // Dados Json
+  attributes: attributesFieldSchema.optional(),
+  vitality: vitalityFieldSchema.optional(),
+  currentVitality: currentVitalityFieldSchema.optional(),
+  skills: skillsFieldSchema.optional(),
   weapons: weaponsFieldSchema.optional(),
-  armor: z.any().optional(),
-  adventureKit: z.any().optional(),
-  finances: z.any().optional(),
-  languages: z.any().optional(),
-  spells: z.any().optional(),
-  talents: z.any().optional(),
+  armor: armorFieldSchema.optional(),
+  adventureKit: adventureKitFieldSchema.optional(),
+  finances: financesFieldSchema.optional(),
+  languages: languagesFieldSchema.optional(),
+  spells: spellsFieldSchema.optional(),
+  talents: talentsFieldSchema.optional(),
   notes: z.string().optional(),
 })
 

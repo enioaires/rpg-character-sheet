@@ -15,7 +15,8 @@ export interface VitalityBase {
   class: number
 }
 
-export interface VitalityLevels {
+// type (não interface): precisa ser atribuível ao índice JSON de updateCharacterSchema
+export type VitalityLevels = {
   notavel: number
   ferido: number
   gravementeFerido: number

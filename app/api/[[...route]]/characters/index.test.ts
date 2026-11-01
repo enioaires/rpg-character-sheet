@@ -50,4 +50,12 @@ describe('PUT /:id com JSON malformado', () => {
     expect(text).not.toContain('SEGREDO-123')
     expect(touched).toEqual([])
   })
+
+  it('finances com valor não numérico responde 400 com path finances', async () => {
+    const res = await put({ finances: { ouro: 'muito' } })
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { issues: { path: string }[] }
+    expect(json.issues.some(issue => issue.path.startsWith('finances'))).toBe(true)
+    expect(touched).toEqual([])
+  })
 })
