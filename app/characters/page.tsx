@@ -6,6 +6,7 @@ import { useCharacters, useDeleteCharacter } from '@/lib/api/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import {
     AlertDialog,
@@ -117,11 +118,14 @@ export default function CharactersPage() {
         <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold">Personagens</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                        Gerencie suas fichas de personagem de RPG
-                    </p>
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold">Personagens</h1>
+                        <p className="text-sm sm:text-base text-muted-foreground">
+                            Gerencie suas fichas de personagem de RPG
+                        </p>
+                    </div>
+                    <ThemeToggle />
                 </div>
                 <Button onClick={handleCreateCharacter} className="w-full sm:w-auto">
                     <Plus className="w-4 h-4 mr-2" />

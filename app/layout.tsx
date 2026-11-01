@@ -1,17 +1,38 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Barlow,
+  Barlow_Semi_Condensed,
+  JetBrains_Mono,
+  Spectral,
+} from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spectral = Spectral({
+  variable: "--font-spectral",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const barlowSemiCondensed = Barlow_Semi_Condensed({
+  variable: "--font-barlow-semi-condensed",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -34,16 +55,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <QueryProvider>
-          <main className="min-h-screen bg-background">
-            {children}
-          </main>
-          <Toaster />
-        </QueryProvider>
+    <html
+      lang="pt-BR"
+      className={`${barlow.variable} ${spectral.variable} ${barlowSemiCondensed.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <QueryProvider>
+            <main className="min-h-screen bg-background">
+              {children}
+            </main>
+            <Toaster />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
