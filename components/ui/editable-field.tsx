@@ -8,6 +8,7 @@ import { Loader2, Edit, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCharacterStore, useIsFieldEditing } from '@/lib/store/character'
 import { useUpdateCharacter } from '@/lib/api/queries'
+import { calculateAttributeTotal, getAttributeLevelBonus } from '@/lib/calculations'
 
 // ============================================
 // UTILITÁRIOS
@@ -516,8 +517,8 @@ export function EditableAttributeField({
   attributeData: { race: number; class: number; bonus: number }
   level: number
 }) {
-  const total = attributeData.race + attributeData.class + attributeData.bonus +
-    (level >= 5 ? Math.floor(level / 5) : 0)
+  const total = calculateAttributeTotal(attributeData, level)
+  const levelBonus = getAttributeLevelBonus(level)
 
   return (
     <div className="space-y-2">
@@ -555,7 +556,7 @@ export function EditableAttributeField({
       {/* Fórmula */}
       <div className="text-xs text-muted-foreground text-center">
         {attributeData.race} + {attributeData.class} + {attributeData.bonus}
-        {level >= 5 && ` + ${Math.floor(level / 5)}`} = {total}
+        {levelBonus > 0 && ` + ${levelBonus}`} = {total}
       </div>
     </div>
   )

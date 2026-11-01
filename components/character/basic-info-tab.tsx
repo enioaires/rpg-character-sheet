@@ -16,12 +16,18 @@ import {
   ATTRIBUTE_LABELS,
   STANDARD_LANGUAGES,
   VITALITY_LEVELS,
-  VITALITY_LABELS,
-  calculateXPForNextLevel,
-  calculateAttributeBonus,
-  calculateBerkana,
-  calculateVitality
+  VITALITY_LABELS
 } from '@/lib/constants/character'
+import {
+  calculateAttributeTotal,
+  calculateMaxBerkana,
+  calculateVitalityLevels,
+  getAttributeLevelBonus,
+  getBaseBerkana,
+  getXPRequiredForNextLevel,
+  toAttributeValue,
+  toVitalityBase
+} from '@/lib/calculations'
 
 import { CharacterTabProps } from './types'
 
@@ -61,11 +67,7 @@ export function BasicInfoTab({
     }
 
     try {
-      const calculatedVitality = calculateVitality(
-        vitality.race || 0,
-        vitality.class || 0,
-        level || 0
-      )
+      const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
       // Criar cópia dos valores atuais de vitalidade
       let newCurrentVitality = { ...currentVitality }
@@ -109,11 +111,7 @@ export function BasicInfoTab({
 
   const restoreFullHealth = async () => {
     try {
-      const calculatedVitality = calculateVitality(
-        vitality.race || 0,
-        vitality.class || 0,
-        level || 0
-      )
+      const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
       // Restaurar todos os níveis para o máximo
       const updateData = {
@@ -306,7 +304,7 @@ export function BasicInfoTab({
               <div>
                 <label className="text-sm font-medium">XP para Próximo</label>
                 <div className="text-lg font-medium text-muted-foreground">
-                  {calculateXPForNextLevel(level || 0)}
+                  {getXPRequiredForNextLevel(level || 0)}
                 </div>
               </div>
             </div>
@@ -337,8 +335,8 @@ export function BasicInfoTab({
             <div className="space-y-0.5 text-sm">
               {ATTRIBUTES.map((attributeKey, index) => {
                 const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-                const levelBonus = calculateAttributeBonus(level || 0)
-                const total = (attr.race || 0) + (attr.class || 0) + (attr.bonus || 0) + levelBonus
+                const levelBonus = getAttributeLevelBonus(level || 0)
+                const total = calculateAttributeTotal(toAttributeValue(attr), level || 0)
 
                 return (
                   <div
@@ -394,8 +392,8 @@ export function BasicInfoTab({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {ATTRIBUTES.map((attributeKey) => {
                   const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-                  const levelBonus = calculateAttributeBonus(level || 0)
-                  const total = (attr.race || 0) + (attr.class || 0) + (attr.bonus || 0) + levelBonus
+                  const levelBonus = getAttributeLevelBonus(level || 0)
+                  const total = calculateAttributeTotal(toAttributeValue(attr), level || 0)
 
                   return (
                     <div key={attributeKey} className="space-y-2 p-3 bg-muted/50 rounded">
@@ -496,11 +494,7 @@ export function BasicInfoTab({
 
             {/* Vitalidade Total e Atual */}
             {(() => {
-              const calculatedVitality = calculateVitality(
-                vitality.race || 0,
-                vitality.class || 0,
-                level || 0
-              )
+              const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
               // Calcular vitalidade total (soma de todos os níveis)
               const totalVitality = Object.values(calculatedVitality).reduce((sum, val) => sum + val, 0)
@@ -581,11 +575,7 @@ export function BasicInfoTab({
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Níveis de Vitalidade</h4>
               {(() => {
-                const calculatedVitality = calculateVitality(
-                  vitality.race || 0,
-                  vitality.class || 0,
-                  level || 0
-                )
+                const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
                 return VITALITY_LEVELS.map((vitalityKey) => (
                   <div key={vitalityKey} className="flex justify-between items-center">
@@ -620,7 +610,7 @@ export function BasicInfoTab({
           </CardHeader>
           <CardContent className="space-y-4">
             {(() => {
-              const calculatedMax = calculateBerkana(level || 0, berkanaBonus || 0)
+              const calculatedMax = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
               const actualMaxBerkana = maxBerkana || calculatedMax
 
               const handleBerkanaQuickEdit = async (action: 'fill' | 'minus30' | 'minus50') => {

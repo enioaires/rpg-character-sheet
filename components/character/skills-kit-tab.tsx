@@ -9,10 +9,16 @@ import { ChevronDown, ChevronUp, UndoIcon, Maximize2 } from 'lucide-react'
 import {
   SKILLS,
   SKILL_LABELS,
-  DEFAULT_ADVENTURE_KIT,
-  calculateSkillBonus,
-  calculateSkillPointsAvailable
+  DEFAULT_ADVENTURE_KIT
 } from '@/lib/constants/character'
+import {
+  calculateRemainingSkillPoints,
+  calculateSkillTotal,
+  calculateTotalSkillPoints,
+  calculateUsedSkillPoints,
+  getSkillLevelBonus,
+  toSkillValue
+} from '@/lib/calculations'
 
 import { CharacterTabProps } from './types'
 
@@ -67,8 +73,8 @@ export function SkillsKitTab({
               <div className="space-y-0.5 text-sm pr-4">
                 {SKILLS.map((skillKey, index) => {
                   const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
-                  const levelBonus = calculateSkillBonus(level || 0)
-                  const total = 1 + (skill.distributed || 0) + (skill.bonus || 0) + levelBonus
+                  const levelBonus = getSkillLevelBonus(level || 0)
+                  const total = calculateSkillTotal(toSkillValue(skill), level || 0)
 
                   return (
                     <div
@@ -309,12 +315,12 @@ export function SkillsKitTab({
               <CardTitle>Distribuição de Pontos de Perícia</CardTitle>
               <div className="text-sm text-muted-foreground">
                 {(() => {
-                  const availablePoints = calculateSkillPointsAvailable(level || 0)
-                  const usedPoints = SKILLS.reduce((total, skillKey) => {
-                    const skill = skills[skillKey] || { distributed: 0 }
-                    return total + (skill.distributed || 0)
-                  }, 0)
-                  const remainingPoints = availablePoints - usedPoints
+                  const skillValues = Object.fromEntries(
+                    SKILLS.map((skillKey) => [skillKey, toSkillValue(skills[skillKey])])
+                  )
+                  const availablePoints = calculateTotalSkillPoints(level || 0)
+                  const usedPoints = calculateUsedSkillPoints(skillValues)
+                  const remainingPoints = calculateRemainingSkillPoints(skillValues, availablePoints)
 
                   return (
                     <div className="flex gap-4">
@@ -347,8 +353,8 @@ export function SkillsKitTab({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {SKILLS.map((skillKey) => {
                 const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
-                const levelBonus = calculateSkillBonus(level || 0)
-                const total = 1 + (skill.distributed || 0) + (skill.bonus || 0) + levelBonus
+                const levelBonus = getSkillLevelBonus(level || 0)
+                const total = calculateSkillTotal(toSkillValue(skill), level || 0)
 
                 const handleQuickAdd = async (amount: number) => {
                   try {
