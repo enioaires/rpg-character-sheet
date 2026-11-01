@@ -10,13 +10,15 @@ import {
   toAttributeValue,
   toVitalityBase,
 } from '@/lib/calculations'
-import { ATTRIBUTES, ATTRIBUTE_LABELS, VITALITY_LEVELS } from '@/lib/constants/character'
+import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES, VITALITY_LEVELS } from '@/lib/constants/character'
 import {
   buildAttributeRows,
   buildBerkanaView,
   buildExperienceView,
+  buildLanguageChips,
   buildVitalityView,
   getFillPercent,
+  hasWeaponContent,
 } from './basic-info-model'
 
 // ============================================
@@ -212,5 +214,73 @@ describe('buildExperienceView', () => {
 
   it('nível 99 mostra "Nível máximo"', () => {
     expect(buildExperienceView(99, 5000).caption).toBe('Nível máximo')
+  })
+})
+
+// ============================================
+// hasWeaponContent
+// ============================================
+
+describe('hasWeaponContent', () => {
+  it('valores vazios ou que não são objeto dão false', () => {
+    expect(hasWeaponContent(null)).toBe(false)
+    expect(hasWeaponContent('x')).toBe(false)
+    expect(hasWeaponContent({})).toBe(false)
+    expect(hasWeaponContent({ name: '', level: 0 })).toBe(false)
+  })
+
+  it('nome, dano, descrição ou nível dão true', () => {
+    expect(hasWeaponContent({ name: 'Adaga' })).toBe(true)
+    expect(hasWeaponContent({ damage: { critical: '7000' } })).toBe(true)
+    expect(hasWeaponContent({ description: 'x' })).toBe(true)
+    expect(hasWeaponContent({ level: 3 })).toBe(true)
+  })
+})
+
+// ============================================
+// buildLanguageChips
+// ============================================
+
+describe('buildLanguageChips', () => {
+  it('seis padrões na ordem com rótulos acentuados e custom por índice de armazenamento', () => {
+    const chips = buildLanguageChips({
+      standard: { comum: true },
+      custom: [
+        { name: 'Malashin', known: true },
+        { name: '', known: false },
+      ],
+    })
+
+    expect(chips.standard.map((chip) => chip.key)).toEqual([...STANDARD_LANGUAGES])
+    expect(chips.standard.map((chip) => chip.label)).toEqual([
+      'Comum',
+      'Errante',
+      'Élfico',
+      'Sombrio',
+      'Anão',
+      'Sigílico',
+    ])
+    expect(chips.standard[0].known).toBe(true)
+    expect(chips.standard.slice(1).every((chip) => !chip.known)).toBe(true)
+    expect(chips.custom).toEqual([
+      { index: 0, name: 'Malashin', known: true },
+      { index: 1, name: '', known: false },
+    ])
+  })
+
+  it('custom como objeto indexado (DS4-19) não aparece, igual a hoje', () => {
+    const chips = buildLanguageChips({ custom: { '0': { name: 'X' } } })
+    expect(chips.custom).toEqual([])
+  })
+
+  it('buraco nulo no array mantém o índice de armazenamento das seguintes', () => {
+    const chips = buildLanguageChips({ custom: [null, { name: 'B', known: true }] })
+    expect(chips.custom).toEqual([{ index: 1, name: 'B', known: true }])
+  })
+
+  it('sem dados: 6 padrões e 0 custom', () => {
+    const chips = buildLanguageChips(undefined)
+    expect(chips.standard).toHaveLength(6)
+    expect(chips.custom).toHaveLength(0)
   })
 })

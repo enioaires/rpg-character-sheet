@@ -59,6 +59,18 @@ const fixtureA = {
   characterName: 'Kael',
   playerName: 'Enio',
   class: 'Caçador Errante',
+  weapons: [
+    {
+      name: 'Espada Longa',
+      level: 37,
+      damage: { d25: '3000', critical: '7000' },
+      description: 'Lâmina antiga',
+    },
+    null,
+    { name: 'Adaga' },
+  ],
+  armor: { name: 'Traje', description: 'Couro e Aço', totalVitality: 1500, currentVitality: 1125 },
+  languages: { standard: { comum: true }, custom: [{ name: 'Malashin', known: true }] },
 }
 
 beforeEach(() => {
@@ -97,8 +109,7 @@ describe('BasicInfoTab: Vitalidade e Berkana', () => {
 
   it('nenhum campo está em edição no render e o card não tem entrada de dano', async () => {
     const html = await render(fixtureA, true)
-    // Os checkboxes antigos de Linguagens trazem um input escondido; o card novo (tarefa 3) não tem
-    expect(html).not.toMatch(/<input(?![^>]*type="checkbox")/)
+    expect(html).not.toContain('<input')
   })
 
   it('render nunca grava nem abre sheet', async () => {
@@ -155,5 +166,71 @@ describe('BasicInfoTab: Atributos, Experiência e Informações Básicas', () =>
     expect(position('Atributos')).toBeGreaterThan(position('Berkana'))
     expect(position('Experiência e Nível')).toBeGreaterThan(position('Atributos'))
     expect(position('Informações Básicas')).toBeGreaterThan(position('Experiência e Nível'))
+  })
+})
+
+describe('BasicInfoTab: Armas, Armadura e Linguagens', () => {
+  const TITLES = [
+    'Vitalidade',
+    'Berkana',
+    'Armas',
+    'Atributos',
+    'Experiência e Nível',
+    'Armadura',
+    'Informações Básicas',
+    'Linguagens',
+  ]
+
+  it('desbloqueada: os oito cards na ordem do design', async () => {
+    expect(headings(await render(fixtureA, true))).toEqual(TITLES)
+  })
+
+  it('desbloqueada: armas com nível, danos, crítico, descrição, dica e slot vazio editável', async () => {
+    const html = await render(fixtureA, true)
+
+    for (const text of ['Espada Longa', 'Nv', '3000', '7000', 'Crít.', 'Lâmina antiga']) {
+      expect(html).toContain(text)
+    }
+    expect(html).toContain('Máximo de 3 armas.')
+    expect(html).toContain('Nome da Arma 2')
+  })
+
+  it('desbloqueada: armadura com a barra em 75%', async () => {
+    const html = await render(fixtureA, true)
+
+    for (const text of ['Traje', 'Couro e Aço', '1125', '1500', 'width:75%']) {
+      expect(html).toContain(text)
+    }
+  })
+
+  it('desbloqueada: linguagens são chips alternáveis, com "Outra"', async () => {
+    const html = await render(fixtureA, true)
+
+    for (const text of ['Élfico', 'Sigílico', 'Malashin', 'Outra', 'aria-pressed="true"', 'aria-pressed="false"', 'role="button"']) {
+      expect(html).toContain(text)
+    }
+  })
+
+  it('bloqueada: nenhum controle de edição, mas os quatro botões de sheet continuam', async () => {
+    const html = await render(fixtureA, false)
+
+    for (const text of ['role="button"', 'Outra', 'Máximo de 3 armas.', 'Nome da Arma 2', 'aria-pressed']) {
+      expect(html).not.toContain(text)
+    }
+    for (const text of ['Dano', 'Cura', 'Gastar', 'Recuperar', 'Espada Longa', 'Adaga', 'Malashin', '16', '13.160']) {
+      expect(html).toContain(text)
+    }
+  })
+
+  it('bloqueada sem armas mostra o estado vazio', async () => {
+    const html = await render({ ...fixtureA, weapons: [] }, false)
+    expect(html).toContain('Nenhuma arma cadastrada.')
+  })
+
+  it('nenhum render, bloqueado ou não, grava ou abre sheet', async () => {
+    await render(fixtureA, true)
+    await render(fixtureA, false)
+    expect(mutateAsync).toHaveBeenCalledTimes(0)
+    expect(openSheet).toHaveBeenCalledTimes(0)
   })
 })
