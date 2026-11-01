@@ -1,5 +1,7 @@
 // lib/calculations/index.ts
 
+import { VITALITY_LEVELS } from '@/lib/constants/character'
+
 // ============================================
 // TIPOS PARA CÁLCULOS
 // ============================================
@@ -121,6 +123,118 @@ export function getBaseBerkana(): number {
  */
 export function calculateMaxBerkana(level: number, baseValue: number, bonus: number): number {
   return baseValue + (level * 10) + bonus
+}
+
+// ============================================
+// RECURSOS EM JOGO: VITALIDADE E BERKANA
+// ============================================
+
+export type VitalityStageKey = keyof VitalityLevels
+
+// O JSON armazenado de currentVitality também pode trazer chaves desconhecidas em tempo de execução
+export type CurrentVitalityInput = Partial<Record<VitalityStageKey, number | null>> | null | undefined
+
+/**
+ * Copia o currentVitality armazenado (chaves desconhecidas são mantidas) e
+ * preenche níveis ausentes ou nulos com o máximo do nível.
+ */
+function fillCurrentVitality(currentVitality: CurrentVitalityInput, maxLevels: VitalityLevels): VitalityLevels {
+  const filled = { ...currentVitality } as Record<string, unknown>
+
+  for (const vitalityKey of VITALITY_LEVELS) {
+    if (filled[vitalityKey] === undefined || filled[vitalityKey] === null) {
+      filled[vitalityKey] = maxLevels[vitalityKey]
+    }
+  }
+
+  return filled as VitalityLevels
+}
+
+/**
+ * Vitalidade atual por nível: o valor armazenado quando não é undefined nem null,
+ * senão o máximo do nível. Retorna um objeto novo, só com as seis chaves.
+ */
+export function resolveCurrentVitalityLevels(currentVitality: CurrentVitalityInput, maxLevels: VitalityLevels): VitalityLevels {
+  const stored = currentVitality ?? {}
+  const resolved = {} as VitalityLevels
+
+  for (const vitalityKey of VITALITY_LEVELS) {
+    const value = stored[vitalityKey]
+    resolved[vitalityKey] = value !== undefined && value !== null ? value : maxLevels[vitalityKey]
+  }
+
+  return resolved
+}
+
+/**
+ * Soma dos seis níveis de vitalidade, cada um com `|| 0`.
+ * Serve para o total atual (níveis resolvidos) e para o total máximo.
+ */
+export function calculateVitalityTotal(levels: VitalityLevels): number {
+  return VITALITY_LEVELS.reduce((sum, vitalityKey) => sum + (levels[vitalityKey] || 0), 0)
+}
+
+/**
+ * Dano: drena do nível mais alto (Notável) para o mais baixo, nunca abaixo de 0.
+ * Extraído sem alteração do antigo "Aplicar Dano" (o caso de máximo negativo é preservado).
+ * Não valida damageAmount: quem chama envia um inteiro positivo.
+ * O resultado é o payload exato de currentVitality a gravar.
+ */
+export function applyVitalityDamage(currentVitality: CurrentVitalityInput, maxLevels: VitalityLevels, damageAmount: number): VitalityLevels {
+  const newCurrentVitality = fillCurrentVitality(currentVitality, maxLevels)
+  let remainingDamage = damageAmount
+
+  // Aplicar dano de cima para baixo (do maior para o menor)
+  for (const vitalityKey of VITALITY_LEVELS) {
+    if (remainingDamage <= 0) break
+
+    const currentValue = newCurrentVitality[vitalityKey]
+    const damageToApply = Math.min(remainingDamage, currentValue)
+
+    newCurrentVitality[vitalityKey] = Math.max(0, currentValue - damageToApply)
+    remainingDamage -= damageToApply
+  }
+
+  return newCurrentVitality
+}
+
+/**
+ * Cura por valor: ordem inversa do dano, decisão do dono.
+ * Enche primeiro o nível mais fundo drenado (Coma para Notável), até o máximo de cada nível.
+ * Nível já no máximo (ou acima, por edição manual) nunca é reduzido; nível com máximo <= 0 não muda;
+ * o que sobrar da cura é descartado. Quem chama envia um inteiro positivo.
+ */
+export function applyVitalityHeal(currentVitality: CurrentVitalityInput, maxLevels: VitalityLevels, healAmount: number): VitalityLevels {
+  const newCurrentVitality = fillCurrentVitality(currentVitality, maxLevels)
+  let remainingHeal = healAmount
+
+  for (const vitalityKey of [...VITALITY_LEVELS].reverse()) {
+    if (remainingHeal <= 0) break
+
+    const missing = Math.max(0, maxLevels[vitalityKey] - newCurrentVitality[vitalityKey])
+    const gained = Math.min(remainingHeal, missing)
+
+    newCurrentVitality[vitalityKey] += gained
+    remainingHeal -= gained
+  }
+
+  return newCurrentVitality
+}
+
+/**
+ * Nível de vitalidade em que o personagem está: o primeiro, na ordem em que o dano drena,
+ * com valor atual > 0; Coma quando todos estão em 0 ou menos.
+ * Retorna null quando a vitalidade não está configurada (máximos somam <= 0).
+ * Posição "N/6" = VITALITY_LEVELS.indexOf(nível) + 1.
+ */
+export function getCurrentVitalityStage(current: VitalityLevels, maxLevels: VitalityLevels): VitalityStageKey | null {
+  if (calculateVitalityTotal(maxLevels) <= 0) return null
+
+  for (const vitalityKey of VITALITY_LEVELS) {
+    if (current[vitalityKey] > 0) return vitalityKey
+  }
+
+  return 'coma'
 }
 
 // ============================================
