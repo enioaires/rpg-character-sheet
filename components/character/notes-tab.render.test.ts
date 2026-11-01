@@ -7,7 +7,7 @@
 // arquivo substitui '@/lib/api/queries' para todos os arquivos de teste da mesma
 // execução; um teste futuro que precise do módulo real deve levar isso em conta.
 
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 
@@ -65,5 +65,38 @@ describe('NotesTab render purity', () => {
   it('C: texto antigo fora do modo de edicao nao grava', async () => {
     await render({ notes: LEGACY_TEXT, isEditMode: false })
     expect(mutateAsync).toHaveBeenCalledTimes(0)
+  })
+
+  it('D: nenhum console log/info/debug e nenhuma gravacao', async () => {
+    const spies = (['log', 'info', 'debug'] as const).map((method) =>
+      spyOn(console, method).mockImplementation(() => {}),
+    )
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await render({ notes: MALFORMED_JSON, isEditMode: true })
+      await render({ notes: LEGACY_TEXT, isEditMode: true })
+      for (const spy of spies) {
+        expect(spy).toHaveBeenCalledTimes(0)
+      }
+      expect(mutateAsync).toHaveBeenCalledTimes(0)
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('E: JSON malformado renderiza sem lancar, sem gravar e em uma unica passada', async () => {
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      for (const isEditMode of [true, false]) {
+        useUpdateCharacter.mockClear()
+        const html = await render({ notes: MALFORMED_JSON, isEditMode })
+        expect(html.length).toBeGreaterThan(0)
+        expect(mutateAsync).toHaveBeenCalledTimes(0)
+        expect(useUpdateCharacter).toHaveBeenCalledTimes(1)
+      }
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })
