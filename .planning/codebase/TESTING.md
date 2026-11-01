@@ -9,12 +9,12 @@ last_mapped_at: 2026-11-01
 ## Test Framework
 
 **Runner:**
-- Not detected. No test runner (Jest, Vitest, Playwright, Cypress, Bun test) is listed in `package.json` `dependencies` or `devDependencies`.
-- No test config file is tracked: no `jest.config.*`, `vitest.config.*`, `playwright.config.*`, or `cypress.config.*` at the repo root.
-- No test files are tracked. A search of the git index for `*.test.*`, `*.spec.*`, `__tests__/`, and similar patterns returns no matches. The only match for "test" in tracked paths is `components/ui/aspect-ratio.tsx`, which is a shadcn primitive, not a test.
+- Bun's built-in test runner (`bun test`, Bun 1.3.x). No Jest/Vitest/Playwright config exists.
+- Types: devDependency `@types/bun` exact-pinned to 1.3.14. The pin is required: `tsconfig.json` includes `**/*.ts`, so without it `npx tsc --noEmit` and `next build` fail on the `bun:test` import (TS2307). The latest 1.4.x was too new for the package-legitimacy gate when pinned.
+- Path alias: `@/` works in tests with no extra config, because Bun reads tsconfig `paths`.
 
 **Assertion Library:**
-- Not detected.
+- `expect` from `bun:test` (Jest-compatible matchers: `toBe`, `toEqual`, `toThrow`).
 
 **Type checking (the only automated verification available):**
 - TypeScript strict mode via `tsconfig.json` (`"strict": true`, `"noEmit": true`, `"incremental": true`).
@@ -22,54 +22,55 @@ last_mapped_at: 2026-11-01
 
 **Run Commands:**
 ```bash
-bunx tsc --noEmit        # Type-check the project (no test runner exists)
+bun test                 # Run every test file (*.test.ts) in the repo
+bun run test             # Same suite via the package.json "test" script
+bun test lib/calculations  # Run a single folder
+npx tsc --noEmit         # Type-check the project (also checks the test files)
 bun run lint             # Runs `next lint`, but no ESLint config is tracked; this will not lint meaningfully
 bun run build            # Runs `prisma generate && next build`; catches type errors and Next.js build failures
 ```
 
-Package manager: Bun is the documented choice (`.kiro/steering/tech.md`, `bun.lock` tracked). `package-lock.json` is also tracked, so both lockfiles exist. Use whichever the user is working with, and do not assume a test command exists.
+Package manager: Bun is the documented choice (`.kiro/steering/tech.md`, `bun.lock` tracked). `package-lock.json` is also tracked, so both lockfiles exist. Use Bun for installs and for running tests; do not run `npm install`.
 
 ## Test File Organization
 
 **Location:**
-- Not applicable. No tests exist.
-- When introducing tests, co-locate unit tests next to the module as `<name>.test.ts` (for example `lib/calculations/index.test.ts` beside `lib/calculations/index.ts`) or group them in a top-level `__tests__/` directory. Pick one approach and document it here after the first test lands.
+- Decided: co-locate unit tests next to the module as `<name>.test.ts` (for example `lib/calculations/index.test.ts` beside `lib/calculations/index.ts`). The first suite is `lib/calculations/index.test.ts`.
 
 **Naming:**
-- Not established. Follow the kebab-case file naming used in `lib/` (`lib/calculations/index.ts`, `lib/schemas/character.ts`) when naming test files, so tests are `lib/schemas/character.test.ts`, not `lib/schemas/Character.test.ts`.
+- Follow the kebab-case file naming used in `lib/` (`lib/calculations/index.ts`, `lib/schemas/character.ts`) when naming test files, so tests are `lib/schemas/character.test.ts`, not `lib/schemas/Character.test.ts`.
 
 **Structure:**
 ```
 lib/calculations/index.ts
-lib/calculations/index.test.ts     # recommended location for pure-function tests
+lib/calculations/index.test.ts     # pure-function tests, co-located
 ```
 
 ## Test Structure
 
 **Suite Organization:**
-Not applicable. No suites exist yet. Recommended pattern for the first test file, which should be a pure-function test because `lib/calculations/` has no framework dependencies:
+One `describe` per exported function, named exactly after the export (this makes coverage machine-checkable), with `it` descriptions in pt-BR. Expected values are fixed literals:
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { calculateAttributeTotal } from '@/lib/calculations'
 
 describe('calculateAttributeTotal', () => {
-  it('sums race, class, and bonus below level 5', () => {
-    expect(calculateAttributeTotal({ race: 10, class: 12, bonus: 2 }, 4)).toBe(24)
-  })
+  const attribute = { race: 10, class: 12, bonus: 2 }
 
-  it('adds floor(level / 5) at level 5 and above', () => {
-    expect(calculateAttributeTotal({ race: 10, class: 12, bonus: 2 }, 10)).toBe(26)
+  it('nível 4 ainda não tem bônus e nível 5 soma +1', () => {
+    expect(calculateAttributeTotal(attribute, 4)).toBe(24)
+    expect(calculateAttributeTotal(attribute, 5)).toBe(25)
   })
 })
 ```
 
-Note on imports: `vitest` is not installed. Installing it is required before this example runs. The `@/` alias must also be configured in the test runner (Vitest needs `vite-tsconfig-paths` or an explicit `resolve.alias`), because `tsconfig.json` defines `paths` but a test runner does not read them by default.
+**Golden-value rule:** expectations are literals taken from the app's pre-refactor outputs (commit 832fa9b), never computed by calling the module under test, and never edited to match a changed formula. A failing value means a derived number changed. `lib/calculations/index.test.ts` also has an export-coverage guard: adding an export without a test fails it (update `TESTED_FUNCTIONS` and add a `describe` with the same name).
 
 **Patterns:**
-- Setup: none defined.
-- Teardown: none defined.
-- Assertion: none defined.
+- Setup: none needed for pure functions; declare fixtures as file-level literal constants.
+- Teardown: none.
+- Assertion: `toBe` for numbers and booleans, `toEqual` for objects and arrays, `toThrow('<message>')` for errors.
 
 ## Mocking
 
@@ -107,22 +108,20 @@ Note on imports: `vitest` is not installed. Installing it is required before thi
 
 ## Coverage
 
-**Requirements:** None enforced. No coverage tool is configured. `.gitignore` reserves `/coverage`, but nothing writes to it.
+**Requirements:** None enforced. No threshold is configured. `.gitignore` reserves `/coverage`.
 
 **View Coverage:**
 ```bash
-# Not configured. If Vitest is added:
-bunx vitest run --coverage
+bun test --coverage
 ```
 
 ## Test Types
 
 **Unit Tests:**
-- Not present. Best first targets, in priority order:
-  1. `lib/calculations/index.ts` (XP, skill points, attribute totals, vitality, Berkana). These are pure functions with formulas documented in JSDoc.
-  2. `lib/constants/character.ts` helpers such as `calculateVitality` and `calculateBerkana`.
-  3. `lib/schemas/character.ts` and `lib/schemas/calculations.ts` (validation rules, including Portuguese error messages such as `'Nome do personagem é obrigatório'`).
-  4. `lib/utils.ts` (`cn`).
+- Covered: `lib/calculations/index.ts` (every exported function, with an export-coverage guard) in `lib/calculations/index.test.ts`.
+- Next targets, in priority order:
+  1. `lib/schemas/character.ts` and `lib/schemas/calculations.ts` (validation rules, including Portuguese error messages such as `'Nome do personagem é obrigatório'`).
+  2. `lib/utils.ts` (`cn`).
 
 **Integration Tests:**
 - Not present. The API routes in `app/api/[[...route]]/characters/index.ts` are the natural integration target. Test them through Hono's `app.request(...)` with a mocked `db`, which avoids running a server. Export the Hono app or mount it in a test to do this.
@@ -154,17 +153,13 @@ Not established. The code under test already throws `Error` instances with fixed
 
 ## Gaps and Risks
 
-- No automated test coverage exists for the calculation rules in `lib/calculations/index.ts`, which encode the game's progression formulas. Regressions would only be caught by manual play.
+- `lib/calculations/index.ts` is covered by golden-value unit tests (`bun test`). Schemas, API routes, hooks and components still have no automated coverage.
 - The `saveField` and `savePendingChanges` actions in `lib/store/character.ts` are placeholders that simulate latency with `setTimeout` and do not persist data. Tests for them would only assert placeholder behavior, so do not write tests against them until the real persistence is wired in.
 - The `lint` script exists without a configured ESLint setup, so there is no automated style gate.
 
 ## Adding the First Test Suite
 
-When a test runner is introduced, record its choice in this document and complete these steps:
-1. Add the runner and its config at the repo root (for example `vitest.config.ts`) with the `@/` alias configured.
-2. Add a `test` script to `package.json`.
-3. Add tests for `lib/calculations/` first, following the example in "Test Structure".
-4. Update this file's "Test Framework", "Run Commands", and "Coverage" sections with the actual commands.
+Done: the Bun test suite landed in quick task 261101-iig (`lib/calculations/index.test.ts`).
 
 ---
 
