@@ -8,6 +8,9 @@ import {
   inlineFieldFrameClassName,
   resolveInlineFieldState,
 } from './inline-field-state'
+import { NumericDisplay } from './numeric-display'
+import { SectionCard } from './section-card'
+import { StatTile } from './stat-tile'
 
 // ============================================
 // ESTADO DOS CAMPOS INLINE
@@ -116,5 +119,86 @@ describe('inline-field-state', () => {
       expect(html).toContain('type="button"')
       expect(html).toContain('Não salvou · tentar de novo')
     })
+  })
+})
+
+// ============================================
+// SECTION CARD
+// ============================================
+
+// Atributos data-* não passam na checagem de literais do createElement
+const dataSection = (value: string) => ({ 'data-section': value }) as Record<string, string>
+
+describe('section-card', () => {
+  test('renderiza seção com título, losango, sombra e conteúdo', () => {
+    const html = renderToString(
+      createElement(
+        SectionCard,
+        { title: 'Vitalidade', action: 'AÇÃO-X', ...dataSection('vitality') },
+        'CONTEÚDO-Y'
+      )
+    )
+    expect(html).toContain('<section')
+    expect(html).toContain('data-section="vitality"')
+    expect(html).toContain('<h2')
+    expect(html).toContain('font-serif')
+    expect(html).toContain('rotate-45')
+    expect(html).toContain('bg-primary')
+    expect(html).toContain('shadow-card')
+    expect(html).toContain('break-inside-avoid')
+    expect(html).toContain('Vitalidade')
+    expect(html).toContain('AÇÃO-X')
+    expect(html).toContain('CONTEÚDO-Y')
+  })
+
+  test('tom berkana e nível de título h3', () => {
+    const html = renderToString(
+      createElement(SectionCard, { title: 'Berkana', tone: 'berkana', headingLevel: 'h3' })
+    )
+    expect(html).toContain('bg-berkana')
+    expect(html).toContain('<h3')
+    expect(html).not.toContain('<h2')
+  })
+})
+
+// ============================================
+// NUMERIC DISPLAY
+// ============================================
+
+describe('numeric-display', () => {
+  test('hero com máximo', () => {
+    const html = renderToString(createElement(NumericDisplay, { value: 56, max: 450, size: 'hero' }))
+    expect(html).toContain('font-numeric')
+    expect(html).toContain('tabular-nums')
+    expect(html).toContain('text-[56px]')
+    expect(html).toContain('56')
+    expect(html).toContain('450')
+    expect(html).toContain('text-muted-foreground')
+  })
+
+  test('sem máximo não mostra barra', () => {
+    const html = renderToString(createElement(NumericDisplay, { value: 56, size: 'hero' }))
+    expect(html).not.toContain(' / ')
+    expect(html).not.toContain('text-muted-foreground')
+  })
+})
+
+// ============================================
+// STAT TILE
+// ============================================
+
+describe('stat-tile', () => {
+  test('tile tem fundo muted e número tabular', () => {
+    const html = renderToString(createElement(StatTile, { label: 'Agilidade', value: 7 }))
+    expect(html).toContain('bg-muted')
+    expect(html).toContain('font-numeric')
+    expect(html).toContain('Agilidade')
+  })
+
+  test('bare não tem fundo', () => {
+    const html = renderToString(
+      createElement(StatTile, { label: 'Agilidade', value: 7, variant: 'bare' })
+    )
+    expect(html).not.toContain('bg-muted')
   })
 })

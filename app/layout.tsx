@@ -9,6 +9,7 @@ import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner"
+import { Check, CloudOff, Info, LoaderCircle, RefreshCw } from "lucide-react"
 
 const barlow = Barlow({
   variable: "--font-barlow",
@@ -71,7 +72,55 @@ export default function RootLayout({
             <main className="min-h-screen bg-background">
               {children}
             </main>
-            <Toaster />
+            <Toaster
+              position="top-center"
+              richColors
+              style={
+                {
+                  "--normal-bg": "var(--popover)",
+                  "--normal-text": "var(--popover-foreground)",
+                  "--normal-border": "var(--border)",
+                  "--success-bg": "var(--popover)",
+                  "--success-text": "var(--popover-foreground)",
+                  "--success-border": "var(--border)",
+                  "--info-bg": "var(--popover)",
+                  "--info-text": "var(--popover-foreground)",
+                  "--info-border": "var(--border)",
+                  "--warning-bg": "var(--popover)",
+                  "--warning-text": "var(--popover-foreground)",
+                  "--warning-border": "var(--warning)",
+                  "--error-bg": "var(--popover)",
+                  "--error-text": "var(--popover-foreground)",
+                  "--error-border": "var(--destructive)",
+                  "--border-radius": "var(--radius)",
+                } as React.CSSProperties
+              }
+              icons={{
+                success: <Check className="size-5 text-success" aria-hidden="true" />,
+                error: <CloudOff className="size-5 text-destructive" aria-hidden="true" />,
+                warning: (
+                  <RefreshCw
+                    className="size-5 animate-[ficha-spin_1.2s_linear_infinite] text-warning"
+                    aria-hidden="true"
+                  />
+                ),
+                info: <Info className="size-5 text-muted-foreground" aria-hidden="true" />,
+                loading: (
+                  <LoaderCircle
+                    className="size-5 animate-ficha-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                ),
+              }}
+              toastOptions={{
+                classNames: {
+                  toast: "items-start! gap-3! p-3.5! shadow-lg! font-sans!",
+                  title: "text-[15px]! font-semibold! leading-snug!",
+                  description: "text-sm! text-muted-foreground!",
+                  icon: "size-5!",
+                },
+              }}
+            />
           </QueryProvider>
         </ThemeProvider>
       </body>
