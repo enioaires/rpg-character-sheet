@@ -39,5 +39,10 @@ Imported from Claude Design project `de0ca8da-a112-49f4-b775-c8771c15338e` on 20
 | Anotações | components/character/notes/*.tsx |
 | Tokens | app/globals.css |
 
-## Important
-The mock data and formulas in `Ficha.dc.html` are illustrative. Real numbers must come from `lib/calculations` and the existing hooks. Never copy the mock's math.
+## Important: the design is visual direction, not a functional spec
+The owner said (2026-11-01) that the design gives the visual direction, but some of its functionality is wrong. Use judgment:
+- **Look and layout:** follow the design (tokens, typography, spacing, card structure, states, mobile-first, bottom sheets, touch targets).
+- **Behavior:** keep what the app does today. That covers formulas, what damage, heal, spend and recover write, which fields exist and are editable, validation, how lists are ordered, and persisted keys. When the mock's behavior differs from the current app, the current app wins.
+- **Mock data and formulas** in `Ficha.dc.html` are illustrative. Examples: the "pools/stageOf" damage math, "Total = 1 + …" or "2 + …" skill totals, "inclui +1 de nível", the XP target, the "Disponíveis 80" pool and hard-coded labels. Real numbers come from `lib/calculations` and the existing hooks. Never copy the mock's math.
+- **Mock-only features:** if the mock implies a behavior the app does not have, add it only when it is a pure UI convenience over existing fields and clearly makes sense. Otherwise leave it out and note it in the SUMMARY.
+- **Doubtful cases:** if something in the mock looks wrong or would remove an existing capability, keep the existing behavior and record the decision in the SUMMARY. Do not silently adopt it.
