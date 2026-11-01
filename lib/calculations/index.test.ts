@@ -27,6 +27,7 @@ import {
   canLevelUp,
   getAttributeLevelBonus,
   getBaseBerkana,
+  getBerkanaState,
   getCurrentVitalityStage,
   getDefaultSkills,
   getSkillLevelBonus,
@@ -35,7 +36,10 @@ import {
   getXPRequiredForNextLevel,
   initializeSkills,
   processLevelUp,
+  recoverBerkana,
+  resolveBerkanaPool,
   resolveCurrentVitalityLevels,
+  spendBerkana,
   toAttributeValue,
   toSkillValue,
   toVitalityBase,
@@ -982,6 +986,145 @@ describe('applyVitalityHeal', () => {
 })
 
 // ============================================
+// RECURSOS EM JOGO: BERKANA
+// ============================================
+
+// Oráculos congelados: cópias fiéis de components/character/basic-info/berkana-card.tsx
+// no commit-base 13eb61f. NUNCA edite estes oráculos.
+
+type LegacyBerkanaInput = {
+  level?: number
+  maxBerkana?: number
+  currentBerkana?: number
+  berkanaBonus?: number
+}
+
+function legacyBerkanaMax(input: LegacyBerkanaInput): { max: number; current: number | undefined } {
+  const {
+    level,
+    maxBerkana = 100,
+    currentBerkana = 100,
+    berkanaBonus = 0,
+  } = input
+
+  const calculatedMax = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
+  const actualMaxBerkana = maxBerkana || calculatedMax
+
+  return { max: actualMaxBerkana, current: currentBerkana }
+}
+
+function legacyQuickEdit(
+  action: 'fill' | 'minus30' | 'minus50',
+  currentBerkana: number | undefined,
+  actualMaxBerkana: number
+): number {
+  let newValue = currentBerkana || 0
+
+  switch (action) {
+    case 'fill':
+      newValue = actualMaxBerkana
+      break
+    case 'minus30':
+      newValue = Math.max(0, newValue - 30)
+      break
+    case 'minus50':
+      newValue = Math.max(0, newValue - 50)
+      break
+  }
+
+  return newValue
+}
+
+const BERK_LEVELS = [0, 3, 7]
+const BERK_MAX_VALUES = [undefined, 0, 170]
+const BERK_CURRENT_VALUES = [undefined, 0, 85, 200]
+const BERK_BONUS_VALUES = [undefined, 0, 15]
+
+function berkGrid(): LegacyBerkanaInput[] {
+  const cases: LegacyBerkanaInput[] = []
+  for (const level of BERK_LEVELS) {
+    for (const maxBerkana of BERK_MAX_VALUES) {
+      for (const currentBerkana of BERK_CURRENT_VALUES) {
+        for (const berkanaBonus of BERK_BONUS_VALUES) {
+          cases.push({ level, maxBerkana, currentBerkana, berkanaBonus })
+        }
+      }
+    }
+  }
+  return cases
+}
+
+describe('resolveBerkanaPool', () => {
+  it('é igual ao cálculo do card (padrões da desestruturação + maxBerkana || calculada) em toda a grade', () => {
+    for (const input of berkGrid()) {
+      const expected = legacyBerkanaMax(input)
+      expect(resolveBerkanaPool(input)).toEqual({ current: expected.current as number, max: expected.max })
+    }
+  })
+
+  it('amostra: nível 7, maxBerkana 0, bônus 15 dá máximo 185', () => {
+    expect(resolveBerkanaPool({ level: 7, maxBerkana: 0, currentBerkana: 85, berkanaBonus: 15 }).max).toBe(185)
+  })
+
+  it('campos indefinidos usam os padrões 100/100/0', () => {
+    expect(resolveBerkanaPool({ level: 0 })).toEqual({ current: 100, max: 100 })
+  })
+})
+
+describe('spendBerkana', () => {
+  const CURRENTS = [0, 1, 29, 30, 31, 50, 100, 170]
+
+  it('com 30 e 50 reproduz o switch antigo (minus30/minus50)', () => {
+    for (const current of CURRENTS) {
+      expect(spendBerkana(current, 30)).toBe(legacyQuickEdit('minus30', current, 170))
+      expect(spendBerkana(current, 50)).toBe(legacyQuickEdit('minus50', current, 170))
+    }
+  })
+
+  it('nunca fica abaixo de 0', () => {
+    expect(spendBerkana(20, 30)).toBe(0)
+  })
+
+  it('restaurar ao máximo equivale ao ramo "fill" antigo', () => {
+    for (const input of berkGrid()) {
+      const pool = resolveBerkanaPool(input)
+      expect(pool.max).toBe(legacyQuickEdit('fill', input.currentBerkana, legacyBerkanaMax(input).max))
+    }
+  })
+})
+
+describe('recoverBerkana', () => {
+  it('soma até o máximo e nunca ultrapassa', () => {
+    expect(recoverBerkana(100, 170, 30)).toBe(130)
+    expect(recoverBerkana(160, 170, 30)).toBe(170)
+  })
+
+  it('nunca reduz um valor que já está acima do máximo', () => {
+    expect(recoverBerkana(200, 170, 30)).toBe(200)
+  })
+
+  it('recuperar 0 não muda o valor', () => {
+    expect(recoverBerkana(0, 170, 0)).toBe(0)
+  })
+})
+
+describe('getBerkanaState', () => {
+  it('esgotada, cheia, metade e disponível seguem os limiares do README', () => {
+    expect(getBerkanaState(0, 170)).toBe('esgotada')
+    expect(getBerkanaState(170, 170)).toBe('cheia')
+    expect(getBerkanaState(200, 170)).toBe('cheia')
+    expect(getBerkanaState(85, 170)).toBe('metade')
+    expect(getBerkanaState(1, 170)).toBe('metade')
+    expect(getBerkanaState(86, 170)).toBe('disponivel')
+  })
+
+  it('máximo 0: zerada é esgotada, qualquer valor positivo é cheia', () => {
+    expect(getBerkanaState(0, 0)).toBe('esgotada')
+    expect(getBerkanaState(5, 0)).toBe('cheia')
+  })
+})
+
+// ============================================
 // COBERTURA DOS EXPORTS
 // ============================================
 
@@ -1006,6 +1149,7 @@ const TESTED_FUNCTIONS = [
   'canLevelUp',
   'getAttributeLevelBonus',
   'getBaseBerkana',
+  'getBerkanaState',
   'getCurrentVitalityStage',
   'getDefaultSkills',
   'getSkillLevelBonus',
@@ -1014,7 +1158,10 @@ const TESTED_FUNCTIONS = [
   'getXPRequiredForNextLevel',
   'initializeSkills',
   'processLevelUp',
+  'recoverBerkana',
+  'resolveBerkanaPool',
   'resolveCurrentVitalityLevels',
+  'spendBerkana',
   'toAttributeValue',
   'toSkillValue',
   'toVitalityBase',
@@ -1028,6 +1175,6 @@ describe('exports de lib/calculations', () => {
       .map(([name]) => name)
       .sort()
     expect(exported).toEqual([...TESTED_FUNCTIONS].sort())
-    expect(TESTED_FUNCTIONS.length).toBe(31)
+    expect(TESTED_FUNCTIONS.length).toBe(35)
   })
 })
