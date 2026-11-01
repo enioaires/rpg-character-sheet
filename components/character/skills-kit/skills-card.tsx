@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Maximize2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { EditableNumberField } from '@/components/ui/editable-field'
 import { SectionCard } from '@/components/ui/section-card'
 import { StatTile } from '@/components/ui/stat-tile'
 import { getSkillLevelBonus } from '@/lib/calculations'
@@ -14,12 +13,15 @@ import { cn } from '@/lib/utils'
 import type { CharacterTabProps, UpdateCharacterMutation } from '../types'
 import {
   buildSkillGroups,
+  buildSkillStepUpdate,
   countSkillsInUse,
   formatSkillTotalCaption,
   getSkillPointSummary,
   type SkillFilter,
   type SkillKey,
+  type SkillStepField,
 } from './skills-kit-model'
+import { SkillRow } from './skill-row'
 
 type SkillsCardProps = Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'> & {
   updateCharacterMutation: UpdateCharacterMutation
@@ -30,6 +32,7 @@ export function SkillsCard({
   character,
   characterId,
   isEditMode,
+  updateCharacterMutation,
   onOpenSkillsOverview,
 }: SkillsCardProps) {
   const { level, skills = {} } = character
@@ -43,6 +46,14 @@ export function SkillsCard({
   const inUseCount = countSkillsInUse(skills)
   const groups = buildSkillGroups(skills, level, filter, openSkill)
   const levelBonus = getSkillLevelBonus(level || 0)
+
+  // Os erros sobem para o stepper, que mostra o estado e o botão de tentar de novo
+  const handleStep = async (key: SkillKey, field: SkillStepField, delta: number) => {
+    await updateCharacterMutation.mutateAsync({
+      id: characterId,
+      data: buildSkillStepUpdate(skills, key, field, delta),
+    })
+  }
 
   return (
     <SectionCard
@@ -110,58 +121,20 @@ export function SkillsCard({
             <h3>{group.name}</h3>
             <span>{group.rows.length}</span>
           </div>
-          {group.rows.map((row) => {
-            const isOpen = openSkill === row.key
-            return (
-              <div key={row.key}>
-                <button
-                  type="button"
-                  aria-expanded={isOpen}
-                  aria-controls={`skill-detail-${row.key}`}
-                  aria-label={`${row.label}, total ${row.total}`}
-                  onClick={() => setOpenSkill(isOpen ? null : row.key)}
-                  className={cn(
-                    'grid min-h-[46px] w-full grid-cols-[minmax(0,1fr)_auto_44px] items-center gap-2.5 border-t text-left',
-                    row.inUse ? 'text-foreground' : 'text-muted-foreground',
-                  )}
-                >
-                  <span className="truncate text-[15px]">{row.label}</span>
-                  <span className="font-numeric text-[13px] tabular-nums text-muted-foreground">
-                    {row.detail}
-                  </span>
-                  <span className="font-numeric text-right text-[21px] font-semibold tabular-nums">
-                    {row.total}
-                  </span>
-                </button>
-                {isOpen && (
-                  <div id={`skill-detail-${row.key}`} className="grid grid-cols-2 gap-2.5 pt-1 pb-3">
-                    <EditableNumberField
-                      label="Distribuídos"
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="skills"
-                      field={`${row.key}.distributed`}
-                      value={row.distributed}
-                      min={0}
-                      isEditMode={isEditMode}
-                    />
-                    <EditableNumberField
-                      label="Bônus"
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="skills"
-                      field={`${row.key}.bonus`}
-                      value={row.bonus}
-                      isEditMode={isEditMode}
-                    />
-                    <span className="col-span-2 text-xs text-muted-foreground">
-                      {`Base 1 · Nível +${levelBonus}`}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {group.rows.map((row) => (
+            <SkillRow
+              key={row.key}
+              row={row}
+              isOpen={openSkill === row.key}
+              onToggle={() => setOpenSkill(openSkill === row.key ? null : row.key)}
+              levelBonus={levelBonus}
+              isEditMode={isEditMode}
+              characterId={characterId}
+              character={character}
+              isStepDisabled={updateCharacterMutation.isPending}
+              onStep={(field, delta) => handleStep(row.key, field, delta)}
+            />
+          ))}
         </div>
       ))}
 

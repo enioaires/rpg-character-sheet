@@ -88,3 +88,68 @@ describe('SkillsKitTab: card Perícias', () => {
     expect(mutateAsync).not.toHaveBeenCalled()
   })
 })
+
+// ============================================
+// SkillRow isolado
+// ============================================
+
+async function renderRow(options: {
+  isOpen: boolean
+  isEditMode: boolean
+  isStepDisabled?: boolean
+}): Promise<string> {
+  const { SkillRow } = await import('./skills-kit/skill-row')
+  const { buildSkillRow } = await import('./skills-kit/skills-kit-model')
+  const row = buildSkillRow(fixtureA.skills, 'percepção', 7)
+  return renderToString(
+    createElement(SkillRow, {
+      row,
+      isOpen: options.isOpen,
+      onToggle: () => {},
+      levelBonus: 1,
+      isEditMode: options.isEditMode,
+      characterId: 'test-char',
+      character: fixtureA as unknown as CharacterData,
+      isStepDisabled: options.isStepDisabled ?? false,
+      onStep: async () => {},
+    }),
+  ).replace(/<!-- -->/g, '')
+}
+
+// O botão com o aria-label informado está desabilitado? (a classe também contém "disabled:")
+function isButtonDisabled(html: string, ariaLabel: string): boolean {
+  const match = html.match(new RegExp(`<button[^>]*aria-label="${ariaLabel}"[^>]*>`))
+  return match ? / disabled=""/.test(match[0]) : false
+}
+
+describe('SkillRow', () => {
+  it('aberta e desbloqueada mostra os steppers, com "Diminuir bônus" travado em 0', async () => {
+    const html = await renderRow({ isOpen: true, isEditMode: true })
+    expect(html).toContain('aria-label="Aumentar distribuídos de Percepção"')
+    expect(html).toContain('aria-label="Diminuir bônus de Percepção"')
+    expect(html).toContain('aria-expanded="true"')
+    expect(isButtonDisabled(html, 'Diminuir bônus de Percepção')).toBe(true)
+    expect(isButtonDisabled(html, 'Diminuir distribuídos de Percepção')).toBe(false)
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('aberta e bloqueada mostra só os valores, sem botões de passo', async () => {
+    const html = await renderRow({ isOpen: true, isEditMode: false })
+    expect(html).not.toContain('Aumentar')
+    expect(html).not.toContain('Diminuir')
+    expect(html).toContain('17')
+    expect(html).toContain('Base 1 · Nível +1')
+  })
+
+  it('fechada não renderiza o detalhe', async () => {
+    const html = await renderRow({ isOpen: false, isEditMode: true })
+    expect(html).not.toContain('id="skill-detail-percepção"')
+    expect(html).toContain('aria-expanded="false"')
+  })
+
+  it('com a mutação pendente os botões "Aumentar" ficam desabilitados', async () => {
+    const html = await renderRow({ isOpen: true, isEditMode: true, isStepDisabled: true })
+    expect(isButtonDisabled(html, 'Aumentar distribuídos de Percepção')).toBe(true)
+    expect(isButtonDisabled(html, 'Aumentar bônus de Percepção')).toBe(true)
+  })
+})
