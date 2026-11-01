@@ -141,3 +141,60 @@ describe('NotesTab dados corrompidos ou em formato antigo', () => {
     }
   })
 })
+
+describe('NotesTab alertas de estado (DS-07)', () => {
+  it('corrompido: alerta destrutivo com Copiar texto original, em edição e bloqueado, sem gravar', async () => {
+    for (const isEditMode of [true, false]) {
+      const html = await render({ notes: MALFORMED_JSON, isEditMode })
+      expect(html).toContain('Anotações corrompidas')
+      expect(html).toContain('Copiar texto original')
+      expect(html).not.toContain('Migrar anotações')
+      expect(mutateAsync).toHaveBeenCalledTimes(0)
+    }
+  })
+
+  it('legado em edição (aguardando): alerta de status sem botão e sem gravar', async () => {
+    const html = await render({ notes: LEGACY_TEXT, isEditMode: true })
+    expect(html).toContain('Anotações em formato antigo')
+    expect(html).toContain(LEGACY_TEXT)
+    expect(html).toContain('Se esta mensagem não sumir')
+    expect(html).not.toContain('Copiar texto original')
+    expect(html).not.toContain('Migrar anotações')
+    expect(html).not.toContain('Convertendo')
+    expect(mutateAsync).toHaveBeenCalledTimes(0)
+  })
+
+  it('legado bloqueado: pede para desbloquear a ficha', async () => {
+    const html = await render({ notes: LEGACY_TEXT, isEditMode: false })
+    expect(html).toContain(
+      'Desbloqueie a ficha para converter as anotações para o novo formato.',
+    )
+    expect(html).not.toContain('Migrar anotações')
+  })
+
+  it('legado convertendo: mostra Convertendo… com spinner', async () => {
+    useUpdateCharacter.mockImplementationOnce(() => ({
+      mutateAsync,
+      isPending: true,
+      error: null,
+    }))
+    const html = await render({ notes: LEGACY_TEXT, isEditMode: true })
+    expect(html).toContain('Convertendo…')
+    expect(html).toContain('animate-ficha-spin')
+  })
+
+  it('legado com falha: pede para recarregar a página', async () => {
+    useUpdateCharacter.mockImplementationOnce(
+      () =>
+        ({
+          mutateAsync,
+          isPending: false,
+          error: null,
+          isError: true,
+        }) as unknown as ReturnType<typeof useUpdateCharacter>,
+    )
+    const html = await render({ notes: LEGACY_TEXT, isEditMode: true })
+    expect(html).toContain('Recarregue a página para tentar de novo')
+    expect(html).not.toContain('Convertendo…')
+  })
+})
