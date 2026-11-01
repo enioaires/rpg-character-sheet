@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUpdateCharacter } from "@/lib/api/queries";
+import { formatNoteHtml } from "@/lib/notes-format";
 import {
   canWriteNotes,
   claimLegacyMigration,
@@ -272,53 +273,12 @@ export function NotesTab({
     });
   };
 
-  const renderFormattedText = (text: string) => {
-    // Simples formatação markdown-like
-    let formatted = text
-      // Negrito: **texto** -> <strong>texto</strong>
-      .replace(
-        /\*\*(.*?)\*\*/g,
-        '<strong class="font-semibold text-foreground">$1</strong>',
-      )
-      // Itálico: *texto* -> <em>texto</em>
-      .replace(/\*(.*?)\*/g, '<em class="italic text-muted-foreground">$1</em>')
-      // Código: `texto` -> <code>texto</code>
-      .replace(
-        /`(.*?)`/g,
-        '<code class="bg-muted px-1.5 py-0.5 rounded text-xs font-mono border">$1</code>',
-      )
-      // Títulos: ### Título -> <h3>Título</h3>
-      .replace(
-        /^### (.*$)/gm,
-        '<h3 class="text-base font-semibold mt-3 mb-1 text-foreground">$1</h3>',
-      )
-      .replace(
-        /^## (.*$)/gm,
-        '<h2 class="text-lg font-semibold mt-4 mb-2 text-foreground">$1</h2>',
-      )
-      .replace(
-        /^# (.*$)/gm,
-        '<h1 class="text-xl font-bold mt-4 mb-2 text-foreground">$1</h1>',
-      )
-      // Lista simples: - item -> <li>item</li>
-      .replace(/^- (.*$)/gm, '<li class="ml-4 list-disc list-inside">$1</li>')
-      // Quebras de linha duplas para parágrafos
-      .replace(/\n\n/g, '</p><p class="mb-2">')
-      // Quebras de linha simples
-      .replace(/\n/g, "<br />");
-
-    // Envolver em parágrafo se não começar com tag HTML
-    if (!formatted.startsWith("<")) {
-      formatted = `<p class="mb-2">${formatted}</p>`;
-    }
-
-    return (
-      <div
-        className="formatted-content"
-        dangerouslySetInnerHTML={{ __html: formatted }}
-      />
-    );
-  };
+  const renderFormattedText = (text: string) => (
+    <div
+      className="formatted-content"
+      dangerouslySetInnerHTML={{ __html: formatNoteHtml(text) }}
+    />
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
