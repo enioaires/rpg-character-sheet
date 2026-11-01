@@ -2,6 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { GetCharactersQuery, CreateCharacterRequest, UpdateCharacterRequest } from '@/lib/schemas/character'
 import { useMemo } from 'react'
+import {
+  calculateAllAttributes,
+  calculateAllSkills,
+  calculateLevelUpSkillPoints,
+  calculateMaxBerkana,
+  calculateRemainingSkillPoints,
+  calculateUsedSkillPoints,
+  calculateVitalityLevels,
+  getBaseBerkana,
+  toSkillValue,
+  type SkillValue
+} from '@/lib/calculations'
 
 export const useCharacters = (params?: GetCharactersQuery) => {
   return useQuery({
@@ -141,38 +153,17 @@ export const useCalculateDerivedStats = (characterData: {
 
     const { level, attributes, vitality, skills, maxBerkana, berkanaBonus } = characterData
 
-    // Importar funções de cálculo no cliente
-    const calculatedAttributes = Object.entries(attributes || {}).reduce((acc, [key, attr]: [string, any]) => {
-      const levelBonus = level >= 5 ? Math.floor(level / 5) : 0
-      acc[key] = attr.race + attr.class + attr.bonus + levelBonus
-      return acc
-    }, {} as Record<string, number>)
+    const calculatedAttributes = calculateAllAttributes(attributes || {}, level)
+    const calculatedVitality = vitality ? calculateVitalityLevels(vitality, level) : null
+    const calculatedBerkana = calculateMaxBerkana(level, getBaseBerkana(), berkanaBonus)
+    const calculatedSkills = calculateAllSkills(skills || {}, level)
 
-    const calculatedVitality = vitality ? (() => {
-      const baseTotal = vitality.race + vitality.class
-      const multiplier = level + 1
-      return {
-        notavel: baseTotal * multiplier,
-        ferido: (baseTotal - 20) * multiplier,
-        gravementeFerido: (baseTotal - 40) * multiplier,
-        condenado: (baseTotal - 60) * multiplier,
-        incapacitado: (baseTotal - 80) * multiplier,
-        coma: (baseTotal - 100) * multiplier
-      }
-    })() : null
-
-    const calculatedBerkana = 100 + (level * 10) + berkanaBonus
-
-    const calculatedSkills = Object.entries(skills || {}).reduce((acc, [key, skill]: [string, any]) => {
-      const levelBonus = Math.floor(level / 5)
-      acc[key] = 1 + skill.distributed + skill.bonus + levelBonus
-      return acc
-    }, {} as Record<string, number>)
-
-    const skillPointsUsed = Object.values(skills || {}).reduce((total: number, skill: any) =>
-      total + (skill?.distributed || 0), 0)
-    const skillPointsAvailable = level * 10
-    const skillPointsRemaining = skillPointsAvailable - skillPointsUsed
+    const skillRecord = Object.fromEntries(
+      Object.entries(skills || {}).map(([key, skill]) => [key, toSkillValue(skill as Partial<SkillValue> | null)])
+    )
+    const skillPointsAvailable = calculateLevelUpSkillPoints(level)
+    const skillPointsUsed = calculateUsedSkillPoints(skillRecord)
+    const skillPointsRemaining = calculateRemainingSkillPoints(skillRecord, skillPointsAvailable)
 
     return {
       calculatedAttributes,

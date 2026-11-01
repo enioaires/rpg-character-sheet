@@ -1,6 +1,22 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { CharacterFull } from '@/lib/schemas/character'
+import {
+  calculateAllAttributes,
+  calculateAllSkills,
+  calculateLevelUpSkillPoints,
+  calculateMaxBerkana,
+  calculateRemainingSkillPoints,
+  calculateUsedSkillPoints,
+  calculateVitalityLevels,
+  getBaseBerkana,
+  toAttributeValue,
+  toSkillValue,
+  toVitalityBase,
+  type AttributeValue,
+  type SkillValue,
+  type VitalityBase
+} from '@/lib/calculations'
 
 // ============================================
 // TIPOS DO STORE
@@ -103,48 +119,23 @@ export const useCalculatedStats = () => {
 
     const { level, attributes, vitality, skills, berkanaBonus } = state.character
 
-    // Calcular atributos
-    const calculatedAttributes: Record<string, number> = {}
-    if (attributes) {
-      Object.entries(attributes as any).forEach(([key, attr]: [string, any]) => {
-        const levelBonus = level >= 5 ? Math.floor(level / 5) : 0
-        calculatedAttributes[key] = (attr?.race || 0) + (attr?.class || 0) + (attr?.bonus || 0) + levelBonus
-      })
-    }
+    const attributeRecord = Object.fromEntries(
+      Object.entries(attributes || {}).map(([key, attr]) => [key, toAttributeValue(attr as Partial<AttributeValue> | null)])
+    )
+    const skillRecord = Object.fromEntries(
+      Object.entries(skills || {}).map(([key, skill]) => [key, toSkillValue(skill as Partial<SkillValue> | null)])
+    )
 
-    // Calcular vitalidade
-    let calculatedVitality = null
-    if (vitality) {
-      const vit = vitality as any
-      const baseTotal = (vit?.race || 0) + (vit?.class || 0)
-      const multiplier = level + 1
-      calculatedVitality = {
-        notavel: baseTotal * multiplier,
-        ferido: (baseTotal - 20) * multiplier,
-        gravementeFerido: (baseTotal - 40) * multiplier,
-        condenado: (baseTotal - 60) * multiplier,
-        incapacitado: (baseTotal - 80) * multiplier,
-        coma: (baseTotal - 100) * multiplier
-      }
-    }
+    const calculatedAttributes = calculateAllAttributes(attributeRecord, level)
+    const calculatedVitality = vitality
+      ? calculateVitalityLevels(toVitalityBase(vitality as Partial<VitalityBase>), level)
+      : null
+    const calculatedBerkana = calculateMaxBerkana(level, getBaseBerkana(), berkanaBonus)
+    const calculatedSkills = calculateAllSkills(skillRecord, level)
 
-    // Calcular berkana
-    const calculatedBerkana = 100 + (level * 10) + berkanaBonus
-
-    // Calcular perícias
-    const calculatedSkills: Record<string, number> = {}
-    if (skills) {
-      Object.entries(skills as any).forEach(([key, skill]: [string, any]) => {
-        const levelBonus = Math.floor(level / 5)
-        calculatedSkills[key] = 1 + (skill?.distributed || 0) + (skill?.bonus || 0) + levelBonus
-      })
-    }
-
-    // Calcular pontos de perícia
-    const skillPointsAvailable = level * 10
-    const skillPointsUsed = skills ? Object.values(skills as any).reduce((total: number, skill: any) =>
-      total + (skill?.distributed || 0), 0) : 0
-    const skillPointsRemaining = skillPointsAvailable - skillPointsUsed
+    const skillPointsAvailable = calculateLevelUpSkillPoints(level)
+    const skillPointsUsed = calculateUsedSkillPoints(skillRecord)
+    const skillPointsRemaining = calculateRemainingSkillPoints(skillRecord, skillPointsAvailable)
 
     return {
       calculatedAttributes,
