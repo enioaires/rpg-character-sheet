@@ -237,6 +237,61 @@ export function getCurrentVitalityStage(current: VitalityLevels, maxLevels: Vita
   return 'coma'
 }
 
+export type BerkanaStateKey = 'cheia' | 'metade' | 'esgotada' | 'disponivel'
+
+export type BerkanaPool = { current: number; max: number }
+
+/**
+ * Berkana atual e máxima como o card mostra hoje.
+ * Padrões só para undefined: maxBerkana 100, currentBerkana 100, berkanaBonus 0.
+ * Máximo = maxBerkana || calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0).
+ * Atual = currentBerkana gravado (sem fallback para o máximo).
+ */
+export function resolveBerkanaPool({
+  level,
+  maxBerkana = 100,
+  currentBerkana = 100,
+  berkanaBonus = 0
+}: {
+  level?: number | null
+  maxBerkana?: number | null
+  currentBerkana?: number | null
+  berkanaBonus?: number | null
+}): BerkanaPool {
+  const calculatedMax = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
+
+  return {
+    current: currentBerkana || 0,
+    max: maxBerkana || calculatedMax
+  }
+}
+
+/**
+ * Gastar Berkana: nunca abaixo de 0. Com 30 e 50 reproduz os antigos botões -30 e -50.
+ */
+export function spendBerkana(current: number, amount: number): number {
+  return Math.max(0, (current || 0) - amount)
+}
+
+/**
+ * Recuperar Berkana: soma até o máximo, o mesmo teto que o campo "Atual" aceita ao editar.
+ * Nunca reduz um valor que já está acima do máximo.
+ */
+export function recoverBerkana(current: number, max: number, amount: number): number {
+  return Math.max(current || 0, Math.min(max, (current || 0) + amount))
+}
+
+/**
+ * Estado da Berkana (primeira regra que casar):
+ * esgotada (<= 0), cheia (>= máximo), metade (<= 50% do máximo), senão disponível.
+ */
+export function getBerkanaState(current: number, max: number): BerkanaStateKey {
+  if (current <= 0) return 'esgotada'
+  if (current >= max) return 'cheia'
+  if (current / max <= 0.5) return 'metade'
+  return 'disponivel'
+}
+
 // ============================================
 // CÁLCULOS DE PERÍCIAS
 // ============================================
