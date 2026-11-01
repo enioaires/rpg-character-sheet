@@ -90,6 +90,50 @@ describe('SkillsKitTab: card Perícias', () => {
 })
 
 // ============================================
+// Finanças e Kit
+// ============================================
+
+const fixtureKit = {
+  ...fixtureA,
+  finances: { ouro: 100 },
+  adventureKit: [
+    { name: 'Cantil 3 Litros', quantity: 1, isDefault: true },
+    { name: 'Espelho', quantity: 1, isDefault: true },
+    { name: 'Lamparina de Cinto', quantity: 1, isDefault: false },
+  ],
+}
+
+describe('SkillsKitTab: Finanças e Kit', () => {
+  it('desbloqueado: Finanças, personalizados antes dos padrão e kit recolhido', async () => {
+    const html = await render(fixtureKit, true)
+    expect(html).toContain('data-section="finances"')
+    expect(html).toContain('Joias')
+    expect(html).toContain('Personalizados · 1')
+    expect(html).toContain('Itens padrão · 2')
+    expect(html).toContain('Adicionar item')
+    expect(html.indexOf('Lamparina de Cinto')).toBeGreaterThan(-1)
+    expect(html.indexOf('Lamparina de Cinto')).toBeLessThan(html.indexOf('Itens padrão · 2'))
+    // Itens padrão começam recolhidos
+    expect(html).not.toContain('Cantil 3 Litros')
+    expect(html).toContain('Remover Lamparina de Cinto')
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('bloqueado esconde os controles só de edição', async () => {
+    const html = await render(fixtureKit, false)
+    expect(html).not.toContain('Adicionar item')
+    expect(html).not.toContain('Remover Lamparina')
+    expect(html).toContain('Lamparina de Cinto')
+    expect(html).toContain('Itens padrão · 2')
+  })
+
+  it('kit vazio mostra o texto de lista vazia', async () => {
+    const html = await render({ ...fixtureA, adventureKit: [] }, true)
+    expect(html).toContain('Nenhum item no kit')
+  })
+})
+
+// ============================================
 // SkillRow isolado
 // ============================================
 
