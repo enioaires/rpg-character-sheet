@@ -85,7 +85,7 @@ export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOp
       value: `${currentBerkanaValue}/${maxBerkanaValue}`,
       color: currentBerkanaValue <= maxBerkanaValue * 0.3 ? 'destructive' :
         currentBerkanaValue <= maxBerkanaValue * 0.6 ? 'warning' : 'default',
-      onClick: () => onNavigate('basicos', 'berkana')
+      onClick: () => onOpenSheet('berk')
     },
     {
       id: 'weapon',

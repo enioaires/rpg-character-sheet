@@ -2,11 +2,11 @@
 // Mapa de exibição dos recursos em jogo (vitalidade e Berkana) e formatador de números.
 // Sem JSX e sem 'use client': pode ser importado de qualquer lugar.
 
-import { Droplets, Heart, HeartCrack, Link, Moon, Skull } from 'lucide-react'
+import { CircleOff, Droplets, Heart, HeartCrack, Link, Moon, Skull, Sparkle, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { VITALITY_LABELS } from '@/lib/constants/character'
-import type { VitalityStageKey } from '@/lib/calculations'
+import type { BerkanaStateKey, VitalityStageKey } from '@/lib/calculations'
 
 export type VitalityStageDisplay = {
   label: string
@@ -67,6 +67,13 @@ export const VITALITY_STAGE_DISPLAY: Record<VitalityStageKey, VitalityStageDispl
     bgClassName: 'bg-vitality-coma',
     borderClassName: 'border-vitality-coma',
   },
+}
+
+export const BERKANA_STATE_DISPLAY: Record<BerkanaStateKey, { label: string; Icon: LucideIcon }> = {
+  cheia: { label: 'Cheia', Icon: Sparkles },
+  metade: { label: 'Pela metade', Icon: Sparkle },
+  esgotada: { label: 'Esgotada', Icon: CircleOff },
+  disponivel: { label: 'Disponível', Icon: Sparkles },
 }
 
 const GAME_NUMBER_FORMAT = new Intl.NumberFormat('pt-BR')

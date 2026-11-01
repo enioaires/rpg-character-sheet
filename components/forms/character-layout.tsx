@@ -12,6 +12,7 @@ import { QuickActionsBar } from '@/components/character/quick-actions-bar'
 import { SkillsModal } from '@/components/character/skills-modal'
 import { AttributesModal } from '@/components/character/attributes-modal'
 import { QuickSheetContext, type QuickSheetApi, type QuickSheetKind } from '@/components/character/quick-sheets/quick-sheet-context'
+import { BerkanaSheet } from '@/components/character/quick-sheets/berkana-sheet'
 import { VitalitySheet } from '@/components/character/quick-sheets/vitality-sheet'
 import { useUpdateCharacter } from '@/lib/api/queries'
 
@@ -169,6 +170,14 @@ export function CharacterLayout({ character, characterId, isEditMode, onToggleEd
       <VitalitySheet
         open={openSheet === 'vit'}
         onOpenChange={(open) => setOpenSheet(open ? 'vit' : null)}
+        character={character}
+        characterId={characterId}
+        isEditMode={isEditMode}
+        updateCharacterMutation={updateCharacterMutation}
+      />
+      <BerkanaSheet
+        open={openSheet === 'berk'}
+        onOpenChange={(open) => setOpenSheet(open ? 'berk' : null)}
         character={character}
         characterId={characterId}
         isEditMode={isEditMode}

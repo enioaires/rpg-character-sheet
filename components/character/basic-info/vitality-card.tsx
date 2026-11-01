@@ -9,7 +9,13 @@ import { EditableNumberField } from '@/components/ui/editable-field'
 import { Heart, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { VITALITY_LEVELS, VITALITY_LABELS } from '@/lib/constants/character'
-import { calculateVitalityLevels, toVitalityBase } from '@/lib/calculations'
+import {
+  applyVitalityDamage,
+  calculateVitalityLevels,
+  calculateVitalityTotal,
+  resolveCurrentVitalityLevels,
+  toVitalityBase,
+} from '@/lib/calculations'
 
 import type { CharacterTabProps, UpdateCharacterMutation } from '../types'
 
@@ -36,27 +42,7 @@ export function VitalityCard({ character, characterId, isEditMode, updateCharact
     try {
       const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
-      // Criar cópia dos valores atuais de vitalidade
-      const newCurrentVitality = { ...currentVitality }
-      let remainingDamage = damageAmount
-
-      // Inicializar currentVitality com valores máximos se ainda não foi definido
-      for (const vitalityKey of VITALITY_LEVELS) {
-        if (newCurrentVitality[vitalityKey] === undefined || newCurrentVitality[vitalityKey] === null) {
-          newCurrentVitality[vitalityKey] = calculatedVitality[vitalityKey]
-        }
-      }
-
-      // Aplicar dano de cima para baixo (do maior para o menor)
-      for (const vitalityKey of VITALITY_LEVELS) {
-        if (remainingDamage <= 0) break
-
-        const currentValue = newCurrentVitality[vitalityKey]
-        const damageToApply = Math.min(remainingDamage, currentValue)
-
-        newCurrentVitality[vitalityKey] = Math.max(0, currentValue - damageToApply)
-        remainingDamage -= damageToApply
-      }
+      const newCurrentVitality = applyVitalityDamage(currentVitality, calculatedVitality, damageAmount)
 
       // Salvar no banco
       const updateData = {
@@ -136,15 +122,10 @@ export function VitalityCard({ character, characterId, isEditMode, updateCharact
           const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
           // Calcular vitalidade total (soma de todos os níveis)
-          const totalVitality = Object.values(calculatedVitality).reduce((sum, val) => sum + val, 0)
+          const totalVitality = calculateVitalityTotal(calculatedVitality)
 
           // Calcular vitalidade atual (soma dos valores atuais)
-          const currentTotal = VITALITY_LEVELS.reduce((sum, vitalityKey) => {
-            const currentValue = currentVitality[vitalityKey] !== undefined && currentVitality[vitalityKey] !== null
-              ? currentVitality[vitalityKey]
-              : calculatedVitality[vitalityKey]
-            return sum + currentValue
-          }, 0)
+          const currentTotal = calculateVitalityTotal(resolveCurrentVitalityLevels(currentVitality, calculatedVitality))
 
           return (
             <div className="grid grid-cols-2 gap-4">
@@ -215,6 +196,7 @@ export function VitalityCard({ character, characterId, isEditMode, updateCharact
           <h4 className="text-sm font-medium">Níveis de Vitalidade</h4>
           {(() => {
             const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
+            const resolvedVitality = resolveCurrentVitalityLevels(currentVitality, calculatedVitality)
 
             return VITALITY_LEVELS.map((vitalityKey) => (
               <div key={vitalityKey} className="flex justify-between items-center">
@@ -225,9 +207,7 @@ export function VitalityCard({ character, characterId, isEditMode, updateCharact
                     currentCharacterData={character}
                     section="currentVitality"
                     field={vitalityKey}
-                    value={currentVitality[vitalityKey] !== undefined && currentVitality[vitalityKey] !== null
-                      ? currentVitality[vitalityKey]
-                      : calculatedVitality[vitalityKey]}
+                    value={resolvedVitality[vitalityKey]}
                     className="w-20 text-center text-sm"
                     isEditMode={isEditMode}
                   />

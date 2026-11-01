@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EditableNumberField } from '@/components/ui/editable-field'
-import { calculateMaxBerkana, getBaseBerkana } from '@/lib/calculations'
+import { resolveBerkanaPool, spendBerkana } from '@/lib/calculations'
 
 import type { CharacterTabProps, UpdateCharacterMutation } from '../types'
 
@@ -13,8 +13,6 @@ interface BerkanaCardProps extends Pick<CharacterTabProps, 'character' | 'charac
 
 export function BerkanaCard({ character, characterId, isEditMode, updateCharacterMutation }: BerkanaCardProps) {
   const {
-    level,
-    maxBerkana = 100,
     currentBerkana = 100,
     berkanaBonus = 0,
   } = character
@@ -26,8 +24,7 @@ export function BerkanaCard({ character, characterId, isEditMode, updateCharacte
       </CardHeader>
       <CardContent className="space-y-4">
         {(() => {
-          const calculatedMax = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
-          const actualMaxBerkana = maxBerkana || calculatedMax
+          const actualMaxBerkana = resolveBerkanaPool(character).max
 
           const handleBerkanaQuickEdit = async (action: 'fill' | 'minus30' | 'minus50') => {
             let newValue = currentBerkana || 0
@@ -37,10 +34,10 @@ export function BerkanaCard({ character, characterId, isEditMode, updateCharacte
                 newValue = actualMaxBerkana
                 break
               case 'minus30':
-                newValue = Math.max(0, newValue - 30)
+                newValue = spendBerkana(currentBerkana, 30)
                 break
               case 'minus50':
-                newValue = Math.max(0, newValue - 50)
+                newValue = spendBerkana(currentBerkana, 50)
                 break
             }
 
