@@ -11,6 +11,7 @@ import {
 } from '@/lib/calculations'
 import { DEFAULT_ADVENTURE_KIT, SKILLS } from '@/lib/constants/character'
 import { getDefaultCharacterData } from '@/lib/defaults/character'
+import type { AdventureKitItem } from '@/lib/schemas/character'
 import {
   SKILL_GROUPS,
   buildAddKitItemUpdate,
@@ -229,7 +230,7 @@ describe('formatSkillTotalCaption', () => {
 })
 
 describe('kit de aventureiro', () => {
-  const kit = [
+  const kit: AdventureKitItem[] = [
     { name: 'a', quantity: 1, isDefault: true },
     { name: 'b', quantity: 2, isDefault: false },
     { name: 'c', quantity: 1, isDefault: true },
