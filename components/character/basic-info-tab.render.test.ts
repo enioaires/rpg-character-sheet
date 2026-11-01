@@ -93,7 +93,8 @@ describe('BasicInfoTab: Vitalidade e Berkana', () => {
 
   it('nenhum campo está em edição no render e o card não tem entrada de dano', async () => {
     const html = await render(fixtureA, true)
-    expect(html).not.toContain('<input')
+    // Os checkboxes antigos de Linguagens trazem um input escondido; o card novo (tarefa 3) não tem
+    expect(html).not.toMatch(/<input(?![^>]*type="checkbox")/)
   })
 
   it('render nunca grava nem abre sheet', async () => {
