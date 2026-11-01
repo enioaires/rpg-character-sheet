@@ -1,101 +1,92 @@
 ---
-last_mapped_commit: dbe980a72bf9357010fabf77e4c8695d6ff9d1d2
+last_mapped_commit: 216d4bd8bdc9621832748458a63bb5e0b24f8795
 last_mapped_at: 2026-11-01
 ---
+<!-- refreshed: 2026-11-01 -->
 # External Integrations
 
 **Analysis Date:** 2026-11-01
 
 ## APIs & External Services
 
-**Internal HTTP API (first-party, same origin):**
-- Hono application served under `/api` from `app/api/[[...route]]/route.ts` (GET, POST, PUT, DELETE exported through `hono/vercel` `handle()`)
-  - Characters router: `app/api/[[...route]]/characters/index.ts` (list with pagination and search, get by id, create, update, delete)
-  - Typed client: `lib/api/client.ts` (`hc<AppType>`), query helpers in `lib/api/queries.ts`
-  - No third-party API calls were found in `app/`, `lib/`, `components/`, or `providers/`
+**Third-party APIs:**
+- None detected. No outbound `fetch`, SDK, or HTTP client calls to external services exist in `app/`, `lib/`, `components/`, `providers/`, or `hooks/`. The only HTTP calls are the app's own API through the Hono client (`lib/api/client.ts`, `lib/api/queries.ts`).
 
-**Fonts:**
-- Google Fonts via `next/font/google` - Geist and Geist Mono loaded in `app/layout.tsx`. Fonts are downloaded and self-hosted at build time by Next.js; no runtime request from the app code.
+**Build-time font download:**
+- Google Fonts (Geist and Geist Mono) via `next/font/google` in `app/layout.tsx`. Fonts are fetched and self-hosted at build time by Next.js; no runtime call to Google from the app code.
 
-**Documentation tooling (declared, not wired):**
-- `@scalar/hono-api-reference` and `@hono/zod-openapi` are in `package.json`. No OpenAPI document or Scalar UI route was found under `app/api/`.
+**Internal API (same deployment):**
+- Hono app at `/api` in `app/api/[[...route]]/route.ts`, consumed by the browser through the typed client `lib/api/client.ts` (`hc<AppType>`)
+  - Base URL: `window.location.origin` in the browser; on the server, `https://${VERCEL_URL}`, then `NEXT_PUBLIC_APP_URL`, then `http://localhost:3000`
+  - Auth: none (intentional; the app is for a trusted play group)
 
 ## Data Storage
 
 **Databases:**
-- PostgreSQL
-  - Connection: `DATABASE_URL` env var (read in `prisma/schema.prisma`; documented in `env.example`)
-  - Client: Prisma 6.12.0 (`@prisma/client`), generated into `lib/generated/prisma`
-  - Singleton: `lib/db/index.ts` (`export const db = new PrismaClient()`, cached on `globalThis` outside production)
-  - Schema: `prisma/schema.prisma` - model `Character` mapped to table `characters`, with `id` as cuid, `createdAt`, `updatedAt`, and the character sheet fields (basic info, level and XP, attributes, skills, spells, notes)
-  - Query usage: `app/api/[[...route]]/characters/index.ts` (case-insensitive `contains` search on `characterName` and `playerName`)
-  - Migrations: no `prisma/migrations` directory was found; schema changes are applied with `prisma migrate` or `prisma db push` per `.kiro/steering/tech.md`
+- PostgreSQL - the only persistent store
+  - Connection: `DATABASE_URL` (read by `prisma/schema.prisma` via `env("DATABASE_URL")`)
+  - Client: Prisma 6.12.0, generated into `lib/generated/prisma` (git-ignored)
+  - Access: singleton `db` exported from `lib/db/index.ts`; imported by the server route `app/api/[[...route]]/characters/index.ts`
+  - Table: `characters` (model `Character`, `@@map("characters")`)
+  - JSON columns hold structured sheet data: `attributes`, `vitality`, `currentVitality`, `skills`, `weapons`, `armor`, `adventureKit`, `finances`, `languages`, `spells`, `talents`. Notes are a `String?` column named `notes`.
+  - Free-text search uses Prisma `mode: 'insensitive'` on `characterName` and `playerName` (PostgreSQL-specific behavior)
+  - Persisted JSON keys are Portuguese and must not be renamed (see `README.md`)
 
 **File Storage:**
-- Local filesystem only for static assets in `public/` (SVG placeholders from the Next.js template, `app/favicon.ico`). No upload or object storage integration.
+- Local filesystem only for static assets in `public/` (SVG icons, `favicon.ico` in `app/`). No user file uploads.
 
 **Caching:**
-- None at the infrastructure level
-- Client-side: TanStack Query in-memory cache, `staleTime` 60 seconds (`providers/query-provider.tsx`)
-- Next.js default fetch and route caching only
+- No server-side cache layer (no Redis, KV, or Data Cache configuration).
+- Client-side cache: TanStack Query in-memory cache, `staleTime` 60 seconds, `retry: false` (`providers/query-provider.tsx`).
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- None. No authentication library (NextAuth, Clerk, Supabase Auth, etc.) is in `package.json`.
-- The API routes in `app/api/[[...route]]/` do not check identity.
-- `middleware.ts` only redirects `/` to `/characters`.
+- None. This is an intentional owner decision: the sheet is for a trusted play group and is not meant to have authentication.
+  - Implementation: no login, session, token, or `middleware.ts` exists. Every `/api/characters` route is open to any caller who can reach the deployment.
+  - Edits are guarded by optimistic concurrency, not identity: `PUT /api/characters/:id` accepts an optional `expectedUpdatedAt` and answers `409` on conflict (`lib/api/character-concurrency.ts`, `app/api/[[...route]]/characters/index.ts`).
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected (no Sentry, Bugsnag, or similar SDK in `package.json`)
-
-**Logs:**
-- `console` usage only; errors are logged inside try/catch blocks in `app/api/[[...route]]/characters/index.ts`
-- Development-only branches in `components/character/notes-tab.tsx` (`process.env.NODE_ENV === "development"`)
+- None detected. No Sentry, Datadog, Rollbar, or similar SDK in `package.json`.
 
 **Analytics:**
-- None detected
+- None detected.
+
+**Logs:**
+- Default Next.js and Vercel function logs. No logging library is declared. API error responses are JSON; the request body is not echoed back (see `invalidJsonHook` in `app/api/[[...route]]/characters/index.ts`).
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Vercel (`vercel.json` with Next.js framework preset)
-- Function region: `gru1`
-- API route `maxDuration`: 30 seconds for `app/api/[[...route]]/route.ts`
-- Build command: `bun run build` (runs `prisma generate && next build`)
-- Install command: `bun install`
-- Bun version pinned via `BUN_VERSION` = `1.2.9` in `vercel.json`
+- Vercel. `vercel.json` sets framework `nextjs`, install `bun install`, build `bun run build`, region `gru1`, and the API function `maxDuration` of 30 seconds.
+- Bun version for the build is pinned through `BUN_VERSION: "1.2.9"` in `vercel.json`.
 
 **CI Pipeline:**
-- None detected (no `.github/workflows/` directory or other CI config in the repo root)
-
-**Git hosting:**
-- Repository is a git repo with remote activity on GitHub (commit history in the local repo; `gh` CLI is used for PR operations by the tooling)
+- None detected. No `.github/workflows/` or other CI configuration is tracked in the repository. Quality checks are run manually per `README.md` (`npx tsc --noEmit`, `bun run lint`, `bun test`, `bun run build`).
 
 ## Environment Configuration
 
 **Required env vars:**
-- `DATABASE_URL` - PostgreSQL connection string, required by Prisma at runtime and at `prisma generate` time
+- `DATABASE_URL` - PostgreSQL connection string (Prisma datasource; required for the API to serve data)
 
-**Optional env vars:**
-- `VERCEL_URL` - automatically set by Vercel; used by `lib/api/client.ts` for server-side base URL
-- `NEXT_PUBLIC_APP_URL` - explicit base URL fallback for server-side calls in `lib/api/client.ts`
-- `NODE_ENV` - standard Node/Next variable controlling Prisma client caching in `lib/db/index.ts`
+**Optional env vars read by code:**
+- `VERCEL_URL` - set automatically on Vercel; used for the server-side API base URL in `lib/api/client.ts`
+- `NEXT_PUBLIC_APP_URL` - optional override for the server-side API base URL in `lib/api/client.ts`
+- `NODE_ENV` - standard Next.js variable; controls Prisma client caching in `lib/db/index.ts` and dev-only UI in `components/character/notes/notes-header.tsx`
 
 **Secrets location:**
-- `.env` file at the repo root holds `DATABASE_URL` locally. It is git-ignored (`.gitignore`: `.env*`). Contents were intentionally not read for this document.
-- `env.example` at the repo root is a template with the key name only.
-- Production values are expected in the Vercel project environment settings (inferred from `vercel.json` and the Vercel hosting setup). The repo does not record where they are stored.
+- Local: `.env` in the repository root (git-ignored via `.env*` in `.gitignore`). Only `env.example` is tracked; it lists `DATABASE_URL` as the sole variable. The contents of `.env` are intentionally not recorded in this document.
+- Deployed: Vercel project environment variables (`DATABASE_URL`).
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None. The only inbound HTTP surface is the first-party Hono API at `/api/characters` (see `app/api/[[...route]]/characters/index.ts`).
+- None. The only inbound HTTP surface is the Hono API under `/api/characters` (`GET`, `POST`, `PUT /:id`, `DELETE /:id`), with no signature verification, since no webhooks are used. `GET /` redirects to `/characters` through `app/page.tsx`.
 
 **Outgoing:**
-- None. No outbound calls to third-party webhooks were found.
+- None. The server makes no outbound HTTP calls; Prisma connects only to PostgreSQL.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-last_mapped_commit: dbe980a72bf9357010fabf77e4c8695d6ff9d1d2
+last_mapped_commit: 216d4bd8bdc9621832748458a63bb5e0b24f8795
 last_mapped_at: 2026-11-01
 ---
 <!-- refreshed: 2026-11-01 -->
@@ -7,277 +7,234 @@ last_mapped_at: 2026-11-01
 
 **Analysis Date:** 2026-11-01
 
-## System Overview
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Next.js App Router (client pages)                │
-│  `app/characters/page.tsx`  `app/create/page.tsx`                    │
-│  `app/character/[id]/page.tsx`  (all "use client")                   │
-└───────────┬───────────────────────────────┬─────────────────────────┘
-            │ TanStack Query hooks          │ Zustand store (inline edit)
-            ▼                               ▼
-┌──────────────────────────────┐   ┌──────────────────────────────────┐
-│ `lib/api/queries.ts`         │   │ `lib/store/character.ts`         │
-│ `lib/api/client.ts` (hc RPC) │   │ (editing state; saveField stub)  │
-└───────────┬──────────────────┘   └──────────────────────────────────┘
-            │ HTTP  /api/characters/...
-            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Hono API  `app/api/[[...route]]/route.ts` (basePath `/api`)         │
-│  `app/api/[[...route]]/characters/index.ts` (routes + zValidator)    │
-└───────────┬───────────────────────────────┬─────────────────────────┘
-            │ zod schemas                    │ pure functions
-            ▼                                ▼
-┌──────────────────────────────┐   ┌──────────────────────────────────┐
-│ `lib/schemas/*.ts`           │   │ `lib/calculations/index.ts`      │
-│ `lib/constants/character.ts` │   │ `lib/defaults/character.ts`      │
-└──────────────────────────────┘   └──────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Data access: `lib/db/index.ts` (Prisma client singleton)           │
-│  Generated client: `lib/generated/prisma` (gitignored)              │
-└───────────┬─────────────────────────────────────────────────────────┘
-            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  PostgreSQL, table `characters` (`prisma/schema.prisma`)            │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Component Responsibilities
-
-| Component | Responsibility | File |
-|-----------|----------------|------|
-| Root layout + providers | HTML shell, Geist fonts, `QueryProvider`, sonner `Toaster` | `app/layout.tsx`, `providers/query-provider.tsx` |
-| Root redirect | Middleware sends `/` to `/characters`; `app/page.tsx` is a fallback spinner | `middleware.ts`, `app/page.tsx` |
-| Character list page | Search, pagination, delete via query hooks | `app/characters/page.tsx` |
-| Character creation page | Form that POSTs a new character | `app/create/page.tsx` |
-| Character sheet page | Loads one character, sanitizes arrays/objects, renders tabbed layout | `app/character/[id]/page.tsx` |
-| Tabbed sheet layout | Sticky 4-tab nav, modals for skills and attributes | `components/forms/character-layout.tsx` |
-| Tab sections | Basic info, skills & kit, spells & talents, notes | `components/character/*-tab.tsx` |
-| Inline editable fields | Click-to-edit fields that auto-save via `useUpdateCharacter` | `components/ui/editable-field.tsx`, `components/ui/editable-scaling-field.tsx` |
-| Edit-state store | Zustand store for which field is being edited, pending changes | `lib/store/character.ts` |
-| API server | Hono app mounted at `/api`, typed routes, error mapping | `app/api/[[...route]]/route.ts`, `app/api/[[...route]]/characters/index.ts` |
-| Typed API client | `hc<AppType>` RPC client used by hooks | `lib/api/client.ts` |
-| Query/mutation hooks | TanStack Query wrappers around the RPC client | `lib/api/queries.ts` |
-| Validation schemas | Zod request/response schemas and inferred types | `lib/schemas/character.ts`, `lib/schemas/calculations.ts` |
-| Game rules | Pure calculation functions (attributes, vitality, berkana, skills, XP, level-up) | `lib/calculations/index.ts` |
-| Constants and defaults | Attribute/skill lists, labels, XP and berkana formulas, default character payload | `lib/constants/character.ts`, `lib/defaults/character.ts` |
-| Prisma singleton | Shared `PrismaClient` with dev-hot-reload caching | `lib/db/index.ts` |
-
 ## Pattern Overview
 
-**Overall:** Single Next.js project with a client-rendered UI (App Router, `"use client"` pages) backed by an in-project Hono API under `/api` that is a Next route handler. Business rules live in pure functions in `lib/calculations`. Persistence is a single Prisma model with JSON columns.
+**Overall:** Next.js App Router single-app with a client-rendered sheet UI, a Hono HTTP API mounted inside a catch-all route handler, and a single-table PostgreSQL store accessed through Prisma.
 
 **Key Characteristics:**
-- Full-stack monolith deployed as one Vercel project (`vercel.json`, function `app/api/[[...route]]/route.ts`, `maxDuration: 30`, region `gru1`).
-- Client pages fetch everything over HTTP; there are no server components that query the database. Pages are all `"use client"`.
-- End-to-end types: `AppType` exported from `app/api/[[...route]]/route.ts` is consumed by `hc<AppType>` in `lib/api/client.ts`, so the client is typed from the server routes.
-- Zod is the single source for validation (`zValidator` on the server, `z.infer` types on the client).
-- Character data is stored largely as untyped JSON columns (`attributes`, `vitality`, `skills`, `weapons`, `spells`, `talents`, etc.); shape is enforced in zod, not in the DB.
-- UI is in Portuguese (pt-BR); user-facing strings and code comments are Portuguese.
+- Pages are client components (`"use client"`) that fetch through TanStack Query; there are no server components doing data fetching.
+- The only server-side surface is the Hono app in `app/api/[[...route]]/`, which validates with Zod (`@hono/zod-validator`) and talks to Prisma via `lib/db/index.ts`.
+- The browser calls the API through a typed Hono RPC client (`lib/api/client.ts`) whose type is `AppType` exported from `app/api/[[...route]]/route.ts`.
+- Each character is one row in `characters`; most sheet sections are JSON columns (`attributes`, `skills`, `spells`, `talents`, ...) defined in `prisma/schema.prisma`. The notes column is a `String` holding a JSON-encoded array.
+- Writes use optimistic concurrency: every PUT carries `expectedUpdatedAt` and the server answers 409 on a stale token. The client-side logic lives in `lib/api/character-concurrency.ts`.
+- Game-rule math (attribute totals, vitality levels, Berkana, skill points, XP) is pure TypeScript in `lib/calculations/index.ts`, shared by server schemas, React Query hooks and components.
+- Inline editing is done by per-field components (`components/ui/editable-field.tsx`, `components/ui/editable-scaling-field.tsx`) that call the same mutation hook directly.
 
 ## Layers
 
-**UI pages (routing layer):**
-- Purpose: Route entry points and page-level state
-- Location: `app/`
-- Contains: `page.tsx` files, `layout.tsx`, `globals.css`
-- Depends on: `lib/api/queries.ts`, `components/`, `providers/`
-- Used by: Next.js router
+**Routing / Pages (client):**
+- Purpose: Route screens and page-level data loading.
+- Location: `app/page.tsx`, `app/characters/page.tsx`, `app/create/page.tsx`, `app/character/[id]/page.tsx`, `app/layout.tsx`
+- Contains: Page components, loading/error states, navigation via `next/navigation`.
+- Depends on: `lib/api/queries.ts`, `components/forms/character-layout.tsx`, `components/ui/*`, `providers/query-provider.tsx` (through the root layout).
+- Used by: Next.js router only.
 
-**Feature components:**
-- Purpose: Character sheet UI, split by tab
-- Location: `components/character/`, `components/forms/`
-- Contains: Tab components, modals, quick-actions bar, `types.ts` (`CharacterTabProps`)
-- Depends on: `components/ui/`, `lib/api/queries.ts`, `lib/store/character.ts`, `lib/constants/`
-- Used by: `app/character/[id]/page.tsx`
+**Sheet layout and tabs (client):**
+- Purpose: Renders the four-tab character sheet, the sticky quick-actions bar and the skills/attributes modals.
+- Location: `components/forms/character-layout.tsx` (tab shell), `components/character/*-tab.tsx` (one per tab), `components/character/quick-actions-bar.tsx`, `components/character/skills-modal.tsx`, `components/character/attributes-modal.tsx`
+- Contains: Tab wiring, `handleNavigate` scroll-to-section logic, `isEditMode` flag passed down.
+- Depends on: Tab components, `components/character/types.ts` (`CharacterTabProps`), `lib/calculations`.
+- Used by: `app/character/[id]/page.tsx`.
 
-**Generic UI primitives:**
-- Purpose: shadcn/ui components and inline-edit building blocks
-- Location: `components/ui/`
-- Contains: Radix-based primitives (`button.tsx`, `dialog.tsx`, `tabs.tsx`, ...) plus `editable-field.tsx` and `editable-scaling-field.tsx`, which are the only `components/ui` files with domain logic (they call `useUpdateCharacter`)
-- Depends on: `lib/store/character.ts`, `lib/api/queries.ts`
-- Used by: feature components
+**Section cards (client):**
+- Purpose: Each card owns one part of the sheet and its editable fields.
+- Location: `components/character/basic-info/*.tsx`, `components/character/spells-talents/*.tsx`, `components/character/notes/*.tsx`, `components/character/skills-kit-tab.tsx` (kit and skills, single file)
+- Contains: Presentational cards plus the inline editors. Cards that persist receive an `updateCharacterMutation` prop from their tab; `profile-cards`, `attribute-cards`, `equipment-cards` and `berkana-card` take the shared `characterId`/`character`/`isEditMode` props.
+- Depends on: `components/ui/editable-field.tsx`, `lib/calculations`, `lib/constants/character.ts`, `lib/schemas/character.ts` (types), `lib/notes.ts` (notes only).
+- Used by: The tab components.
 
-**Client data layer:**
-- Purpose: Talk to the API and cache server state
-- Location: `lib/api/`, `providers/`
-- Contains: `client.ts` (hc client, base URL resolution), `queries.ts` (hooks), `providers/query-provider.tsx` (QueryClient, staleTime 60s, retry false)
-- Depends on: `app/api/[[...route]]/route.ts` (type-only import of `AppType`)
-- Used by: pages and feature components
+**Editing primitives (client):**
+- Purpose: Inline field editing with a shared "one field in edit at a time" state.
+- Location: `components/ui/editable-field.tsx`, `components/ui/editable-scaling-field.tsx`, `lib/store/character.ts`
+- Contains: `EditableField`, `EditableTextArea`, `EditableNumberField`, `EditableScalingField`. They call `startEditing`/`cancelEditing` on the Zustand store and `mutateAsync` on `useUpdateCharacter`.
+- Depends on: `lib/api/queries.ts`, `lib/store/character.ts`, `lib/calculations`.
+- Used by: Every section card.
 
-**Client edit-state layer:**
-- Purpose: Track inline edit session state
-- Location: `lib/store/character.ts`
-- Contains: `useCharacterStore` (Zustand + devtools) and selector hooks (`useIsFieldEditing`, `useHasPendingChanges`, `useFieldValue`, `useCalculatedStats`)
-- Depends on: `lib/schemas/character.ts` types
-- Used by: `components/ui/editable-field.tsx`, `components/ui/editable-scaling-field.tsx`, `components/character/basic-info-tab.tsx`
+**Data-fetching and mutation hooks (client):**
+- Purpose: Bridge React Query to the typed Hono client; own the concurrency protocol for writes.
+- Location: `lib/api/queries.ts` (hooks), `lib/api/character-concurrency.ts` (headless save core), `lib/api/client.ts` (typed `hc` client), `providers/query-provider.tsx` (QueryClient, `staleTime` 60s, `retry: false`)
+- Contains: `useCharacters`, `useCharacter`, `fetchCharacter`, `useCreateCharacter`, `useUpdateCharacter`, `useDeleteCharacter`, `useCalculateDerivedStats`; `saveCharacterUpdate`, `enqueueCharacterSave`, `handleCharacterSaveError`.
+- Depends on: `hono/client`, `@tanstack/react-query`, `sonner` (in `queries.ts` only), `lib/schemas/character.ts` (request types).
+- Used by: Pages and section cards.
 
-**API layer:**
-- Purpose: HTTP endpoints, validation, orchestration of DB and calculations
-- Location: `app/api/[[...route]]/`
-- Contains: `route.ts` (Hono root, `basePath('/api')`, exports GET/POST/PUT/DELETE via `hono/vercel` `handle`), `characters/index.ts` (all character routes)
-- Depends on: `lib/schemas/`, `lib/calculations/`, `lib/defaults/`, `lib/db/`
-- Used by: `lib/api/client.ts`
+**API (server):**
+- Purpose: HTTP interface for characters under `/api/characters`.
+- Location: `app/api/[[...route]]/route.ts` (Hono app, `basePath('/api')`, exports `GET`/`POST`/`PUT`/`DELETE` via `hono/vercel` `handle`), `app/api/[[...route]]/characters/index.ts` (route definitions and the `invalidJsonHook`).
+- Contains: Four handlers: list (`GET /`), read (`GET /:id`), create (`POST /`), update (`PUT /:id`), delete (`DELETE /:id`). No other endpoints exist.
+- Depends on: `lib/schemas/character.ts`, `lib/defaults/character.ts`, `lib/db/index.ts`.
+- Used by: `lib/api/client.ts` only.
 
-**Domain / business logic:**
-- Purpose: Game-rule math with no I/O
-- Location: `lib/calculations/index.ts`, `lib/constants/character.ts`
-- Contains: `calculateAllAttributes`, `calculateVitalityLevels`, `calculateMaxBerkana`, `calculateAllSkills`, `validateSkillDistribution`, `processLevelUp`, `getXPRequiredForNextLevel`, `getTotalXPForLevel`, etc.
-- Depends on: nothing app-internal
-- Used by: API routes, and the UI through constants
+**Schemas and domain logic (shared):**
+- Purpose: Validation, response shaping and game rules used on both sides.
+- Location: `lib/schemas/character.ts` (request/response/entity schemas, inferred types), `lib/schemas/calculations.ts` (per-field schemas), `lib/calculations/index.ts` (pure math), `lib/constants/character.ts` (attribute, skill, vitality constants and pagination limits), `lib/defaults/character.ts` (creation defaults)
+- Contains: `getCharactersQuerySchema`, `updateCharacterSchema`, `createCharacterSchema`, `characterFullSchema`, `calculateAttributeTotal`, `calculateVitalityLevels`, `calculateMaxBerkana`, `processLevelUp`, `toAttributeValue`, `getDefaultCharacterData`.
+- Depends on: `zod` only.
+- Used by: API routes, hooks, cards, the Zustand store.
 
-**Data access:**
-- Purpose: Prisma client and schema
-- Location: `lib/db/index.ts`, `prisma/schema.prisma`, generated output `lib/generated/prisma`
-- Contains: Single model `Character` mapped to table `characters`
-- Depends on: `DATABASE_URL` env var (value not recorded here)
-- Used by: `app/api/[[...route]]/characters/index.ts` only
+**Notes pipeline (shared):**
+- Purpose: Read, migrate and write the `notes` column safely.
+- Location: `lib/notes.ts` (parse/migrate/serialize, `Note` type, `canWriteNotes`, `claimLegacyMigration`), `lib/notes-format.ts` (escape-then-format HTML for note bodies)
+- Contains: `parseNotes` returns one of `empty | ok | legacy | corrupted`; corrupted values block writes so the original text is never overwritten.
+- Depends on: `zod` (`looseObject` keeps unknown note keys on round-trip).
+- Used by: `components/character/notes-tab.tsx` and `components/character/notes/*`.
+
+**Persistence (server):**
+- Purpose: Single Prisma client for the app.
+- Location: `lib/db/index.ts` (singleton cached on `globalThis` outside production), `prisma/schema.prisma` (generator output `lib/generated/prisma`, datasource `DATABASE_URL`).
+- Contains: One model, `Character` (mapped to `characters`).
+- Depends on: PostgreSQL via `DATABASE_URL`.
+- Used by: `app/api/[[...route]]/characters/index.ts`.
 
 ## Data Flow
 
-### Primary Request Path: load a character sheet
+### Primary Read Path (sheet view)
 
-1. `app/character/[id]/page.tsx` reads the `id` param and calls `useCharacter(id)` (`lib/api/queries.ts`).
-2. The hook calls `api.characters[':id'].$get` on the `hc` client (`lib/api/client.ts`), which hits `/api/characters/:id`.
-3. `app/api/[[...route]]/route.ts` dispatches to the `characters` sub-app (`app/api/[[...route]]/characters/index.ts`). `zValidator('param', getCharacterParamsSchema)` validates the id.
-4. The handler calls `db.character.findUnique` (`lib/db/index.ts`) and returns the row through `getCharacterResponseSchema.parse`.
-5. The page sanitizes arrays and objects (`weapons`, `spells`, `vitality`, etc.) and passes `character` into `CharacterLayout` (`components/forms/character-layout.tsx`), which renders the four tabs.
+1. `app/character/[id]/page.tsx` calls `useCharacter(id)` (`lib/api/queries.ts`), which runs `fetchCharacter` against `api.characters[':id'].$get`.
+2. `lib/api/client.ts` resolves the base URL (`window.location.origin` in the browser, `VERCEL_URL` or `NEXT_PUBLIC_APP_URL` on the server) and issues the request.
+3. `GET /api/characters/:id` in `app/api/[[...route]]/characters/index.ts` validates the param, calls `db.character.findUnique`, and returns `getCharacterResponseSchema.parse({ character })`.
+4. The page sanitizes arrays/objects (`weapons`, `spells`, `vitality`, ...) and passes `sanitizedCharacter` to `CharacterLayout` (`components/forms/character-layout.tsx`).
+5. Tabs render section cards; each card computes derived values with `lib/calculations` during render (no client store copy of the character is kept).
 
-### Secondary Flow: inline field edit (auto-save)
+### Inline Edit and Save Path
 
-1. A user clicks an `EditableField` (`components/ui/editable-field.tsx`). It calls `startEditing(section, field, value)` on `useCharacterStore`.
-2. On save, if no custom `onSave` is supplied and a `characterId` is available, it builds a partial payload with `buildUpdateData` and calls `useUpdateCharacter().mutateAsync({ id, data })` (`lib/api/queries.ts`).
-3. `PUT /api/characters/:id` validates with `updateCharacterSchema`, confirms the row exists, then runs `db.character.update`.
-4. On success, the mutation writes the returned row into the `['character', id]` query cache and invalidates `['characters']`.
-5. The fallback branch (no `characterId`) calls `useCharacterStore.getState().updateField` and `saveField()`. `saveField` is a placeholder that waits 500 ms and does not persist (see Anti-Patterns).
+1. A user clicks a field; `EditableField` (`components/ui/editable-field.tsx`) calls `startEditing(section, field, value)` on `useCharacterStore` (`lib/store/character.ts`). The store holds only `editingField` and the cancel/start actions.
+2. On commit, the field calls `updateCharacterMutation.mutateAsync({ id, data })`. `useUpdateCharacter` (`lib/api/queries.ts`) forwards to `saveCharacterUpdate` (`lib/api/character-concurrency.ts`).
+3. `saveCharacterUpdate` reads the base `updatedAt` from the React Query cache synchronously, enqueues the task on a per-character serial queue (`enqueueCharacterSave`), and resolves the token through the device's own version lineage (`resolveOwnVersion`).
+4. It calls `api.characters[':id'].$put` with `expectedUpdatedAt` appended to the body.
+5. `PUT /api/characters/:id` performs one conditional `db.character.update({ where: { id, updatedAt } })`. On `P2025` it distinguishes 404 (row missing) from 409 (row changed). The response carries the row returned by that same UPDATE.
+6. On success, `saveCharacterUpdate` records the sent-to-returned version pair, cancels in-flight GETs for that key, and writes the response into `['character', id]` with `setQueryData`. On 409 it throws `CharacterConflictError`; `handleCharacterSaveError` shows one toast (stable id `character-conflict-<id>`) and invalidates the character query to refetch.
+7. `useUpdateCharacter.onSuccess` invalidates `['characters']` so the list stays current.
 
-### Level-up Flow
+### List and Search Path
 
-1. `POST /api/characters/:id/level-up` loads the character, calls `processLevelUp` (`lib/calculations/index.ts`), and writes `level`, `currentXP`, `maxBerkana`.
-2. `useLevelUpCharacter` (`lib/api/queries.ts`) invalidates the character and list queries. No component in the current UI calls this hook; the flow exists as API and hook only.
+1. `app/characters/page.tsx` calls `useCharacters({ page, limit, search })`, hitting `GET /api/characters`.
+2. The handler builds a case-insensitive `OR` filter on `characterName` and `playerName`, selects only summary columns, orders by `updatedAt desc`, and returns `{ characters, total, page, limit }`.
+3. Delete goes through `useDeleteCharacter` (`DELETE /api/characters/:id`) and invalidates `['characters']`.
 
-### Create Flow
+### Create Path
 
-1. `app/create/page.tsx` calls `useCreateCharacter`, which POSTs to `/api/characters`.
-2. The route merges user input with `getDefaultCharacterData()` (`lib/defaults/character.ts`) and creates the row. Note the defaults are spread after the input, so they override user-supplied fields that share a key.
-3. The hook invalidates `['characters']`.
+1. `app/create/page.tsx` submits through `useCreateCharacter` (`POST /api/characters`), body validated by `createCharacterSchema`.
+2. The handler merges the body with `getDefaultCharacterData()` (`lib/defaults/character.ts`) and creates the row; the response is `createCharacterResponseSchema`.
+3. The list cache is invalidated; the page then routes to `/character/[id]`.
+
+### Notes Path
+
+1. `NotesTab` (`components/character/notes-tab.tsx`) runs `parseNotes(character.notes)` in a `useMemo`. Status `legacy` (plain text from older versions) triggers a one-time migration guarded by `claimLegacyMigration`, which is keyed to the character id and the legacy text so Strict Mode remounts do not repeat it.
+2. Writes go through `serializeNotes` and `useUpdateCharacter` as the `notes` string field. `guardWrite` refuses writes when the status is `legacy` (until migrated) or `corrupted`.
+3. Note bodies render via `formatNoteHtml` (`lib/notes-format.ts`), which escapes HTML before adding the fixed set of tags.
 
 **State Management:**
-- Server state: TanStack Query, keys `['characters', params]` and `['character', id]`, staleTime 60 s, retries disabled (`providers/query-provider.tsx`).
-- Edit state: Zustand store `lib/store/character.ts` (`editingField`, `pendingChanges`, `isSaving`).
-- Local UI state: `useState` in pages and layout (active tab, modal open flags, `isEditMode`).
+- Server state: TanStack Query, cache key `['character', id]` for one sheet and `['characters', params]` for the list. `staleTime` 60 s, `retry: false`.
+- Editing state: Zustand (`lib/store/character.ts`, `devtools` middleware) holds only `editingField`. Its `character` slice and `setCharacter`/`reset` exist but no component reads or calls them, so the sheet's source of truth is the React Query cache.
+- Local UI state: `useState` inside pages and tabs (`isEditMode`, `activeTab`, modal open flags, note dialog state). `isEditMode` defaults to `true` in `app/character/[id]/page.tsx`.
 
 ## Key Abstractions
 
-**Hono typed RPC route tree:**
-- Purpose: Share route types between server and client without codegen
-- Examples: `app/api/[[...route]]/route.ts` (`export type AppType`), `lib/api/client.ts`
-- Pattern: Chained `.get/.post/.put/.delete` on a Hono instance with `zValidator` middleware
+**`CharacterFull` / `CharacterData`:**
+- Purpose: The character entity as validated by the server and as received by the client (dates as strings).
+- Examples: `lib/schemas/character.ts` (`characterFullSchema`), `components/character/types.ts` (`CharacterData`).
+- Pattern: Zod schema with `z.infer`; the client type omits `createdAt`/`updatedAt` and re-adds them as `string`.
 
-**Zod schema triplets:**
-- Purpose: Request validation, response shaping, and TypeScript types from one definition
-- Examples: `lib/schemas/character.ts` (`createCharacterSchema`, `updateCharacterSchema`, `characterFullSchema`), `lib/schemas/calculations.ts` (`calculateVitalityRequestSchema`, `calculateVitalityResponseSchema`, ...)
-- Pattern: `export const xSchema = z.object(...)` then `export type X = z.infer<typeof xSchema>`
+**`CharacterTabProps`:**
+- Purpose: Common prop contract for every sheet tab and its cards.
+- Examples: `components/character/types.ts`, implemented by `basic-info-tab.tsx`, `skills-kit-tab.tsx`, `spells-talents-tab.tsx`, `notes-tab.tsx`.
+- Pattern: `{ character, characterId, isEditMode, ...modal flags }`. `UpdateCharacterMutation` (`ReturnType<typeof useUpdateCharacter>`) is the type for the mutation prop passed to cards.
 
-**Pure calculation functions:**
-- Purpose: Game rules (attribute totals, vitality tiers, berkana, skill points, XP curve)
-- Examples: `lib/calculations/index.ts`, `lib/constants/character.ts` (`calculateXPForNextLevel`, `calculateBerkana`, `calculateVitality`)
-- Pattern: Plain exported functions taking primitives or records and returning numbers or objects. Two parallel sets exist (see Anti-Patterns).
+**Calculation functions:**
+- Purpose: Derived stats (attribute totals, vitality thresholds, Berkana max, skill points, XP per level).
+- Examples: `lib/calculations/index.ts` (`calculateAllAttributes`, `calculateVitalityLevels`, `calculateMaxBerkana`, `processLevelUp`), with the coercion helpers `toAttributeValue`, `toSkillValue`, `toVitalityBase`.
+- Pattern: Pure functions with no React or Prisma imports; covered by `lib/calculations/index.test.ts`.
 
-**Prisma singleton:**
-- Purpose: Avoid multiple `PrismaClient` instances under Next dev hot reload
-- Examples: `lib/db/index.ts`
-- Pattern: `globalThis.prisma` cache when `NODE_ENV !== 'production'`
+**Concurrency core:**
+- Purpose: Headless optimistic-concurrency write path, testable under `bun test`.
+- Examples: `lib/api/character-concurrency.ts`, tested in `lib/api/character-concurrency.test.ts`.
+- Pattern: Dependency injection. `saveCharacterUpdate` receives `put` and `fetchCharacter` as arguments, so it does not import React, sonner or the Hono client.
 
-**Feature tab component:**
-- Purpose: Each sheet tab is a self-contained component taking `CharacterTabProps`
-- Examples: `components/character/basic-info-tab.tsx`, `components/character/skills-kit-tab.tsx`, `components/character/spells-talents-tab.tsx`, `components/character/notes-tab.tsx`
-- Pattern: Barrel export in `components/character/index.ts`; props `character`, `characterId`, `isEditMode`, plus modal open state
+**Notes value object:**
+- Purpose: Safe round-trip of the `notes` string column.
+- Examples: `lib/notes.ts` (`parseNotes`, `serializeNotes`, `migrateLegacyNotes`, `createNote`, `moveNote`), `lib/notes.test.ts`.
+- Pattern: Discriminated union `ParsedNotes` (`empty | ok | legacy | corrupted`); functions never throw.
 
 ## Entry Points
 
-**Root layout:**
-- Location: `app/layout.tsx`
-- Triggers: Every page request
-- Responsibilities: HTML shell (`lang="pt-BR"`), fonts, `QueryProvider`, `Toaster`
-
-**Middleware:**
-- Location: `middleware.ts`
-- Triggers: Requests that match the matcher, which excludes `api`, `_next/static`, `_next/image`, `favicon.ico`, and image extensions
-- Responsibilities: Redirect `/` to `/characters`
-
-**API catch-all:**
-- Location: `app/api/[[...route]]/route.ts`
-- Triggers: Any `/api/*` request
-- Responsibilities: Hono app with `basePath('/api')`, exports the HTTP verbs via `hono/vercel`
+**Root redirect:**
+- Location: `app/page.tsx`
+- Triggers: Requests to `/`.
+- Responsibilities: Calls `redirect("/characters")`. The former `middleware.ts` is no longer present.
 
 **Character list:**
 - Location: `app/characters/page.tsx`
-- Triggers: Redirect from `/`, navigation
-- Responsibilities: Search, pagination, delete
+- Triggers: Navigation to `/characters`.
+- Responsibilities: Search, pagination, delete, link to create and sheet.
 
 **Character sheet:**
 - Location: `app/character/[id]/page.tsx`
-- Triggers: Navigation from the list or after creation
-- Responsibilities: Fetch, sanitize, and render the tabbed sheet
+- Triggers: Navigation to `/character/:id`.
+- Responsibilities: Fetches one character, shows loading/error states, header with refresh, mounts `CharacterLayout`.
 
-**Character create:**
+**Create character:**
 - Location: `app/create/page.tsx`
-- Triggers: Navigation
-- Responsibilities: Collect initial data and POST it
+- Triggers: Navigation to `/create`.
+- Responsibilities: Name/player form, `useCreateCharacter`, then redirect to the new sheet.
+
+**HTTP API:**
+- Location: `app/api/[[...route]]/route.ts`
+- Triggers: Any `GET|POST|PUT|DELETE /api/*` request (Vercel function, `maxDuration` 30 s from `vercel.json`).
+- Responsibilities: Mounts `characters` routes; exports `AppType` for the typed client.
+
+**Root layout:**
+- Location: `app/layout.tsx`
+- Triggers: Every page render.
+- Responsibilities: Fonts (Geist, Geist Mono), `lang="pt-BR"`, `QueryProvider`, `Toaster` from `components/ui/sonner.tsx`.
 
 ## Architectural Constraints
 
-- **Threading:** Single-threaded Node/edge request handling via Next.js and Vercel functions. No worker threads. Client UI runs on the browser main thread.
-- **Global state:** `lib/db/index.ts` caches `PrismaClient` on `globalThis` in non-production. `providers/query-provider.tsx` keeps a module-level `browserQueryClient`. `lib/store/character.ts` is a module-level Zustand store singleton.
-- **Circular imports:** None observed. The only server-to-client type dependency is `lib/api/client.ts` importing the type `AppType` from `app/api/[[...route]]/route.ts`, which is type-only and does not create a runtime cycle.
-- **Runtime boundary:** Client code must never import `lib/db` or `lib/generated/prisma`. Only `app/api/[[...route]]/characters/index.ts` does.
-- **Generated code:** `lib/generated/prisma` is produced by `prisma generate` (run by `postinstall` and `build` in `package.json`). It is gitignored; do not edit it.
-- **Deployment window:** The API function has `maxDuration: 30` in `vercel.json`.
+- **Threading:** Single-threaded JavaScript on the client and in Vercel serverless functions. No worker threads or background jobs exist.
+- **Global state:** Module-level singletons: the Prisma client in `lib/db/index.ts` (cached on `globalThis` outside production), the React Query client in `providers/query-provider.tsx` (per-browser singleton), the per-character save queues and version lineage maps in `lib/api/character-concurrency.ts`, the legacy-migration claim set in `lib/notes.ts`, and the Zustand store in `lib/store/character.ts`. The save queues and lineage maps are per browser tab; they do not coordinate across tabs or devices.
+- **Circular imports:** `lib/api/client.ts` imports the `AppType` type from `app/api/[[...route]]/route.ts`, and that route imports the character routes. This is type-only in the browser path and does not create a runtime cycle.
+- **Server/client boundary:** `lib/schemas/*`, `lib/calculations/*`, `lib/notes*.ts` and `lib/defaults/*` are imported by both sides and must stay free of Node-only or DOM-only APIs.
+- **Compatibility branch:** A PUT without `expectedUpdatedAt` is still accepted and writes unconditionally (`app/api/[[...route]]/characters/index.ts`) for tabs opened before the concurrency deploy. A follow-up in the code comment proposes making the token required.
+- **Language:** Domain keys (`agilidade`, `notavel`, ...) are Portuguese and persisted as JSON keys; do not rename them.
 
 ## Anti-Patterns
 
-### Edit state that never persists
+### Duplicated persistence hook instances per tab
 
-**What happens:** `saveField` in `lib/store/character.ts` waits 500 ms with a `setTimeout` and clears the editing state. It makes no API call. `components/ui/editable-field.tsx` reaches this path only when no `characterId` is passed.
-**Why it's wrong:** A caller that relies on the store fallback sees a success state but nothing is saved. The store's `pendingChanges`, `savePendingChanges`, and `addPendingChange` are also not wired to the API.
-**Do this instead:** Persist through `useUpdateCharacter` from `lib/api/queries.ts`, as `editable-field.tsx` does on its main branch. Pass `characterId` or a custom `onSave`.
+**What happens:** `BasicInfoTab`, `SpellsTalentsTab`, `NotesTab` and `SkillsKitTab` each call `useUpdateCharacter()` at their top level, and some cards call it again through their own `EditableField` children (`components/ui/editable-field.tsx`).
+**Why it's wrong:** Each call creates a separate `useMutation` observer. Pending and error state is not shared, so a save in one field does not disable or inform another. Concurrency still works because the queue and lineage are module-level in `lib/api/character-concurrency.ts`, not per hook.
+**Do this instead:** Keep the mutation at the tab (as `BasicInfoTab` does for cards) and pass `updateCharacterMutation` down, as `components/character/spells-talents-tab.tsx` already does for `SpellsCard`/`TalentsCard`. Do not add a new hook instance in leaf components.
 
-### Duplicate calculation logic
+### Writing the whole `notes` column for every change
 
-**What happens:** Vitality, berkana, attribute, and skill math exists in both `lib/calculations/index.ts` (for example `calculateVitalityLevels`, `calculateMaxBerkana`) and `lib/constants/character.ts` (for example `calculateVitality`, `calculateBerkana`, `calculateSkillBonus`). The API uses the first set.
-**Why it's wrong:** The two can drift. Hard-coded values also differ: the `recalculate` route passes a literal `100` as `baseValue` to `calculateMaxBerkana`, which ignores the stored character state.
-**Do this instead:** Add or change game rules only in `lib/calculations/index.ts`. Import from there in both the server and UI.
+**What happens:** `NotesTab` serializes the full note array and sends it as one `notes` string on each add/edit/move/delete.
+**Why it's wrong:** Two devices editing notes race on the same column; the second save gets 409 and the user must redo the change. Notes are not separately addressable.
+**Do this instead:** Keep the optimistic-concurrency token path (`lib/api/character-concurrency.ts`) and rely on the 409 toast. Any new list-shaped data should follow the same whole-column pattern only if it is small, otherwise model a separate table.
 
-### Loosely typed JSON columns
+### Reading the character from the Zustand store
 
-**What happens:** Routes call `character.attributes as any`, `character.vitality as any`, and similar casts before passing values to calculations. `CharacterTabProps.character` is typed `any`.
-**Why it's wrong:** Schema drift in the JSON columns is not caught at compile time, and the response parse uses `characterFullSchema` only on reads.
-**Do this instead:** Parse stored JSON with the matching zod schema from `lib/schemas/character.ts` before use, and type `character` as `CharacterFull`.
-
-### Stale project docs
-
-**What happens:** `.kiro/steering/tech.md` describes Next.js 15.4.4, Bun-first commands, and a `lib/types/` folder. `.kiro/steering/structure.md` describes a `lib/generated` location that is correct but says `lib/types/` exists. `package.json` pins `next` at `^16.0.7`. `README.md` is the create-next-app template.
-**Why it's wrong:** Agents following those files will use the wrong versions and paths.
-**Do this instead:** Treat `package.json`, `prisma/schema.prisma`, and the source tree as authoritative. See `STRUCTURE.md` for the actual layout.
+**What happens:** The store (`lib/store/character.ts`) exposes `character`, `setCharacter`, and `reset`, but nothing calls them.
+**Why it's wrong:** A future component could read a stale copy that the React Query cache no longer matches.
+**Do this instead:** Read the character from `useCharacter(id)` or from the `character` prop passed down through `CharacterLayout`. Use the store only for `editingField`.
 
 ## Error Handling
 
-**Strategy:** Each Hono handler wraps its body in `try/catch`, logs with `console.error`, and returns a JSON `{ error }` body with status 500. Known misses return 404 with `{ error: 'Character not found' }`. Validation failures are handled by `zValidator`, which returns 400.
+**Strategy:** Server handlers catch errors per route, log with `console.error`, and return a JSON `{ error }` with 400/404/409/500. Client hooks convert non-OK responses into `Error` objects; the conflict path is special-cased.
 
 **Patterns:**
-- Route-level `try/catch` in `app/api/[[...route]]/characters/index.ts`, with Portuguese error messages
-- Client hooks in `lib/api/queries.ts` throw `Error` objects from `response.json().error`, and components show them with `sonner` toasts
-- Pages render an error card when `useCharacter` returns an error (`app/character/[id]/page.tsx`)
+- Request validation failures use `zValidator` and, for PUT bodies, `invalidJsonHook` (`app/api/[[...route]]/characters/index.ts`) returning `{ error: 'Dados inválidos', issues }` with paths and messages only, never the request body.
+- Prisma "record not found" is detected by code `P2025` with duck typing (`isRecordNotFoundError`) so tests can use a fake database.
+- Conflicts surface as `CharacterConflictError` (409) and a single `toast.error` with id `character-conflict-<id>`, followed by a refetch.
+- Toasts (sonner) carry Portuguese messages; mutation `onError` in `useUpdateCharacter` handles only conflicts, leaving other errors to each caller's `catch`.
 
 ## Cross-Cutting Concerns
 
-**Logging:** `console.error` in API catch blocks. No logging library is installed.
-**Validation:** Zod through `@hono/zod-validator` on the server. Client forms use `react-hook-form` with `@hookform/resolvers` (see `components/ui/form.tsx`).
-**Authentication:** None in the app code. `middleware.ts` only performs the root redirect. The API has no auth checks, so any caller who can reach `/api/characters` can read, modify, or delete characters.
+**Logging:** `console.error` in API handlers only. No logging library is present.
+
+**Validation:** Zod on both sides: `zValidator` for route inputs, `safeParse` in `lib/notes.ts`, and `.parse` on response objects before returning them from the API.
+
+**Authentication:** None. The app has no auth layer and no middleware; access control is absent by design (single-group use).
+
+**Internationalization:** None. UI strings are hard-coded Brazilian Portuguese; `lang="pt-BR"` is set in `app/layout.tsx`; `date-fns` uses the `ptBR` locale in `app/characters/page.tsx`.
 
 ---
 

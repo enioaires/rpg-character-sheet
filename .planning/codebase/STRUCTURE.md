@@ -1,7 +1,8 @@
 ---
-last_mapped_commit: dbe980a72bf9357010fabf77e4c8695d6ff9d1d2
+last_mapped_commit: 216d4bd8bdc9621832748458a63bb5e0b24f8795
 last_mapped_at: 2026-11-01
 ---
+<!-- refreshed: 2026-11-01 -->
 # Codebase Structure
 
 **Analysis Date:** 2026-11-01
@@ -10,270 +11,258 @@ last_mapped_at: 2026-11-01
 
 ```
 rpg-character-sheet/
-├── app/                        # Next.js App Router: pages, layout, API route
-│   ├── api/[[...route]]/       # Hono API catch-all mounted at /api
-│   │   ├── characters/         # Character sub-router
-│   │   └── route.ts            # Hono root app, exports AppType and HTTP verbs
-│   ├── character/[id]/         # Character sheet page
-│   ├── characters/             # Character list page
-│   ├── create/                 # Character creation page
-│   ├── globals.css             # Tailwind/theme styles
-│   ├── layout.tsx              # Root layout
-│   └── page.tsx                # Fallback "Redirecionando..." page
+├── app/                          # Next.js App Router: pages, root layout, API route
+│   ├── api/[[...route]]/         # Hono API mounted at /api (catch-all route)
+│   │   ├── characters/index.ts   # Character endpoints + tests (index.test.ts)
+│   │   └── route.ts              # Hono app root, exports GET/POST/PUT/DELETE and AppType
+│   ├── character/[id]/page.tsx   # Character sheet screen
+│   ├── characters/page.tsx       # Character list / search screen
+│   ├── create/page.tsx           # New character screen
+│   ├── page.tsx                  # "/" -> redirect to /characters
+│   ├── layout.tsx                # Root layout (fonts, QueryProvider, Toaster)
+│   └── globals.css               # Tailwind v4 entry and theme variables
 ├── components/
-│   ├── character/              # Character sheet tabs, modals, quick actions
-│   ├── forms/                  # Layout wrapper for the sheet
-│   └── ui/                     # shadcn/ui primitives + inline-edit components
-├── hooks/                      # Shared React hooks (use-mobile.ts)
+│   ├── character/                # Sheet feature components
+│   │   ├── basic-info/           # Cards for the "Dados Básicos" tab
+│   │   ├── spells-talents/       # Cards for the "Magias & Talentos" tab
+│   │   ├── notes/                # Note list, card, form and dialogs
+│   │   ├── *-tab.tsx             # One file per tab (basic-info, skills-kit, spells-talents, notes)
+│   │   ├── quick-actions-bar.tsx # Sticky bottom/top action bar
+│   │   ├── skills-modal.tsx, attributes-modal.tsx
+│   │   ├── types.ts              # CharacterData, CharacterTabProps, UpdateCharacterMutation
+│   │   ├── index.ts              # Barrel for tabs, modals and quick actions
+│   │   └── notes-tab.render.test.ts
+│   ├── forms/character-layout.tsx  # Tabbed sheet shell (imports the tabs above)
+│   ├── ui/                       # shadcn/ui primitives (generated) + editable-field, editable-scaling-field
+│   └── (no other folders)
 ├── lib/
-│   ├── api/                    # Typed RPC client and TanStack Query hooks
-│   ├── calculations/           # Game-rule functions
-│   ├── constants/              # Lists, labels, formulas
-│   ├── db/                     # Prisma client singleton
-│   ├── defaults/               # Default character payload
-│   ├── generated/prisma/       # Generated Prisma client (gitignored)
-│   ├── schemas/                # Zod schemas and inferred types
-│   ├── store/                  # Zustand edit-state store
-│   └── utils.ts                # cn() helper
-├── prisma/
-│   └── schema.prisma           # Single Character model
-├── providers/
-│   └── query-provider.tsx      # TanStack QueryClientProvider
-├── public/                     # Static SVG assets
-├── .kiro/steering/             # Legacy steering docs (partly outdated)
-├── .vscode/settings.json       # Editor settings
-├── middleware.ts               # Root redirect to /characters
-├── next.config.ts              # Next config (empty options)
-├── package.json                # Scripts and dependencies
-├── components.json             # shadcn/ui config
-├── tsconfig.json               # TypeScript config and "@/*" alias
-├── postcss.config.mjs          # Tailwind v4 PostCSS plugin
-├── vercel.json                 # Build command, region, function duration
-└── env.example                 # Environment variable template (no values)
+│   ├── api/                      # Hono client, TanStack Query hooks, save concurrency core (+ tests)
+│   ├── calculations/             # Pure game-rule math (index.ts + index.test.ts)
+│   ├── constants/character.ts    # Attribute, skill, vitality constants; pagination limits
+│   ├── db/index.ts               # Prisma client singleton
+│   ├── defaults/character.ts     # Defaults merged into new characters
+│   ├── generated/prisma/         # Prisma client output (git-ignored, generated)
+│   ├── schemas/                  # Zod schemas: character.ts, calculations.ts (+ tests)
+│   ├── store/character.ts        # Zustand store (editing state)
+│   ├── notes.ts, notes-format.ts # Notes parsing/migration and safe HTML formatting (+ tests)
+│   └── utils.ts                  # cn() class helper
+├── providers/query-provider.tsx  # TanStack Query provider (client component)
+├── hooks/use-mobile.ts           # Responsive hook (only custom hook in the tree)
+├── prisma/schema.prisma          # Single Character model, PostgreSQL datasource
+├── public/                       # Static SVG assets (Next.js template leftovers)
+├── .claude/CLAUDE.md             # Project instructions for Claude Code (GSD-managed)
+├── .kiro/steering/*.md           # Steering docs for another tool (partly outdated)
+├── .planning/codebase/           # Generated codebase maps (this directory)
+├── next.config.ts, tsconfig.json, postcss.config.mjs, components.json
+├── eslint.config.mjs, mise.toml, vercel.json, package.json
+└── README.md
 ```
-
-Not in the repository and ignored by `.gitignore`: `node_modules/`, `.next/`, `lib/generated/prisma`, `.env*`, `*.tsbuildinfo`, `next-env.d.ts`.
 
 ## Directory Purposes
 
 **`app/`:**
-- Purpose: Routes, layouts, and the single API handler
-- Contains: `page.tsx`, `layout.tsx`, `route.ts`, `globals.css`, `favicon.ico`
-- Key files: `app/layout.tsx`, `app/api/[[...route]]/route.ts`, `app/api/[[...route]]/characters/index.ts`
+- Purpose: Routes only. Pages are thin: they fetch via hooks and compose feature components.
+- Contains: `page.tsx`, `layout.tsx`, the Hono route file, and `globals.css`.
+- Key files: `app/character/[id]/page.tsx` (sheet, 196 lines), `app/characters/page.tsx` (list), `app/create/page.tsx`, `app/api/[[...route]]/characters/index.ts` (all API handlers).
+- Rule: Do not put game math or Prisma calls in pages; put them in `lib/`.
 
-**`app/character/[id]/`:**
-- Purpose: Dynamic character sheet route
-- Contains: `page.tsx` (client component)
-- Key files: `app/character/[id]/page.tsx`
-
-**`app/characters/`:**
-- Purpose: Character list with search and pagination
-- Contains: `page.tsx` (client component, 324 lines)
-- Key files: `app/characters/page.tsx`
-
-**`app/create/`:**
-- Purpose: New character form
-- Contains: `page.tsx` (client component)
-- Key files: `app/create/page.tsx`
+**`app/api/[[...route]]/`:**
+- Purpose: The whole HTTP API. The `[[...route]]` optional catch-all lets Hono own every path under `/api`.
+- Contains: `route.ts` (mounts `characters` with `basePath('/api')`) and `characters/index.ts` (route chain for `/`, `/:id`).
+- Key files: `app/api/[[...route]]/characters/index.test.ts` (route tests with a fake database).
 
 **`components/character/`:**
-- Purpose: Feature components for the character sheet
-- Contains: Tab components, modals, quick-actions bar, shared prop type, barrel index
-- Key files:
-  - `components/character/basic-info-tab.tsx` (1057 lines, largest component)
-  - `components/character/notes-tab.tsx` (794 lines)
-  - `components/character/spells-talents-tab.tsx` (545 lines)
-  - `components/character/skills-kit-tab.tsx` (461 lines)
-  - `components/character/quick-actions-bar.tsx`
-  - `components/character/skills-modal.tsx`, `components/character/attributes-modal.tsx`
-  - `components/character/types.ts` (`CharacterTabProps`)
-  - `components/character/index.ts` (barrel)
+- Purpose: Everything specific to the character sheet.
+- Contains: Tab files at the top level; card folders `basic-info/`, `spells-talents/`, `notes/`; modals; `quick-actions-bar.tsx`; `types.ts`.
+- Key files: `components/character/types.ts` (`CharacterTabProps`), `components/character/index.ts` (barrel for `BasicInfoTab`, `SkillsKitTab`, `SpellsTalentsTab`, `NotesTab`, `QuickActionsBar`, `SkillsModal`, `AttributesModal`).
+- Note: `skills-kit-tab.tsx` has no folder of its own; its content is a single file of about 466 lines.
+
+**`components/character/basic-info/`:**
+- Purpose: Cards rendered by `BasicInfoTab`.
+- Files: `profile-cards.tsx` (`BasicDetailsCard`, `ExperienceCard`), `attribute-cards.tsx` (`AttributesSummaryCard`, `AttributesDistributionCard`), `vitality-card.tsx` (`VitalityCard`), `berkana-card.tsx` (`BerkanaCard`), `equipment-cards.tsx` (`WeaponsCard`, `ArmorCard`), `languages-card.tsx` (`LanguagesCard`).
+
+**`components/character/spells-talents/`:**
+- Purpose: Cards rendered by `SpellsTalentsTab`.
+- Files: `spells-card.tsx` (`SpellsCard`, uses `EditableScalingField`), `talents-card.tsx` (`TalentsCard`).
+
+**`components/character/notes/`:**
+- Purpose: Presentational pieces of the notes tab. Business logic stays in `notes-tab.tsx`.
+- Files: `notes-header.tsx` (`NotesHeader`), `notes-list.tsx` (`NotesList`), `note-card.tsx` (`NoteCard`, renders via `formatNoteHtml`), `note-form.tsx` (`NoteForm`), `edit-note-dialog.tsx` (`EditNoteDialog`).
 
 **`components/forms/`:**
-- Purpose: Layout composition for the sheet
-- Contains: `character-layout.tsx` (sticky tabs, scroll-to-section helper)
-- Key files: `components/forms/character-layout.tsx`
+- Purpose: The tabbed sheet shell. Despite the name, it holds no form logic.
+- Contains: `character-layout.tsx` (`CharacterLayout`, owns active tab, modal flags and section navigation).
 
 **`components/ui/`:**
-- Purpose: Generic primitives (shadcn/ui, Radix) and two domain-aware inline editors
-- Contains: About 50 files such as `button.tsx`, `dialog.tsx`, `form.tsx`, `sidebar.tsx`, `chart.tsx`, plus `editable-field.tsx` and `editable-scaling-field.tsx`
-- Key files: `components/ui/editable-field.tsx`, `components/ui/editable-scaling-field.tsx`, `components/ui/sonner.tsx`
-
-**`hooks/`:**
-- Purpose: Shared React hooks
-- Contains: `use-mobile.ts`
-- Key files: `hooks/use-mobile.ts`
+- Purpose: shadcn/ui primitives (`new-york` style, see `components.json`) and two custom editors.
+- Contains: About 50 generated files such as `button.tsx`, `dialog.tsx`, `tabs.tsx`, `sonner.tsx`, plus `editable-field.tsx` and `editable-scaling-field.tsx`, which are hand-written.
+- Rule: Do not hand-edit the generated primitives; wrap them in `components/character/` or add new feature components elsewhere.
 
 **`lib/api/`:**
-- Purpose: Client-side API access
-- Contains: `client.ts` (`hc<AppType>` client), `queries.ts` (all React Query hooks)
-- Key files: `lib/api/queries.ts`
-
-**`lib/calculations/`:**
-- Purpose: Pure game-rule math
-- Contains: `index.ts` (single file, 298 lines)
-- Key files: `lib/calculations/index.ts`
-
-**`lib/constants/`:**
-- Purpose: Static game data and simple formulas
-- Contains: `character.ts` (attribute and skill lists, labels, default adventure kit, languages, vitality levels, formula helpers)
-- Key files: `lib/constants/character.ts`
-
-**`lib/db/`:**
-- Purpose: Database client
-- Contains: `index.ts`
-- Key files: `lib/db/index.ts`
-
-**`lib/defaults/`:**
-- Purpose: Default values merged on character creation
-- Contains: `character.ts`
-- Key files: `lib/defaults/character.ts`
+- Purpose: Client-side access to the API.
+- Contains: `client.ts` (typed `hc<AppType>` client), `queries.ts` (hooks; imports `sonner`), `character-concurrency.ts` (framework-free save core), tests in `character-concurrency.test.ts`.
+- Rule: `character-concurrency.ts` must not import React, sonner or the Hono client, so `bun test` can run it.
 
 **`lib/schemas/`:**
-- Purpose: Zod request and response contracts
-- Contains: `character.ts` (CRUD schemas and types), `calculations.ts` (calculation request and response schemas)
-- Key files: `lib/schemas/character.ts`, `lib/schemas/calculations.ts`
+- Purpose: Zod schemas and their inferred types, used by the API and the client.
+- Contains: `character.ts` (request/response/entity schemas; list pagination constants come from `lib/constants/character.ts`), `calculations.ts` (per-field value schemas), tests in `character.test.ts`.
+
+**`lib/calculations/`:**
+- Purpose: Pure derived-stat math, with no imports from React or Prisma.
+- Contains: `index.ts` (about 390 lines), `index.test.ts` (about 700 lines).
+
+**`lib/constants/`, `lib/defaults/`:**
+- `constants/character.ts`: `ATTRIBUTES`, `SKILLS`, `VITALITY_LEVELS`, `*_LABELS`, `STANDARD_LANGUAGES`, page-size limits.
+- `defaults/character.ts`: `getDefaultCharacterData()` used by `POST /api/characters`.
+
+**`lib/notes.ts`, `lib/notes-format.ts`:**
+- Purpose: Notes column handling and the markdown-like formatter. Both are DOM-free and have tests (`lib/notes.test.ts`, `lib/notes-format.test.ts`).
 
 **`lib/store/`:**
-- Purpose: Zustand store for inline edit session
-- Contains: `character.ts`
-- Key files: `lib/store/character.ts`
+- Purpose: Zustand store for transient editing state (`lib/store/character.ts`). Only `editingField` is used.
 
-**`lib/generated/prisma/`:**
-- Purpose: Prisma client output (`generator client` in `prisma/schema.prisma`)
-- Generated: Yes, by `prisma generate` (`postinstall`, `build`)
-- Committed: No (`.gitignore` contains `/lib/generated/prisma`)
+**`lib/db/`:**
+- Purpose: Creates the Prisma client. Imports from `@/lib/generated/prisma`, so `prisma generate` must run before the first import (`postinstall` and `build` do this).
+
+**`lib/generated/`:**
+- Purpose: Prisma client output. Generated and git-ignored (`/lib/generated/prisma` in `.gitignore`). Do not edit or review.
 
 **`prisma/`:**
-- Purpose: Database schema
-- Contains: `schema.prisma` only. No `migrations/` folder exists.
-- Key files: `prisma/schema.prisma`
+- Purpose: Schema only (`schema.prisma`). No migrations folder is tracked; schema changes are applied with `prisma` CLI commands outside the repository.
 
 **`providers/`:**
-- Purpose: Client-side React providers
-- Contains: `query-provider.tsx`
-- Key files: `providers/query-provider.tsx`
+- Purpose: Client providers mounted in `app/layout.tsx`. Contains only `query-provider.tsx`.
 
-**`public/`:**
-- Purpose: Static assets served at the root
-- Contains: `file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg` (default Next.js templates)
+**`hooks/`:**
+- Purpose: Shared React hooks. Contains only `use-mobile.ts`. Feature-specific hooks live next to their feature or inside `lib/api/queries.ts`.
+
+**`.kiro/steering/` and `.claude/`:**
+- Purpose: Assistant guidance files. Not read by the app. `.kiro/steering/structure.md` describes PascalCase filenames, but tracked files are kebab-case.
 
 ## Key File Locations
 
 **Entry Points:**
-- `app/layout.tsx`: Root layout and providers
+- `app/page.tsx`: root redirect to `/characters`
+- `app/layout.tsx`: root layout
 - `app/api/[[...route]]/route.ts`: API entry, exports `AppType`
-- `middleware.ts`: Root redirect
-- `app/characters/page.tsx`: Default landing after redirect
 
 **Configuration:**
-- `package.json`: Scripts (`dev` uses Turbopack, `build` runs `prisma generate && next build`)
-- `tsconfig.json`: Path alias `@/*`
-- `next.config.ts`: Next config, no options set
-- `components.json`: shadcn/ui settings (New York style)
-- `postcss.config.mjs`: Tailwind CSS v4 via `@tailwindcss/postcss`
-- `vercel.json`: Build and runtime settings
-- `prisma/schema.prisma`: Datasource (`postgresql`, URL from `DATABASE_URL`) and model
-- `env.example`: Lists required env var names. Do not copy values from `.env`.
+- `next.config.ts`: empty Next.js config
+- `tsconfig.json`: strict mode, `@/*` alias to repo root
+- `components.json`: shadcn/ui aliases and style
+- `vercel.json`: Bun install and build, function region `gru1`, API `maxDuration` 30
+- `mise.toml`: Node 24
+- `prisma/schema.prisma`: datasource `DATABASE_URL`, generator output `lib/generated/prisma`
+- `env.example`: documents `DATABASE_URL` (the real `.env` is git-ignored; its contents are not recorded here)
 
 **Core Logic:**
-- `lib/calculations/index.ts`: Game rules
-- `lib/constants/character.ts`: Constants and formulas
-- `lib/defaults/character.ts`: Default payload
-- `app/api/[[...route]]/characters/index.ts`: All character endpoints
+- `app/api/[[...route]]/characters/index.ts`: all server handlers
+- `lib/api/character-concurrency.ts`: optimistic-concurrency write path
+- `lib/api/queries.ts`: React Query hooks
+- `lib/calculations/index.ts`: derived stats
+- `lib/schemas/character.ts`: API contract
+- `lib/notes.ts`: notes column
 
 **Testing:**
-- Not detected. No test files, test runner config, or `test` script exist.
+- `lib/calculations/index.test.ts`
+- `lib/schemas/character.test.ts`
+- `lib/api/character-concurrency.test.ts`
+- `lib/notes.test.ts`, `lib/notes-format.test.ts`
+- `app/api/[[...route]]/characters/index.test.ts`
+- `components/character/notes-tab.render.test.ts`
+- Run with `bun test` (`package.json` `test` script).
 
 ## Naming Conventions
 
 **Files:**
-- Next.js routes: lowercase `page.tsx`, `layout.tsx`, `route.ts`, with dynamic segments in brackets (`[id]`, `[[...route]]`)
-- Components and tabs: kebab-case filenames that export PascalCase components (`basic-info-tab.tsx` exports `BasicInfoTab`, `character-layout.tsx` exports `CharacterLayout`)
-- shadcn primitives: kebab-case (`alert-dialog.tsx`, `dropdown-menu.tsx`)
-- Library modules: lowercase single words or kebab-case (`queries.ts`, `calculations.ts`, `character.ts`)
-- Hooks: `use-*.ts` in `hooks/` (`use-mobile.ts`). Hook exports are camelCase `useX` (`useCharacters`, `useCharacterStore`)
+- React components and feature files: kebab-case, for example `basic-info-tab.tsx` exporting `BasicInfoTab`, `vitality-card.tsx` exporting `VitalityCard`.
+- Pages: Next.js reserved names (`page.tsx`, `layout.tsx`, `route.ts`) inside lowercase route folders; dynamic segment `[id]`.
+- Lib modules: lowercase or kebab-case, for example `character-concurrency.ts`, `notes-format.ts`.
+- Barrels: `index.ts` inside a folder (`components/character/index.ts`, `lib/calculations/index.ts`).
+- Tests: `*.test.ts` next to the module. Component render test uses `*.render.test.ts`.
+- Type-only shared file: `types.ts` (`components/character/types.ts`).
 
 **Directories:**
-- Lowercase, single words or hyphen-free (`characters`, `calculations`, `schemas`)
-- Dynamic route segments in brackets: `app/character/[id]/`
+- Feature folders: lowercase, singular or plural by role (`components/character/`, `lib/schemas/`).
+- Card groups named after their tab: `basic-info/`, `spells-talents/`, `notes/`.
 
-**Code identifiers:**
-- Zod schemas: `camelCaseSchema` (`createCharacterSchema`, `getCharacterResponseSchema`)
-- Inferred types: PascalCase matching the request or response name (`CreateCharacterRequest`, `CharacterFull`)
-- Route sub-apps are chained Hono instances. Path params use `:id`
-- Mixed language: UI strings, comments, and some identifiers are Portuguese (`Personagem`, `Perícias`, `Anotações`). Keep new user-facing text in pt-BR to match.
-
-**Import aliases (from `tsconfig.json`):**
-- `@/*` maps to the repo root. Use `@/components/...`, `@/lib/...`, `@/app/api/[[...route]]/route` for the type import. Relative imports are used only within a folder (for example `./client` inside `lib/api/`).
+**Identifiers:**
+- Components: PascalCase named exports; page components are default exports.
+- Hooks: `use` prefix; mutations named `use<Verb><Entity>` (`useUpdateCharacter`).
+- Zod schemas end in `Schema`; response schemas end in `ResponseSchema`; request types end in `Request`.
+- Event handlers: `handle` prefix (`handleBack`, `handleRefresh`).
+- Domain keys (`agilidade`, `notavel`, `gravementeFerido`) are Portuguese and persisted; keep them as-is.
+- UI strings and toasts: Brazilian Portuguese. Code identifiers: English.
 
 ## Where to Add New Code
 
+**New sheet section (new card):**
+- Implementation: a new file in the matching tab folder, for example `components/character/basic-info/<name>-card.tsx` exporting `<Name>Card`, with props `{ character, characterId, isEditMode, updateCharacterMutation? }`.
+- Wire it into the tab file (`components/character/basic-info-tab.tsx`, `spells-talents-tab.tsx`, and so on).
+- Editable fields: use `EditableField` / `EditableNumberField` / `EditableTextArea` from `components/ui/editable-field.tsx`.
+- Tests: pure math goes in `lib/calculations/index.test.ts`; schema changes in `lib/schemas/character.test.ts`.
+
+**New sheet tab:**
+- Implementation: `components/character/<name>-tab.tsx` implementing `CharacterTabProps`; export from `components/character/index.ts`.
+- Register in `components/forms/character-layout.tsx` (add a `TabsTrigger` and `TabsContent`).
+
+**New game rule / derived stat:**
+- Implementation: pure function in `lib/calculations/index.ts`, with a test in `lib/calculations/index.test.ts`.
+- Use from components and `lib/store/character.ts` only through the exported function (not copies).
+
 **New API endpoint for characters:**
-- Route: add a chained method to `app/api/[[...route]]/characters/index.ts`, with `zValidator` for params and body
-- Schemas: add request and response zod schemas to `lib/schemas/character.ts` or `lib/schemas/calculations.ts`
-- Client hook: add a hook to `lib/api/queries.ts` following the existing `useX` pattern, with query-key invalidation
-- Tests: none exist; if added, place them beside the source (no convention yet)
+- Implementation: add a chained route in `app/api/[[...route]]/characters/index.ts` with `zValidator` and a schema from `lib/schemas/character.ts`.
+- Test: next to it in `app/api/[[...route]]/characters/index.test.ts`.
+- Client: the typed client picks it up automatically through `AppType`; add a hook in `lib/api/queries.ts`.
 
-**New game rule or calculation:**
-- Implementation: `lib/calculations/index.ts`
-- Constants: `lib/constants/character.ts`
-- Do not duplicate formulas into components
-
-**New character sheet tab or section:**
-- Component: `components/character/<name>-tab.tsx`, exported from `components/character/index.ts`
-- Wire into the tab list in `components/forms/character-layout.tsx` (add a `TabsTrigger` and `TabsContent`)
-- Props: follow `CharacterTabProps` in `components/character/types.ts`
-
-**New inline-editable field:**
-- Use `components/ui/editable-field.tsx` or `components/ui/editable-scaling-field.tsx`. Pass `characterId` so saves go through `useUpdateCharacter`.
+**New top-level resource (not characters):**
+- Implementation: create `app/api/[[...route]]/<resource>/index.ts` and mount it in `app/api/[[...route]]/route.ts` with `app.route('/<resource>', ...)`, and add the export to the `routes` chain so `AppType` includes it.
 
 **New page:**
-- Location: `app/<route>/page.tsx`. Add `"use client"` only if it uses hooks or browser APIs.
+- Implementation: `app/<route>/page.tsx`. Use `"use client"` only when the page uses hooks; keep data access in `lib/api/queries.ts`.
 
-**New shared UI primitive:**
-- Location: `components/ui/<name>.tsx` (shadcn CLI settings in `components.json`)
+**New database column:**
+- Implementation: edit `prisma/schema.prisma`, add the field to `characterFullSchema` and the update/create schemas in `lib/schemas/character.ts`, and add a default in `lib/defaults/character.ts` if needed. Run `prisma generate` (done by `postinstall`).
 
-**New shared hook:**
-- Location: `hooks/use-<name>.ts`
+**Shared utilities:**
+- Pure helpers used by both client and server: `lib/` (new file or existing module), with no React or Node imports.
+- Class-name helper: `cn` in `lib/utils.ts`.
+- Client-only hooks: `hooks/` (for example `hooks/use-<name>.ts`).
 
-**New database field:**
-- Schema: `prisma/schema.prisma`. Then run `bunx prisma generate` or `npx prisma generate`. No migrations folder exists, so schema changes are applied another way (for example `prisma db push`).
-- Update `lib/schemas/character.ts` and `lib/defaults/character.ts` to match.
-
-**Utilities:**
-- Shared helpers: `lib/utils.ts` (`cn` class merging). Put domain helpers in `lib/calculations/` or `lib/constants/`, not in `lib/utils.ts`.
+**Generic UI primitive:**
+- Add via the shadcn CLI (`components.json`) into `components/ui/`; do not hand-edit generated files.
 
 ## Special Directories
 
+**`lib/generated/`:**
+- Purpose: Prisma client output.
+- Generated: Yes (`prisma generate`).
+- Committed: No (git-ignored).
+
 **`.next/`:**
-- Purpose: Next.js build output and cache
-- Generated: Yes
-- Committed: No
+- Purpose: Next.js build output and cache.
+- Generated: Yes.
+- Committed: No.
 
 **`node_modules/`:**
-- Purpose: Installed dependencies
-- Generated: Yes
-- Committed: No
-
-**`lib/generated/prisma/`:**
-- Purpose: Prisma client
-- Generated: Yes
-- Committed: No
-
-**`.kiro/`:**
-- Purpose: Steering documents for another assistant tool
-- Generated: No
-- Committed: Yes. Partly outdated; `package.json` is authoritative.
+- Purpose: Installed packages (Bun or npm).
+- Generated: Yes.
+- Committed: No.
 
 **`.planning/`:**
-- Purpose: GSD planning and codebase analysis output (this directory)
-- Generated: Yes
-- Committed: Per project workflow
+- Purpose: GSD planning artifacts, including this codebase map.
+- Generated: Mixed (some by tooling, some by hand).
+- Committed: Yes.
 
-**`.tmp/`, `hooks/`:**
-- `.tmp/` is an empty directory with no referenced code.
-- `hooks/` contains React hooks, not git hooks.
+**`.gsd/`:**
+- Purpose: Tooling state for another workflow tool (`dispatch-isolation-sentinel.json`, its own `.gitignore`).
+- Generated: Yes.
+- Committed: Not relevant to the app; do not read or modify from feature work.
+
+**`public/`:**
+- Purpose: Static assets served at `/`. Only Next.js template SVGs are present.
+- Generated: No.
+- Committed: Yes.
 
 ---
 
