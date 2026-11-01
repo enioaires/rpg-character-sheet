@@ -1,24 +1,25 @@
 // components/character/quick-actions-bar.tsx
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-
 import {
+  ChevronDown,
+  ChevronUp,
   Heart,
-  Zap,
-  Sword,
-  Eye,
-  EyeOff,
-  Target,
-  User,
   Lock,
-  Unlock
+  LockOpen,
+  Sword,
+  Target,
+  UserRound,
 } from 'lucide-react'
-import { VITALITY_LEVELS } from '@/lib/constants/character'
+
+import { Button } from '@/components/ui/button'
+import { BERKANA_STATE_DISPLAY, VITALITY_STAGE_DISPLAY, formatGameNumber } from '@/components/character/resource-display'
 import {
   calculateVitalityLevels,
-  calculateMaxBerkana,
-  getBaseBerkana,
+  calculateVitalityTotal,
+  getBerkanaState,
+  getCurrentVitalityStage,
+  resolveBerkanaPool,
+  resolveCurrentVitalityLevels,
   toVitalityBase,
 } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
@@ -27,162 +28,140 @@ import type { QuickSheetKind } from '@/components/character/quick-sheets/quick-s
 
 interface QuickActionsBarProps {
   character: CharacterData
-  onNavigate: (tab: string, section?: string) => void
-  onOpenSkillsModal?: () => void
-  onOpenAttributesModal?: () => void
-  isEditMode?: boolean
+  isEditMode: boolean
   onToggleEditMode?: () => void
   onOpenSheet: (kind: QuickSheetKind) => void
 }
 
-export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOpenAttributesModal, isEditMode = true, onToggleEditMode, onOpenSheet }: QuickActionsBarProps) {
+const MAIN_BUTTON_CLASS =
+  'flex h-14 items-center gap-2.5 rounded-(--radius) border bg-background px-3 text-left outline-none hover:bg-muted/60 focus-visible:ring-[3px] focus-visible:ring-ring/50'
+
+const ACTION_BUTTON_CLASS =
+  'flex h-12 flex-col items-center justify-center gap-0.5 rounded-(--radius) text-xs font-semibold text-muted-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50'
+
+export function QuickActionsBar({ character, isEditMode, onToggleEditMode, onOpenSheet }: QuickActionsBarProps) {
   const [isVisible, setIsVisible] = useState(true)
 
-  const {
-    level = 1,
-    vitality = {},
-    currentVitality = {},
-    maxBerkana = 100,
-    currentBerkana = 100,
-    berkanaBonus = 0,
-    weapons = {},
-  } = character
+  // Valores vêm todos dos helpers de lib/calculations (mesma fonte dos cards e das sheets)
+  const maxLevels = calculateVitalityLevels(toVitalityBase(character.vitality), character.level || 0)
+  const currentLevels = resolveCurrentVitalityLevels(character.currentVitality, maxLevels)
+  const currentTotal = calculateVitalityTotal(currentLevels)
+  const maxTotal = calculateVitalityTotal(maxLevels)
+  const stage = getCurrentVitalityStage(currentLevels, maxLevels)
+  const stageDisplay = stage ? VITALITY_STAGE_DISPLAY[stage] : null
+  const StageIcon = stageDisplay?.Icon ?? Heart
 
-  // Calcular valores
-  const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
-
-  const calculatedBerkana = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
-
-  // Calcular vitalidade total atual
-  const totalCurrentVitality = VITALITY_LEVELS.reduce((sum, key) => {
-    const currentValue = currentVitality[key] !== undefined && currentVitality[key] !== null
-      ? currentVitality[key]
-      : calculatedVitality[key]
-    return sum + (currentValue || 0)
-  }, 0)
-
-  const totalMaxVitality = Object.values(calculatedVitality).reduce((sum, val) => sum + (val || 0), 0)
-
-  // Calcular berkana atual vs máxima
-  const maxBerkanaValue = maxBerkana || calculatedBerkana
-  const currentBerkanaValue = currentBerkana || maxBerkanaValue
-
-  // Dados das quick actions
-  const quickActions = [
-    {
-      id: 'vitality',
-      label: 'Vitalidade',
-      icon: Heart,
-      value: `${totalCurrentVitality}/${totalMaxVitality}`,
-      color: totalCurrentVitality <= totalMaxVitality * 0.3 ? 'destructive' :
-        totalCurrentVitality <= totalMaxVitality * 0.6 ? 'warning' : 'default',
-      onClick: () => onOpenSheet('vit')
-    },
-    {
-      id: 'berkana',
-      label: 'Berkana',
-      icon: Zap,
-      value: `${currentBerkanaValue}/${maxBerkanaValue}`,
-      color: currentBerkanaValue <= maxBerkanaValue * 0.3 ? 'destructive' :
-        currentBerkanaValue <= maxBerkanaValue * 0.6 ? 'warning' : 'default',
-      onClick: () => onOpenSheet('berk')
-    },
-    {
-      id: 'weapon',
-      label: 'Arma',
-      icon: Sword,
-      value: weapons['0']?.level ? `Nv${weapons['0'].level}` : '-',
-      color: 'default',
-      onClick: () => onNavigate('basicos', 'weapons')
-    },
-    {
-      id: 'skills',
-      label: 'Perícias',
-      icon: Target,
-      value: 'Perícias',
-      color: 'default',
-      onClick: () => onOpenSkillsModal?.()
-    },
-    {
-      id: 'attributes',
-      label: 'Atributos',
-      icon: User,
-      value: 'Atributos',
-      color: 'default',
-      onClick: () => onOpenAttributesModal?.()
-    },
-    {
-      id: 'editMode',
-      label: isEditMode ? 'Desbloqueado' : 'Bloqueado',
-      icon: isEditMode ? Unlock : Lock,
-      value: '',
-      color: isEditMode ? 'success' : 'destructive',
-      onClick: () => onToggleEditMode?.()
-    }
-  ]
+  const pool = resolveBerkanaPool(character)
+  const berkanaDisplay = BERKANA_STATE_DISPLAY[getBerkanaState(pool.current, pool.max)]
 
   if (!isVisible) {
     return (
-      <div className="fixed bottom-4 right-4 z-20">
+      <div className="fixed right-4 bottom-4 z-20">
         <Button
-          size="sm"
+          type="button"
           variant="outline"
+          size="icon"
           onClick={() => setIsVisible(true)}
-          className="bg-background/95 backdrop-blur"
+          aria-label="Mostrar ações rápidas"
+          className="size-11 bg-card shadow-lg"
         >
-          <Eye className="h-4 w-4" />
+          <ChevronUp className="size-5" aria-hidden="true" />
         </Button>
       </div>
     )
   }
 
+  const vitalityLabel = `Vitalidade ${formatGameNumber(currentTotal)} de ${formatGameNumber(maxTotal)}${stageDisplay ? `, ${stageDisplay.label}` : ''}`
+
   return (
-    <div className="sticky bottom-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t">
-      <div className="container mx-auto px-2 sm:px-4">
-        <div className="flex items-center justify-between py-2">
-          {/* Toggle de visibilidade */}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsVisible(false)}
-            className="h-8 w-8 p-0"
+    <div className="sticky bottom-0 z-20 border-t bg-card shadow-[0_-8px_24px_-12px_oklch(0_0_0/0.5)]">
+      <div className="mx-auto flex max-w-[720px] flex-col gap-1.5 px-2.5 pt-2 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+        <div className="grid grid-cols-[1.25fr_1fr_auto] gap-1.5">
+          <button
+            type="button"
+            onClick={() => onOpenSheet('vit')}
+            aria-label={vitalityLabel}
+            className={MAIN_BUTTON_CLASS}
           >
-            <EyeOff className="h-4 w-4" />
+            <StageIcon
+              className={cn('size-[22px]', stageDisplay ? stageDisplay.textClassName : 'text-muted-foreground')}
+              aria-hidden="true"
+            />
+            <span className="flex min-w-0 flex-col leading-[1.1]">
+              <span className="font-numeric text-2xl font-semibold tabular-nums">
+                {formatGameNumber(currentTotal)}
+              </span>
+              <span
+                className={cn(
+                  'text-xs font-semibold whitespace-nowrap',
+                  stageDisplay ? stageDisplay.textClassName : 'text-muted-foreground'
+                )}
+              >
+                {stageDisplay ? stageDisplay.shortLabel : 'Vitalidade'}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenSheet('berk')}
+            aria-label={`Berkana ${formatGameNumber(pool.current)} de ${formatGameNumber(pool.max)}, ${berkanaDisplay.label}`}
+            className={MAIN_BUTTON_CLASS}
+          >
+            <berkanaDisplay.Icon className="size-[22px] text-berkana" aria-hidden="true" />
+            <span className="flex min-w-0 flex-col leading-[1.1]">
+              <span className="font-numeric text-2xl font-semibold tabular-nums">
+                {formatGameNumber(pool.current)}
+                <span className="text-[15px] font-medium text-muted-foreground">/{formatGameNumber(pool.max)}</span>
+              </span>
+              <span className="text-xs font-semibold text-berkana">Berkana</span>
+            </span>
+          </button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsVisible(false)}
+            aria-label="Ocultar ações rápidas"
+            className="size-11 self-center text-muted-foreground"
+          >
+            <ChevronDown className="size-5" aria-hidden="true" />
           </Button>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="flex-1 mx-2">
-            <div className="flex items-center justify-center gap-1">
-              {quickActions.map((action, index) => (
-                <div key={action.id} className="flex items-center">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={action.onClick}
-                    className={cn(
-                      "h-8 px-0.5 text-xs",
-                      action.color === 'destructive' && "text-red-600",
-                      action.color === 'warning' && "text-yellow-600",
-                      action.color === 'success' && "text-green-600",
-                      action.color === 'secondary' && "text-muted-foreground"
-                    )}
-                  >
-                    <action.icon className={cn(
-                      "h-3 w-3",
-                      action.value ? "mr-1" : ""
-                    )} />
-                    {action.value && <span className="font-mono">{action.value}</span>}
-                  </Button>
-                  {index < quickActions.length - 1 && (
-                    <Separator orientation="vertical" className="h-4 mx-1" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Espaço para balanceamento */}
-          <div className="w-8"></div>
+        <div className="grid grid-cols-4 gap-1.5">
+          <button type="button" onClick={() => onOpenSheet('arma')} className={ACTION_BUTTON_CLASS}>
+            <Sword className="size-5 text-foreground" aria-hidden="true" />
+            Armas
+          </button>
+          <button type="button" onClick={() => onOpenSheet('pericias')} className={ACTION_BUTTON_CLASS}>
+            <Target className="size-5 text-foreground" aria-hidden="true" />
+            Perícias
+          </button>
+          <button type="button" onClick={() => onOpenSheet('atributos')} className={ACTION_BUTTON_CLASS}>
+            <UserRound className="size-5 text-foreground" aria-hidden="true" />
+            Atributos
+          </button>
+          <button
+            type="button"
+            aria-pressed={!isEditMode}
+            onClick={() => onToggleEditMode?.()}
+            className={cn(
+              ACTION_BUTTON_CLASS,
+              'border',
+              isEditMode
+                ? 'border-primary bg-accent text-accent-foreground hover:bg-accent'
+                : 'border-border bg-transparent text-muted-foreground'
+            )}
+          >
+            {isEditMode ? (
+              <LockOpen className="size-5" aria-hidden="true" />
+            ) : (
+              <Lock className="size-5" aria-hidden="true" />
+            )}
+            {isEditMode ? 'Desbloqueado' : 'Bloqueado'}
+          </button>
         </div>
       </div>
     </div>

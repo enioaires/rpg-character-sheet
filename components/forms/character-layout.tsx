@@ -1,5 +1,6 @@
 // components/forms/character-layout.tsx
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   BasicInfoTab,
@@ -9,16 +10,37 @@ import {
   type CharacterTabProps
 } from '@/components/character'
 import { QuickActionsBar } from '@/components/character/quick-actions-bar'
-import { SkillsModal } from '@/components/character/skills-modal'
-import { AttributesModal } from '@/components/character/attributes-modal'
-import { QuickSheetContext, type QuickSheetApi, type QuickSheetKind } from '@/components/character/quick-sheets/quick-sheet-context'
 import { BerkanaSheet } from '@/components/character/quick-sheets/berkana-sheet'
+import {
+  QuickSheetContext,
+  type QuickSheetApi,
+  type QuickSheetKind
+} from '@/components/character/quick-sheets/quick-sheet-context'
+import {
+  AttributesSheet,
+  SkillsSheet,
+  WeaponsSheet
+} from '@/components/character/quick-sheets/reference-sheets'
 import { VitalitySheet } from '@/components/character/quick-sheets/vitality-sheet'
 import { useUpdateCharacter } from '@/lib/api/queries'
 
 // ============================================
-// TIPOS
+// ABAS: [valor, rótulo curto, rótulo longo]
 // ============================================
+
+const TABS = [
+  ['basicos', 'Básicos', 'Dados Básicos'],
+  ['pericias', 'Perícias', 'Perícias & Kit'],
+  ['magias', 'Magias', 'Magias & Talentos'],
+  ['anotacoes', 'Notas', 'Anotações'],
+] as const
+
+const TAB_TRIGGER_CLASS =
+  'h-[46px] rounded-none border-0 border-b-2 border-transparent bg-transparent px-1 text-[15px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:text-muted-foreground dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-foreground'
+
+// Conteúdo em colunas CSS: os cards entram como filhos diretos (ver 261101-mvw..mvz)
+const TAB_CONTENT_CLASS =
+  'mt-0 mx-auto w-full max-w-[1200px] p-3 [column-width:340px] [column-gap:12px]'
 
 // ============================================
 // COMPONENTE PRINCIPAL - COM TABS FIXAS
@@ -26,118 +48,66 @@ import { useUpdateCharacter } from '@/lib/api/queries'
 
 interface CharacterLayoutProps extends CharacterTabProps {
   onToggleEditMode?: () => void
+  header?: React.ReactNode
 }
 
-export function CharacterLayout({ character, characterId, isEditMode, onToggleEditMode }: CharacterLayoutProps) {
+export function CharacterLayout({ character, characterId, isEditMode, onToggleEditMode, header }: CharacterLayoutProps) {
   const [activeTab, setActiveTab] = useState('basicos')
-  const tabsRef = useRef<HTMLDivElement>(null)
-  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
-  const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false)
   const [openSheet, setOpenSheet] = useState<QuickSheetKind | null>(null)
   // Única instância de useUpdateCharacter para as sheets de jogo
   const updateCharacterMutation = useUpdateCharacter()
   const quickSheetApi = useMemo<QuickSheetApi>(() => ({ openSheet: setOpenSheet }), [])
 
-  // Função para navegar entre tabs e seções
-  const handleNavigate = (tab: string, section?: string) => {
-    const needsTabChange = activeTab !== tab
-
-
-
-    // Mudar para a tab correta
-    if (needsTabChange) {
-      setActiveTab(tab)
-    }
-
-    // Se há uma seção específica, scroll até ela
-    if (section) {
-      const scrollToSection = () => {
-        const sectionElement = document.querySelector(`[data-section="${section}"]`)
-
-        if (sectionElement) {
-          // Calcular offset para compensar o header sticky
-          const headerHeight = 80 // Altura aproximada do header sticky (tabs + padding)
-          const elementPosition = sectionElement.getBoundingClientRect().top + window.pageYOffset
-          const offsetPosition = elementPosition - headerHeight
-
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          })
-        }
-      }
-
-      // Se mudou de tab, aguardar um pouco mais para o conteúdo carregar
-      if (needsTabChange) {
-        setTimeout(scrollToSection, 300)
-      } else {
-        // Se já está na tab correta, scroll imediatamente
-        setTimeout(scrollToSection, 50)
-      }
-    }
-  }
-
-  // Função para abrir modal de perícias
-  const handleOpenSkillsModal = () => {
-    setIsSkillsModalOpen(true)
-  }
-
-  // Função para abrir modal de atributos
-  const handleOpenAttributesModal = () => {
-    setIsAttributesModalOpen(true)
-  }
+  const sheetProps = (kind: QuickSheetKind) => ({
+    open: openSheet === kind,
+    onOpenChange: (open: boolean) => setOpenSheet(open ? kind : null),
+  })
 
   return (
-    <div className="w-full relative">
+    <div className="relative flex min-h-dvh w-full flex-col bg-background">
       <QuickSheetContext.Provider value={quickSheetApi}>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" ref={tabsRef}>
-        {/* Navegação de Tabs Fixa */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-          <div className="container mx-auto px-2 sm:px-4">
-            <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 my-2 sm:my-4 h-auto">
-              <TabsTrigger value="basicos" className="text-xs sm:text-sm px-1 py-2 sm:px-3 sm:py-2">
-                <span className="hidden sm:inline">Dados Básicos</span>
-                <span className="sm:hidden">Básicos</span>
-              </TabsTrigger>
-              <TabsTrigger value="pericias" className="text-xs sm:text-sm px-1 py-2 sm:px-3 sm:py-2">
-                <span className="hidden sm:inline">Perícias & Kit</span>
-                <span className="sm:hidden">Perícias</span>
-              </TabsTrigger>
-              <TabsTrigger value="magias" className="text-xs sm:text-sm px-1 py-2 sm:px-3 sm:py-2">
-                <span className="hidden sm:inline">Magias & Talentos</span>
-                <span className="sm:hidden">Magias</span>
-              </TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-xs sm:text-sm px-1 py-2 sm:px-3 sm:py-2">
-                <span className="hidden sm:inline">Anotações</span>
-                <span className="sm:hidden">Notas</span>
-              </TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-0">
+          {/* Topo fixo: cabeçalho, abas e faixa do modo de edição */}
+          <div className="sticky top-0 z-20 border-b bg-background">
+            {header}
+            <TabsList className="mx-auto grid h-auto w-full max-w-[720px] grid-cols-4 rounded-none bg-transparent p-0">
+              {TABS.map(([value, short, long]) => (
+                <TabsTrigger key={value} value={value} className={TAB_TRIGGER_CLASS}>
+                  <span className="sm:hidden">{short}</span>
+                  <span className="hidden sm:inline">{long}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
+            {isEditMode && (
+              <div className="flex h-[30px] items-center justify-center gap-2 bg-accent text-[13px] font-medium text-accent-foreground">
+                <Pencil className="size-3.5" aria-hidden="true" />
+                Modo edição · as alterações são salvas sozinhas
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Conteúdo das Tabs */}
-        <div className="pt-6">
-          <TabsContent value="basicos" className="mt-0">
+          {/* Conteúdo das Tabs */}
+          <TabsContent value="basicos" className={TAB_CONTENT_CLASS}>
             <BasicInfoTab
               character={character}
               characterId={characterId}
               isEditMode={isEditMode}
-              isAttributesModalOpen={isAttributesModalOpen}
-              setIsAttributesModalOpen={setIsAttributesModalOpen}
+              isAttributesModalOpen={openSheet === 'atributos'}
+              setIsAttributesModalOpen={(open) => setOpenSheet(open ? 'atributos' : null)}
             />
           </TabsContent>
 
-          <TabsContent value="pericias" className="mt-0">
+          <TabsContent value="pericias" className={TAB_CONTENT_CLASS}>
             <SkillsKitTab
               character={character}
               characterId={characterId}
               isEditMode={isEditMode}
-              isSkillsModalOpen={isSkillsModalOpen}
-              setIsSkillsModalOpen={setIsSkillsModalOpen}
+              isSkillsModalOpen={openSheet === 'pericias'}
+              setIsSkillsModalOpen={(open) => setOpenSheet(open ? 'pericias' : null)}
             />
           </TabsContent>
 
-          <TabsContent value="magias" className="mt-0">
+          <TabsContent value="magias" className={TAB_CONTENT_CLASS}>
             <SpellsTalentsTab
               character={character}
               characterId={characterId}
@@ -145,56 +115,42 @@ export function CharacterLayout({ character, characterId, isEditMode, onToggleEd
             />
           </TabsContent>
 
-          <TabsContent value="anotacoes" className="mt-0">
+          <TabsContent value="anotacoes" className={TAB_CONTENT_CLASS}>
             <NotesTab
               character={character}
               characterId={characterId}
               isEditMode={isEditMode}
             />
           </TabsContent>
-        </div>
 
-        {/* Quick Actions Bar */}
-        <QuickActionsBar
-          character={character}
-          onNavigate={handleNavigate}
-          onOpenSkillsModal={handleOpenSkillsModal}
-          onOpenAttributesModal={handleOpenAttributesModal}
-          isEditMode={isEditMode}
-          onToggleEditMode={onToggleEditMode}
-          onOpenSheet={setOpenSheet}
-        />
-      </Tabs>
+          {/* Barra de ações rápidas */}
+          <QuickActionsBar
+            character={character}
+            isEditMode={isEditMode}
+            onToggleEditMode={onToggleEditMode}
+            onOpenSheet={setOpenSheet}
+          />
+        </Tabs>
       </QuickSheetContext.Provider>
 
+      {/* Sheets - fora das tabs */}
       <VitalitySheet
-        open={openSheet === 'vit'}
-        onOpenChange={(open) => setOpenSheet(open ? 'vit' : null)}
+        {...sheetProps('vit')}
         character={character}
         characterId={characterId}
         isEditMode={isEditMode}
         updateCharacterMutation={updateCharacterMutation}
       />
       <BerkanaSheet
-        open={openSheet === 'berk'}
-        onOpenChange={(open) => setOpenSheet(open ? 'berk' : null)}
+        {...sheetProps('berk')}
         character={character}
         characterId={characterId}
         isEditMode={isEditMode}
         updateCharacterMutation={updateCharacterMutation}
       />
-
-      {/* Modais - fora das tabs */}
-      <SkillsModal
-        isOpen={isSkillsModalOpen}
-        onOpenChange={setIsSkillsModalOpen}
-        character={character}
-      />
-      <AttributesModal
-        isOpen={isAttributesModalOpen}
-        onOpenChange={setIsAttributesModalOpen}
-        character={character}
-      />
+      <WeaponsSheet {...sheetProps('arma')} character={character} />
+      <AttributesSheet {...sheetProps('atributos')} character={character} />
+      <SkillsSheet {...sheetProps('pericias')} character={character} />
     </div>
   )
 }

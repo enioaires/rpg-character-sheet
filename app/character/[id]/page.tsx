@@ -11,7 +11,7 @@ import {
   CharacterSheetSkeleton,
   isCharacterNotFoundError,
 } from '@/components/character/sheet-states'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Lock, LockOpen, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ============================================
@@ -53,11 +53,21 @@ export default function CharacterPage() {
 
   const handleToggleEditMode = () => {
     setIsEditMode(!isEditMode)
-    toast.success(
-      isEditMode 
-        ? 'Modo de edição desabilitado - Ficha bloqueada' 
-        : 'Modo de edição habilitado - Ficha desbloqueada'
-    )
+    if (isEditMode) {
+      toast('Ficha bloqueada', {
+        id: 'edit-mode',
+        duration: 1800,
+        description: 'Modo leitura. Toque no cadeado para editar.',
+        icon: <Lock className="size-5 text-muted-foreground" />,
+      })
+    } else {
+      toast('Ficha desbloqueada', {
+        id: 'edit-mode',
+        duration: 1800,
+        description: 'Toque em um campo para editar.',
+        icon: <LockOpen className="size-5 text-primary" />,
+      })
+    }
   }
 
   // ============================================
@@ -119,41 +129,47 @@ export default function CharacterPage() {
   // RENDER PRINCIPAL
   // ============================================
 
+  // Subtítulo: jogador · classe · Nv N (partes vazias são puladas)
+  const subtitle = [character.playerName, character.class, `Nv ${character.level || 0}`]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <Button onClick={handleBack} variant="outline" size="sm" className="w-fit">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+    <CharacterLayout
+      character={sanitizedCharacter}
+      characterId={characterId}
+      isEditMode={isEditMode}
+      onToggleEditMode={handleToggleEditMode}
+      header={
+        <div className="mx-auto flex w-full max-w-[1200px] items-center gap-1 px-1.5 pt-1.5 pb-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleBack}
+            aria-label="Voltar"
+            className="size-11"
+          >
+            <ArrowLeft className="size-[22px]" aria-hidden="true" />
           </Button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">{character.characterName}</h1>
-            {character.playerName && (
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Jogador: {character.playerName}
-              </p>
-            )}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <h1 className="truncate font-serif text-[21px] leading-[1.15] font-semibold">
+              {character.characterName}
+            </h1>
+            <p className="truncate text-[13px] text-muted-foreground">{subtitle}</p>
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-1 sm:flex-none">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Atualizar</span>
-            <span className="sm:hidden">Atual.</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            aria-label="Atualizar"
+            className="size-11 text-muted-foreground"
+          >
+            <RefreshCw className="size-5" aria-hidden="true" />
           </Button>
         </div>
-      </div>
-
-      {/* Layout da Ficha */}
-      <CharacterLayout 
-        character={sanitizedCharacter} 
-        characterId={characterId} 
-        isEditMode={isEditMode}
-        onToggleEditMode={handleToggleEditMode}
-      />
-    </div>
+      }
+    />
   )
 }
