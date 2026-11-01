@@ -5,7 +5,7 @@ import { copyTextToClipboard, type ClipboardWriter } from './clipboard'
 
 describe('copyTextToClipboard', () => {
   it('copia o texto exato e retorna copied', async () => {
-    const writeText = mock(async (_text: string) => {})
+    const writeText = mock(async (...args: string[]) => void args)
     const result = await copyTextToClipboard('a\n  b ', { writeText })
     expect(result).toBe('copied')
     expect(writeText).toHaveBeenCalledTimes(1)

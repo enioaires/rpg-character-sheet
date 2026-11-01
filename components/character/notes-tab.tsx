@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUpdateCharacter } from "@/lib/api/queries";
 import {
   canWriteNotes,
@@ -14,12 +13,17 @@ import {
   serializeNotes,
   type Note,
 } from "@/lib/notes";
-import { FileText } from "lucide-react";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 
 import { CharacterTabProps } from "./types";
 import { NotesHeader } from "./notes/notes-header";
 import { NotesList } from "./notes/notes-list";
+import {
+  NotesStatusAlert,
+  PreservedNotesText,
+  type LegacyMigrationStatus,
+} from "./notes/notes-status-alert";
 import { EditNoteDialog } from "./notes/edit-note-dialog";
 
 type NotesTabProps = CharacterTabProps;
@@ -254,8 +258,50 @@ export function NotesTab({
     }
   };
 
+  // Copia o texto original (somente leitura); nunca registra nem exibe o conteúdo
+  const handleCopyOriginal = async () => {
+    if (parsed.status !== "corrupted") return;
+    const result = await copyTextToClipboard(
+      parsed.raw,
+      typeof navigator === "undefined" ? undefined : navigator.clipboard,
+    );
+    if (result === "copied") {
+      toast.success("Texto original copiado.");
+    } else if (result === "unavailable") {
+      toast.error(
+        "Não foi possível copiar: a área de transferência não está disponível neste navegador. Selecione o texto abaixo e copie manualmente.",
+      );
+    } else {
+      toast.error(
+        "Não foi possível copiar o texto original. Selecione o texto abaixo e copie manualmente.",
+      );
+    }
+  };
+
+  // Estado da conversão automática, derivado só durante o render
+  const legacyMigrationStatus: LegacyMigrationStatus = !isEditMode
+    ? "locked"
+    : updateCharacterMutation.isPending
+      ? "converting"
+      : updateCharacterMutation.isError
+        ? "failed"
+        : "waiting";
+
   return (
     <div className="[column-span:all] flex flex-col gap-3">
+      {parsed.status === "corrupted" && (
+        <NotesStatusAlert
+          status="corrupted"
+          onCopyOriginal={handleCopyOriginal}
+        />
+      )}
+      {parsed.status === "legacy" && (
+        <NotesStatusAlert
+          status="legacy"
+          migrationStatus={legacyMigrationStatus}
+        />
+      )}
+
       <NotesHeader
         countLabel={countLabel}
         isEditMode={isEditMode}
@@ -276,31 +322,10 @@ export function NotesTab({
       />
 
       {/* Lista de anotações */}
-      {!canWrite ? (
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="w-4 h-4 text-muted-foreground" />
-            {parsed.status === "legacy"
-              ? "Anotações em formato antigo"
-              : "Não foi possível ler as anotações"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {parsed.status === "legacy"
-              ? "Este conteúdo será convertido em uma anotação ao entrar no modo de edição."
-              : "O conteúdo salvo foi preservado e nenhuma alteração será salva até que ele seja corrigido."}
-          </p>
-          <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-muted rounded p-3 max-h-64 overflow-auto">
-            {parsed.status === "legacy"
-              ? parsed.legacyText
-              : parsed.status === "corrupted"
-                ? parsed.raw
-                : ""}
-          </pre>
-        </CardContent>
-      </Card>
+      {parsed.status === "corrupted" || parsed.status === "legacy" ? (
+        <PreservedNotesText
+          text={parsed.status === "corrupted" ? parsed.raw : parsed.legacyText}
+        />
       ) : (
         <NotesList
           notes={notes}
