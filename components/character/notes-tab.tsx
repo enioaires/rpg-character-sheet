@@ -1,7 +1,7 @@
 // components/character/notes-tab.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,58 +63,31 @@ export function NotesTab({
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [newNoteContent, setNewNoteContent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [hasMigratedOldNotes, setHasMigratedOldNotes] = useState(false);
-  const [hasCorruptedData, setHasCorruptedData] = useState(false);
+  const migrationAttemptedRef = useRef(false);
+  const updateCharacter = updateCharacterMutation.mutateAsync;
 
-  // Função para migrar anotações antigas (texto simples) para o novo formato
-  const migrateOldNotes = async (oldNotesText: string) => {
-    if (hasMigratedOldNotes || !oldNotesText.trim()) return;
-
-    try {
-      const migratedNote: Note = {
-        id: Date.now().toString(),
-        title: "Anotações Antigas",
-        content: oldNotesText.trim(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const notesJson = JSON.stringify([migratedNote]);
-
-      await updateCharacterMutation.mutateAsync({
-        id: characterId,
-        data: {
-          notes: notesJson,
-        },
-      });
-
-      setHasMigratedOldNotes(true);
-      toast.success("Anotações antigas migradas com sucesso!");
-    } catch (error) {
-      console.error("Erro ao migrar anotações antigas:", error);
-    }
-  };
-
-  // Parse notes from character data
-  const allNotes: Note[] = (() => {
-    try {
+  // Parse notes from character data (função pura do valor de character.notes)
+  const { allNotes, legacyNotesText, hasCorruptedData } = useMemo(() => {
+    const parseNotes = (
+      rawNotes: unknown,
+    ): { allNotes: Note[]; legacyNotesText: string | null } => {
       // Se não há dados ou é null/undefined
-      if (!character.notes) {
-        return [];
+      if (!rawNotes) {
+        return { allNotes: [], legacyNotesText: null };
       }
 
       // Se já é um array (caso improvável mas possível)
-      if (Array.isArray(character.notes)) {
-        return character.notes;
+      if (Array.isArray(rawNotes)) {
+        return { allNotes: rawNotes, legacyNotesText: null };
       }
 
       // Se é uma string, tentar fazer parse
-      if (typeof character.notes === "string") {
-        const trimmedNotes = character.notes.trim();
+      if (typeof rawNotes === "string") {
+        const trimmedNotes = rawNotes.trim();
 
         // Se é string vazia
         if (trimmedNotes === "") {
-          return [];
+          return { allNotes: [], legacyNotesText: null };
         }
 
         // Verificar se começa com [ ou { (indicando JSON)
@@ -124,49 +97,73 @@ export function NotesTab({
 
             // Verificar se o resultado é um array válido
             if (Array.isArray(parsed)) {
-              return parsed;
+              return { allNotes: parsed, legacyNotesText: null };
             }
 
-            // Se é um objeto, tentar converter
+            // Se é um objeto, não há anotações
             if (typeof parsed === "object" && parsed !== null) {
-              return [];
+              return { allNotes: [], legacyNotesText: null };
             }
           } catch (parseError) {
             console.error("Erro ao fazer parse do JSON:", parseError);
             // Se falhou o parse mas parece JSON, retornar vazio
-            return [];
+            return { allNotes: [], legacyNotesText: null };
           }
         }
 
-        // Se chegou aqui, provavelmente são anotações antigas em texto simples
-        // Migrar automaticamente se estiver em modo de edição
-        if (isEditMode && !hasMigratedOldNotes) {
-          migrateOldNotes(trimmedNotes);
-        }
-
-        return [];
+        // Texto simples: anotações antigas, migradas em um efeito (modo de edição)
+        return { allNotes: [], legacyNotesText: trimmedNotes };
       }
 
       // Para qualquer outro tipo, retornar array vazio
-      return [];
+      return { allNotes: [], legacyNotesText: null };
+    };
+
+    try {
+      return { ...parseNotes(character.notes), hasCorruptedData: false };
     } catch (error) {
       console.error("Erro ao parsear anotações:", error);
-      console.log("Dados recebidos:", character.notes);
-      console.log("Tipo dos dados:", typeof character.notes);
-      console.log("Comprimento dos dados:", character.notes?.length);
-
-      // Se estiver em modo de desenvolvimento, mostrar mais detalhes
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "Primeiros 100 caracteres:",
-          character.notes?.substring(0, 100),
-        );
-        setHasCorruptedData(true);
-      }
-
-      return [];
+      return {
+        allNotes: [],
+        legacyNotesText: null,
+        hasCorruptedData: process.env.NODE_ENV === "development",
+      };
     }
-  })();
+  }, [character.notes]);
+
+  // Migra anotações antigas (texto simples) para o novo formato, uma vez por montagem
+  useEffect(() => {
+    if (!isEditMode || legacyNotesText === null || migrationAttemptedRef.current) {
+      return;
+    }
+    // Marca antes da escrita assíncrona (cobre também o Strict Mode em dev)
+    migrationAttemptedRef.current = true;
+
+    const migrate = async () => {
+      try {
+        const migratedNote: Note = {
+          id: Date.now().toString(),
+          title: "Anotações Antigas",
+          content: legacyNotesText,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await updateCharacter({
+          id: characterId,
+          data: {
+            notes: JSON.stringify([migratedNote]),
+          },
+        });
+
+        toast.success("Anotações antigas migradas com sucesso!");
+      } catch (error) {
+        console.error("Erro ao migrar anotações antigas:", error);
+      }
+    };
+
+    void migrate();
+  }, [legacyNotesText, isEditMode, characterId, updateCharacter]);
 
   // Filter notes based on search term
   const notes = allNotes.filter(
