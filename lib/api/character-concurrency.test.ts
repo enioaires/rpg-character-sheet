@@ -4,7 +4,7 @@
 // memória ANTES de a rota ser carregada. Por isso a rota é carregada com
 // import dinâmico (imports estáticos são içados acima do mock.module).
 
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, mock, spyOn } from 'bun:test'
 import { QueryClient } from '@tanstack/react-query'
 import { getDefaultCharacterData } from '@/lib/defaults/character'
 
@@ -245,5 +245,112 @@ describe('saveCharacterUpdate (uma gravação)', () => {
     const error = await save(queryClient, row.id, { level: 4 }).catch(e => e)
     expect(isCharacterConflictError(error)).toBe(true)
     expect(row.characterName).toBe('Outro dispositivo')
+  })
+})
+
+// ============================================
+// NÚCLEO DO CLIENTE: FILA E LINHAGEM
+// ============================================
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+describe('saveCharacterUpdate (fila serial por personagem)', () => {
+  it('(h) gravações disparadas no mesmo tick não geram conflito', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    await Promise.all([
+      save(queryClient, row.id, { level: 1 }),
+      save(queryClient, row.id, { currentBerkana: 50 }),
+      save(queryClient, row.id, { level: 2 }),
+    ])
+    expect(row.level).toBe(2)
+    expect(row.currentBerkana).toBe(50)
+    expect(readUpdatedAt(queryClient.getQueryData(characterQueryKey(row.id)))).toBe(
+      row.updatedAt.toISOString(),
+    )
+  })
+
+  it('(i) gravações sequenciais funcionam', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    await save(queryClient, row.id, { level: 1 })
+    await save(queryClient, row.id, { level: 2 })
+    expect(row.level).toBe(2)
+  })
+
+  it('(j) após alteração alheia, todas as gravações em fila são rejeitadas', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    otherDeviceWrites(row)
+    const results = await Promise.allSettled([
+      save(queryClient, row.id, { level: 1 }),
+      save(queryClient, row.id, { currentBerkana: 50 }),
+    ])
+    for (const result of results) {
+      expect(result.status).toBe('rejected')
+      expect(isCharacterConflictError((result as PromiseRejectedResult).reason)).toBe(true)
+    }
+    expect(row.characterName).toBe('Outro dispositivo')
+    expect(row.level).toBe(0)
+    expect(row.currentBerkana).toBe(100)
+  })
+
+  it('(k) após o conflito e o refetch, uma nova gravação funciona', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    otherDeviceWrites(row)
+    await save(queryClient, row.id, { level: 1 }).catch(() => undefined)
+    await queryClient.fetchQuery({
+      queryKey: characterQueryKey(row.id),
+      queryFn: () => fetchCharacterFor(row.id),
+    })
+    await save(queryClient, row.id, { level: 5 })
+    expect(row.level).toBe(5)
+  })
+
+  it('(l) uma falha inesperada não é conflito e não trava a fila', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => undefined)
+    hooks.failNextUpdate = true
+    try {
+      const results = await Promise.allSettled([
+        save(queryClient, row.id, { level: 1 }),
+        save(queryClient, row.id, { level: 2 }),
+      ])
+      expect(results[0].status).toBe('rejected')
+      expect(isCharacterConflictError((results[0] as PromiseRejectedResult).reason)).toBe(false)
+      expect(results[1].status).toBe('fulfilled')
+      expect(row.level).toBe(2)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('(m) sem cache, busca o personagem e grava', async () => {
+    const row = seed()
+    const queryClient = new QueryClient()
+    await save(queryClient, row.id, { level: 7 })
+    expect(row.level).toBe(7)
+  })
+
+  it('(n) um GET em andamento não regride o token em cache', async () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    const stale = { character: { ...row, updatedAt: row.updatedAt.toISOString() } }
+    queryClient
+      .fetchQuery({
+        queryKey: characterQueryKey(row.id),
+        queryFn: async () => {
+          await sleep(50)
+          return stale
+        },
+      })
+      .catch(() => undefined)
+    await save(queryClient, row.id, { level: 9 })
+    await sleep(80)
+    expect(readUpdatedAt(queryClient.getQueryData(characterQueryKey(row.id)))).toBe(
+      row.updatedAt.toISOString(),
+    )
   })
 })

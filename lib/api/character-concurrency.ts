@@ -47,34 +47,114 @@ export type SaveCharacterUpdateArgs = {
   fetchCharacter: (id: string) => Promise<unknown>
 }
 
+// ============================================
+// FILA SERIAL POR PERSONAGEM
+// ============================================
+
+const saveQueues = new Map<string, Promise<unknown>>()
+
+// Gravações do mesmo personagem rodam uma por vez: duas enviadas juntas
+// levariam o mesmo token e a segunda receberia um 409 espúrio. Uma tarefa que
+// falha não trava as seguintes.
+export function enqueueCharacterSave<T>(id: string, task: () => Promise<T>): Promise<T> {
+  const previous = saveQueues.get(id) ?? Promise.resolve()
+  const run = previous.then(() => task())
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  saveQueues.set(id, tail)
+  tail.then(() => {
+    if (saveQueues.get(id) === tail) saveQueues.delete(id)
+  })
+  return run
+}
+
+// ============================================
+// LINHAGEM DE VERSÕES PRÓPRIAS
+// ============================================
+
+// id -> (token enviado -> updatedAt devolvido) apenas das gravações bem-sucedidas
+// deste dispositivo. O token é a versão em que a edição do usuário se baseou e só
+// avança por gravações próprias: assim as gravações enfileiradas enviam a versão
+// produzida pela anterior, enquanto uma edição feita sobre dados já alterados por
+// outro dispositivo continua enviando a versão defasada e recebe 409.
+const ownVersions = new Map<string, Map<string, string>>()
+
+function recordOwnVersion(id: string, sent: string, returned: string | undefined) {
+  if (!returned || returned === sent) return
+  let lineage = ownVersions.get(id)
+  if (!lineage) {
+    lineage = new Map()
+    ownVersions.set(id, lineage)
+  }
+  lineage.set(sent, returned)
+}
+
+function resolveOwnVersion(id: string, base: string): string {
+  const lineage = ownVersions.get(id)
+  if (!lineage) return base
+  const visited = new Set<string>([base])
+  let current = base
+  for (;;) {
+    const next = lineage.get(current)
+    if (next === undefined || visited.has(next)) return current
+    visited.add(next)
+    current = next
+  }
+}
+
 export async function saveCharacterUpdate({
   queryClient,
   id,
   data,
   put,
+  fetchCharacter,
 }: SaveCharacterUpdateArgs): Promise<unknown> {
-  const expectedUpdatedAt = readUpdatedAt(queryClient.getQueryData(characterQueryKey(id)))
-  if (!expectedUpdatedAt) {
-    throw new Error('Failed to update character')
-  }
+  // O token base é capturado de forma síncrona, antes de entrar na fila
+  const base = readUpdatedAt(queryClient.getQueryData(characterQueryKey(id)))
 
-  const response = await put({ ...data, expectedUpdatedAt })
-
-  if (response.status === 409) {
-    throw new CharacterConflictError()
-  }
-  if (!response.ok) {
-    let body: { error?: string } = {}
-    try {
-      body = (await response.json()) as { error?: string }
-    } catch {
-      // corpo de erro não é JSON: usa a mensagem padrão
+  return enqueueCharacterSave(id, async () => {
+    let expectedUpdatedAt: string | undefined
+    if (base) {
+      expectedUpdatedAt = resolveOwnVersion(id, base)
+    } else {
+      expectedUpdatedAt =
+        readUpdatedAt(queryClient.getQueryData(characterQueryKey(id))) ??
+        readUpdatedAt(
+          await queryClient.fetchQuery({
+            queryKey: characterQueryKey(id),
+            queryFn: () => fetchCharacter(id),
+          }),
+        )
     }
-    throw new Error(body.error || 'Failed to update character')
-  }
+    if (!expectedUpdatedAt) {
+      throw new Error('Failed to update character')
+    }
 
-  const result = await response.json()
-  // Cada resposta bem-sucedida renova o updatedAt usado na próxima gravação
-  queryClient.setQueryData(characterQueryKey(id), result)
-  return result
+    const response = await put({ ...data, expectedUpdatedAt })
+
+    if (response.status === 409) {
+      throw new CharacterConflictError()
+    }
+    if (!response.ok) {
+      let body: { error?: string } = {}
+      try {
+        body = (await response.json()) as { error?: string }
+      } catch {
+        // corpo de erro não é JSON: usa a mensagem padrão
+      }
+      throw new Error(body.error || 'Failed to update character')
+    }
+
+    const result = await response.json()
+    recordOwnVersion(id, expectedUpdatedAt, readUpdatedAt(result))
+
+    // Um GET iniciado antes ou durante este PUT não pode sobrescrever o cache
+    // com dados mais antigos e dar um token errado à próxima gravação.
+    await queryClient.cancelQueries({ queryKey: characterQueryKey(id), exact: true })
+    // Cada resposta bem-sucedida renova o updatedAt usado na próxima gravação
+    queryClient.setQueryData(characterQueryKey(id), result)
+    return result
+  })
 }
