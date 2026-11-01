@@ -35,9 +35,11 @@ export function EditNoteDialog({
       open={isOpen}
       onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Anotação</DialogTitle>
+          <DialogTitle className="font-serif text-[22px] font-semibold">
+            Editar Anotação
+          </DialogTitle>
         </DialogHeader>
         <NoteForm
             title={noteTitle}

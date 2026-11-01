@@ -198,3 +198,65 @@ describe('NotesTab alertas de estado (DS-07)', () => {
     expect(html).not.toContain('Convertendo…')
   })
 })
+
+describe('NotesTab lista redesenhada (DS-07)', () => {
+  const noteOf = (id: string, title: string, content: string) => ({
+    id,
+    title,
+    content,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+  })
+  const TWO_NOTES = JSON.stringify([
+    noteOf('1', 'Primeira nota', '**Negrito** e texto\nsegunda linha'),
+    noteOf('2', 'Segunda nota', 'Outro conteudo'),
+  ])
+
+  it('edição com 2 notas: cabeçalho, busca, cartões recolhidos com prévia', async () => {
+    const html = await render({ notes: TWO_NOTES, isEditMode: true })
+    expect(html).toContain('Primeira nota')
+    expect(html).toContain('Segunda nota')
+    expect(html).toContain('Ordenar')
+    expect(html).toContain('aria-label="Nova Anotação"')
+    expect(html).toContain('Buscar em títulos e textos')
+    // O gatilho do Dialog (Radix) também tem aria-expanded: conta só os botões dos cartões
+    const cardToggles = html
+      .split('<button')
+      .filter((chunk) => chunk.includes('min-h-[60px]'))
+    expect(cardToggles.length).toBe(2)
+    for (const toggle of cardToggles) {
+      expect(toggle).toContain('aria-expanded="false"')
+    }
+    expect(html).toContain('Negrito e texto')
+    expect(html).not.toContain('<strong')
+    expect(html).not.toContain('segunda linha')
+    expect(mutateAsync).toHaveBeenCalledTimes(0)
+  })
+
+  it('edição com 1 nota: sem Ordenar', async () => {
+    const one = JSON.stringify([noteOf('1', 'Unica', 'x')])
+    const html = await render({ notes: one, isEditMode: true })
+    expect(html).not.toContain('Ordenar')
+  })
+
+  it('bloqueado com 2 notas: controles de edição ocultos, não desabilitados', async () => {
+    const html = await render({ notes: TWO_NOTES, isEditMode: false })
+    expect(html).toContain('Primeira nota')
+    expect(html).toContain('Segunda nota')
+    expect(html).toContain('Buscar em títulos e textos')
+    expect(html).not.toContain('Ordenar')
+    expect(html).not.toContain('Nova Anotação')
+    expect(html).not.toContain('disabled=""')
+  })
+
+  it('título e prévia com HTML saem escapados', async () => {
+    const evil = JSON.stringify([
+      noteOf('1', '<script>alert(1)</script>', '<img src=x onerror=alert(1)>'),
+    ])
+    const html = await render({ notes: evil, isEditMode: true })
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).not.toContain('<script>alert(1)')
+    expect(html).not.toContain('<img')
+  })
+})
