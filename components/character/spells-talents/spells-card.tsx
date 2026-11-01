@@ -6,18 +6,13 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { EditableField, EditableTextArea, EditableNumberField } from '@/components/ui/editable-field'
-import {
-  EditableScalingField,
-  calculateScaledValue,
-  normalizeScalingData,
-} from '@/components/ui/editable-scaling-field'
 import {
   countGroupedEntries,
   groupEntriesByLevel,
   listLevels,
   magicCountNoun,
   magicResultLabel,
+  removeIndexFromSet,
   resolveLevelFilter,
   spellSubLine,
   type LevelFilter,
@@ -32,6 +27,7 @@ import {
   MagicLevelGroup,
   MagicListToolbar,
 } from './magic-list'
+import { SpellDetails, SpellEditFields, getSpellScaledValues } from './spell-body'
 
 interface SpellsCardProps extends Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'> {
   updateCharacterMutation: UpdateCharacterMutation
@@ -42,6 +38,7 @@ export function SpellsCard({ character, characterId, isEditMode, updateCharacter
   const [query, setQuery] = useState('')
   const [level, setLevel] = useState<LevelFilter>('todos')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [editing, setEditing] = useState<Set<number>>(new Set())
 
   const spells: Spell[] = Array.isArray(character.spells) ? character.spells : []
 
@@ -85,6 +82,12 @@ export function SpellsCard({ character, characterId, isEditMode, updateCharacter
         id: characterId,
         data: updateData
       })
+      // Conveniência de tela: limpa os filtros e abre a nova magia já em edição
+      const newIndex = spells.length
+      setQuery('')
+      setLevel('todos')
+      setExpanded(prev => new Set(prev).add(newIndex))
+      setEditing(prev => new Set(prev).add(newIndex))
     } catch (error) {
       console.error('Erro ao adicionar magia:', error)
     }
@@ -98,6 +101,9 @@ export function SpellsCard({ character, characterId, isEditMode, updateCharacter
         id: characterId,
         data: updateData
       })
+      // Os índices depois do excluído descem uma posição: as linhas abertas seguem as mesmas magias
+      setExpanded(prev => removeIndexFromSet(prev, index))
+      setEditing(prev => removeIndexFromSet(prev, index))
     } catch (error) {
       console.error('Erro ao remover magia:', error)
     }
@@ -144,13 +150,7 @@ export function SpellsCard({ character, characterId, isEditMode, updateCharacter
             countLabel={magicCountNoun('magias', group.entries.length)}
           >
             {group.entries.map(({ item: spell, index }) => {
-              const normalized = normalizeScalingData(spell.damage || { base: 0, perLevel: null }, 'damage')
-              const damage = calculateScaledValue(
-                normalized.base,
-                normalized.perLevel,
-                spell.level || 0,
-                character.level || 0
-              )
+              const damage = getSpellScaledValues(spell, character.level || 0).damage
               return (
                 <MagicEntryRow
                   key={index}
@@ -160,159 +160,38 @@ export function SpellsCard({ character, characterId, isEditMode, updateCharacter
                   onToggle={() => toggleExpanded(index)}
                   badges={<MagicCostBadge cost={spell.berkanaCost || 0} />}
                 >
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div className="sm:col-span-2">
-                      <EditableField
+                  {isEditMode && editing.has(index) ? (
+                    <>
+                      <SpellEditFields
+                        spell={spell}
+                        index={index}
+                        character={character}
                         characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.name`}
-                        value={spell.name}
-                        placeholder="Nome da magia"
-                        label="Nome"
                         isEditMode={isEditMode}
                       />
-                    </div>
-                    <div>
-                      <EditableNumberField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.level`}
-                        value={spell.level || 0}
-                        label="Nível"
-                        className="text-center"
-                        isEditMode={isEditMode}
+                      <MagicEntryActions
+                        mode="edit"
+                        onDone={() => setEditing(prev => {
+                          const next = new Set(prev)
+                          next.delete(index)
+                          return next
+                        })}
+                        onDelete={() => handleDeleteSpell(index)}
+                        deleteDisabled={updateCharacterMutation.isPending}
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <div>
-                      <EditableNumberField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.berkanaCost`}
-                        value={spell.berkanaCost || 0}
-                        label="Custo"
-                        className="text-center"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                    <div>
-                      <EditableField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.type`}
-                        value={spell.type}
-                        placeholder="Tipo"
-                        label="Tipo"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                    <div>
-                      <EditableField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.concentration`}
-                        value={spell.concentration}
-                        placeholder="Concentração"
-                        label="Concentração"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div>
-                      <EditableField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.prepTime`}
-                        value={spell.prepTime}
-                        placeholder="Preparo"
-                        label="Preparo"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                    <div>
-                      <EditableField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="spells"
-                        field={`${index}.resistance`}
-                        value={spell.resistance}
-                        placeholder="Resistência"
-                        label="Resistência"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <EditableField
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="spells"
-                      field={`${index}.range`}
-                      value={spell.range}
-                      placeholder="Alcance"
-                      label="Alcance"
-                      isEditMode={isEditMode}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    <EditableScalingField
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="spells"
-                      field={`${index}.damage`}
-                      scalingData={spell.damage || { base: 0, perLevel: null }}
-                      spellLevel={spell.level || 0}
-                      characterLevel={character.level || 0}
-                      label="Dano"
-                      type="damage"
-                      isEditMode={isEditMode}
-                    />
-                    <EditableScalingField
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="spells"
-                      field={`${index}.duration`}
-                      scalingData={spell.duration || { base: '', perLevel: null }}
-                      spellLevel={spell.level || 0}
-                      characterLevel={character.level || 0}
-                      label="Duração"
-                      type="duration"
-                      isEditMode={isEditMode}
-                    />
-                  </div>
-
-                  <div>
-                    <EditableTextArea
-                      characterId={characterId}
-                      currentCharacterData={character}
-                      section="spells"
-                      field={`${index}.description`}
-                      value={spell.description}
-                      placeholder="Descrição da magia"
-                      label="Descrição"
-                      rows={2}
-                      isEditMode={isEditMode}
-                    />
-                  </div>
-
-                  {isEditMode && (
-                    <MagicEntryActions
-                      mode="view"
-                      onDelete={() => handleDeleteSpell(index)}
-                      deleteDisabled={updateCharacterMutation.isPending}
-                    />
+                    </>
+                  ) : (
+                    <>
+                      <SpellDetails spell={spell} characterLevel={character.level || 0} />
+                      {isEditMode && (
+                        <MagicEntryActions
+                          mode="view"
+                          onEdit={() => setEditing(prev => new Set(prev).add(index))}
+                          onDelete={() => handleDeleteSpell(index)}
+                          deleteDisabled={updateCharacterMutation.isPending}
+                        />
+                      )}
+                    </>
                   )}
                 </MagicEntryRow>
               )
