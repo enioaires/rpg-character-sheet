@@ -3,13 +3,21 @@
 
 import { describe, expect, it } from 'bun:test'
 import {
+  calculateAttributeTotal,
   calculateVitalityLevels,
   calculateVitalityTotal,
   resolveCurrentVitalityLevels,
+  toAttributeValue,
   toVitalityBase,
 } from '@/lib/calculations'
-import { VITALITY_LEVELS } from '@/lib/constants/character'
-import { buildBerkanaView, buildVitalityView, getFillPercent } from './basic-info-model'
+import { ATTRIBUTES, ATTRIBUTE_LABELS, VITALITY_LEVELS } from '@/lib/constants/character'
+import {
+  buildAttributeRows,
+  buildBerkanaView,
+  buildExperienceView,
+  buildVitalityView,
+  getFillPercent,
+} from './basic-info-model'
 
 // ============================================
 // getFillPercent
@@ -123,5 +131,86 @@ describe('buildBerkanaView', () => {
     expect(view.max).toBe(100)
     expect(view.bonus).toBe(0)
     expect(view.state).toBe('cheia')
+  })
+})
+
+// ============================================
+// buildAttributeRows
+// ============================================
+
+describe('buildAttributeRows', () => {
+  it('14 linhas na ordem de ATTRIBUTES, com total incluindo o bônus de nível', () => {
+    const rows = buildAttributeRows({ agilidade: { race: 8, class: 6, bonus: 1 } }, 7)
+
+    expect(rows).toHaveLength(14)
+    expect(rows.map((row) => row.key)).toEqual([...ATTRIBUTES])
+    expect(rows[0].label).toBe(ATTRIBUTE_LABELS.agilidade)
+    expect(rows[0]).toMatchObject({ race: 8, class: 6, bonus: 1, levelBonus: 1, total: 16 })
+
+    const carisma = rows.find((row) => row.key === 'carisma')
+    expect(carisma).toMatchObject({ race: 0, class: 0, bonus: 0, levelBonus: 1, total: 1 })
+  })
+
+  it('cada total é igual à expressão congelada do card de resumo original', () => {
+    // Cópia da expressão do commit-base (registrado no Passo 0 da tarefa 1); nunca editar.
+    const frozenTotal = (attributes: Record<string, Partial<{ race: number; class: number; bonus: number }>>, key: string, level: number) => {
+      const attr = attributes[key] || { race: 0, class: 0, bonus: 0 }
+      return calculateAttributeTotal(toAttributeValue(attr), level || 0)
+    }
+    const attributes = {
+      agilidade: { race: 8, class: 6, bonus: 1 },
+      força: { race: 12, class: 3 },
+      vigor: { race: NaN, class: 4, bonus: 2 },
+    }
+
+    for (const level of [0, 4, 5, 7, 10, 99]) {
+      const rows = buildAttributeRows(attributes, level)
+      for (const row of rows) {
+        expect(row.total).toBe(frozenTotal(attributes, row.key, level))
+      }
+    }
+  })
+
+  it('sem dados devolve 14 linhas zeradas e não lança', () => {
+    const rows = buildAttributeRows(undefined, undefined)
+    expect(rows).toHaveLength(14)
+    for (const row of rows) {
+      expect(row).toMatchObject({ race: 0, class: 0, bonus: 0, levelBonus: 0, total: 0 })
+    }
+  })
+})
+
+// ============================================
+// buildExperienceView
+// ============================================
+
+describe('buildExperienceView', () => {
+  it('nível 7 com 57 XP: faltam 23 para o nível 8', () => {
+    expect(buildExperienceView(7, 57)).toEqual({
+      level: 7,
+      xp: 57,
+      required: 80,
+      remaining: 23,
+      percent: 71.25,
+      caption: 'Faltam 23 XP para o nível 8',
+    })
+  })
+
+  it('XP suficiente (canLevelUp) mostra a legenda de subida e 100%', () => {
+    const view = buildExperienceView(7, 80)
+    expect(view.caption).toBe('XP suficiente para o nível 8')
+    expect(view.percent).toBe(100)
+    expect(buildExperienceView(7, 200).percent).toBe(100)
+  })
+
+  it('sem dados: nível 0, 10 XP necessários', () => {
+    const view = buildExperienceView(undefined, undefined)
+    expect(view.required).toBe(10)
+    expect(view.caption).toBe('Faltam 10 XP para o nível 1')
+    expect(view.percent).toBe(0)
+  })
+
+  it('nível 99 mostra "Nível máximo"', () => {
+    expect(buildExperienceView(99, 5000).caption).toBe('Nível máximo')
   })
 })

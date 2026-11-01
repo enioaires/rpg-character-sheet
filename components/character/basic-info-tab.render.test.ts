@@ -55,6 +55,10 @@ const fixtureA = {
   maxBerkana: 170,
   currentBerkana: 85,
   berkanaBonus: 15,
+  attributes: { agilidade: { race: 8, class: 6, bonus: 1 } },
+  characterName: 'Kael',
+  playerName: 'Enio',
+  class: 'Caçador Errante',
 }
 
 beforeEach(() => {
@@ -108,5 +112,48 @@ describe('BasicInfoTab: Vitalidade e Berkana', () => {
     const html = await render({ ...fixtureA, level: 0, vitality: { race: 0, class: 0 }, currentVitality: {} }, true)
     expect(html).toContain('Sem vitalidade definida')
     expect(html).not.toContain('text-vitality-coma')
+  })
+})
+
+describe('BasicInfoTab: Atributos, Experiência e Informações Básicas', () => {
+  it('Atributos mostra o total com bônus de nível, a legenda real e a tabela recolhida', async () => {
+    const html = await render(fixtureA, true)
+
+    expect(html).toContain('inclui +1 de nível')
+    expect(html).toContain('>16<')
+    expect(html).toContain('Distribuição (raça + classe + bônus + nível)')
+    expect(html).toContain('aria-expanded="false"')
+    // Recolhida: o cabeçalho da tabela não é renderizado
+    expect(html).not.toContain('Cla.')
+  })
+
+  it('nível 0 não mostra a legenda "inclui +"', async () => {
+    const html = await render({ ...fixtureA, level: 0 }, true)
+    expect(html).not.toContain('inclui +')
+  })
+
+  it('Experiência mostra o que falta e a barra em 71,25%', async () => {
+    const html = await render(fixtureA, true)
+    expect(html).toContain('Faltam 23 XP para o nível 8')
+    expect(html).toContain('width:71.25%')
+  })
+
+  it('Informações Básicas mostra rótulos de hoje e os valores', async () => {
+    const html = await render(fixtureA, true)
+    expect(html).toContain('Tendência')
+    expect(html).toContain('Pontos de Virtude')
+    expect(html).toContain('Caçador Errante')
+    expect(html).toContain('Kael')
+  })
+
+  it('ordem: Atributos, Experiência e Nível e Informações Básicas depois de Vitalidade e Berkana', async () => {
+    const titles = headings(await render(fixtureA, true))
+    const position = (title: string) => titles.indexOf(title)
+
+    expect(position('Vitalidade')).toBe(0)
+    expect(position('Berkana')).toBe(1)
+    expect(position('Atributos')).toBeGreaterThan(position('Berkana'))
+    expect(position('Experiência e Nível')).toBeGreaterThan(position('Atributos'))
+    expect(position('Informações Básicas')).toBeGreaterThan(position('Experiência e Nível'))
   })
 })

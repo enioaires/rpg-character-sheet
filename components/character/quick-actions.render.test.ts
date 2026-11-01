@@ -15,7 +15,7 @@ import {
   WeaponsSheetBody,
 } from './quick-sheets/reference-sheets'
 import {
-  calculateAttributeBase,
+  calculateAttributeTotal,
   calculateSkillTotal,
   toAttributeValue,
   toSkillValue,
@@ -147,14 +147,27 @@ describe('SkillsSheetBody', () => {
 })
 
 describe('AttributesSheetBody', () => {
-  it('mostra calculateAttributeBase (sem bônus de nível) e 0 para atributo sem dados', () => {
+  // Decisão do dono (2026-11-01): o total inclui o bônus de nível, igual ao card de Atributos
+  it('mostra o total com bônus de nível (calculateAttributeTotal) e só o bônus de nível para atributo sem dados', () => {
     const attributes = { agilidade: { race: 8, class: 6, bonus: 1 } }
-    const out = html(createElement(AttributesSheetBody, { attributes } as never))
+    const out = html(createElement(AttributesSheetBody, { attributes, level: 7 } as never))
 
-    expect(calculateAttributeBase(toAttributeValue(attributes.agilidade))).toBe(15)
+    const agilidade = calculateAttributeTotal(toAttributeValue(attributes.agilidade), 7)
+    const carisma = calculateAttributeTotal(toAttributeValue(undefined), 7)
+
+    expect(agilidade).toBe(16)
+    expect(carisma).toBe(1)
     expect(out).toContain('Agilidade')
-    expect(out).toContain('>15<')
+    expect(out).toContain(`>${agilidade}<`)
     expect(out).toContain('Carisma')
+    expect(out).toContain(`>${carisma}<`)
+  })
+
+  it('abaixo do nível 5 não há bônus de nível', () => {
+    const attributes = { agilidade: { race: 8, class: 6, bonus: 1 } }
+    const out = html(createElement(AttributesSheetBody, { attributes, level: 0 } as never))
+
+    expect(out).toContain('>15<')
     expect(out).toContain('>0<')
   })
 })
