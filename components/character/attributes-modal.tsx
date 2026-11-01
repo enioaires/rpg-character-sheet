@@ -1,12 +1,14 @@
 // components/character/attributes-modal.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ATTRIBUTES, ATTRIBUTE_LABELS, calculateAttributeBonus } from '@/lib/constants/character'
+import { ATTRIBUTES, ATTRIBUTE_LABELS } from '@/lib/constants/character'
+import { calculateAttributeBase, toAttributeValue } from '@/lib/calculations'
+import type { CharacterData } from '@/components/character/types'
 
 interface AttributesModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  character: any
+  character: CharacterData
 }
 
 export function AttributesModal({ isOpen, onOpenChange, character }: AttributesModalProps) {
@@ -21,9 +23,7 @@ export function AttributesModal({ isOpen, onOpenChange, character }: AttributesM
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="space-y-0.5 text-sm">
             {ATTRIBUTES.map((attributeKey, index) => {
-              const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-              const attributeValue = (attr.race || 0) + (attr.class || 0) + (attr.bonus || 0)
-              const bonus = calculateAttributeBonus(attributeValue)
+              const attributeValue = calculateAttributeBase(toAttributeValue(attributes[attributeKey]))
 
               return (
                 <div

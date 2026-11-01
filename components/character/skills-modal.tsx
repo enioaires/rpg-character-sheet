@@ -1,12 +1,14 @@
 // components/character/skills-modal.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { SKILLS, SKILL_LABELS, calculateSkillBonus } from '@/lib/constants/character'
+import { SKILLS, SKILL_LABELS } from '@/lib/constants/character'
+import { calculateSkillTotal, toSkillValue } from '@/lib/calculations'
+import type { CharacterData } from '@/components/character/types'
 
 interface SkillsModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  character: any
+  character: CharacterData
 }
 
 export function SkillsModal({ isOpen, onOpenChange, character }: SkillsModalProps) {
@@ -21,9 +23,7 @@ export function SkillsModal({ isOpen, onOpenChange, character }: SkillsModalProp
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="space-y-0.5 text-sm">
             {SKILLS.map((skillKey, index) => {
-              const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
-              const levelBonus = calculateSkillBonus(level || 0)
-              const total = 1 + (skill.distributed || 0) + (skill.bonus || 0) + levelBonus
+              const total = calculateSkillTotal(toSkillValue(skills[skillKey]), level || 0)
 
               return (
                 <div

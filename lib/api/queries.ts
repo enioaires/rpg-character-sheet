@@ -1,17 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { GetCharactersQuery, CreateCharacterRequest, UpdateCharacterRequest } from '@/lib/schemas/character'
-import type {
-  LevelUpRequest,
-  CalculateVitalityRequest,
-  CalculateBerkanaRequest,
-  ValidateSkillsRequest,
-  CalculateAttributesRequest,
-  CalculateXPRequest,
-  CalculateSkillPointsRequest,
-  RecalculateCharacterRequest
-} from '@/lib/schemas/calculations'
+import { toast } from 'sonner'
+import { handleCharacterSaveError, saveCharacterUpdate } from './character-concurrency'
 import { useMemo } from 'react'
+import {
+  calculateAllAttributes,
+  calculateAllSkills,
+  calculateLevelUpSkillPoints,
+  calculateMaxBerkana,
+  calculateRemainingSkillPoints,
+  calculateUsedSkillPoints,
+  calculateVitalityLevels,
+  getBaseBerkana,
+  toSkillValue,
+  type AttributeValue,
+  type SkillValue,
+  type VitalityBase
+} from '@/lib/calculations'
 
 export const useCharacters = (params?: GetCharactersQuery) => {
   return useQuery({
@@ -34,23 +40,25 @@ export const useCharacters = (params?: GetCharactersQuery) => {
   })
 }
 
+export async function fetchCharacter(id: string) {
+  const response = await api.characters[':id'].$get({
+    param: { id }
+  })
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Character not found')
+    }
+    throw new Error('Failed to fetch character')
+  }
+
+  return await response.json()
+}
+
 export const useCharacter = (id: string) => {
   return useQuery({
     queryKey: ['character', id],
-    queryFn: async () => {
-      const response = await api.characters[':id'].$get({
-        param: { id }
-      })
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Character not found')
-        }
-        throw new Error('Failed to fetch character')
-      }
-
-      return await response.json()
-    },
+    queryFn: () => fetchCharacter(id),
     enabled: !!id, // Só executa se tiver ID
   })
 }
@@ -82,25 +90,24 @@ export const useUpdateCharacter = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateCharacterRequest }) => {
-      const response = await api.characters[':id'].$put({
-        param: { id },
-        json: data
+    // Toda gravação envia o updatedAt visto pelo usuário (concorrência otimista)
+    mutationFn: ({ id, data }: { id: string; data: UpdateCharacterRequest }) =>
+      saveCharacterUpdate({
+        queryClient,
+        id,
+        data,
+        fetchCharacter,
+        put: (body) => api.characters[':id'].$put({ param: { id }, json: body }),
+      }),
+    onError: (error, variables) => {
+      // Conflito: toast em pt-BR e refetch; outros erros seguem para o chamador
+      handleCharacterSaveError(error, variables.id, {
+        queryClient,
+        notify: (message, options) => toast.error(message, options),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to update character')
-      }
-
-      return await response.json()
     },
-    onSuccess: (data, variables) => {
-      // Atualizar o cache diretamente com os dados retornados
-      queryClient.setQueryData(['character', variables.id], data)
-      
-      // Invalidar cache da lista
+    onSuccess: () => {
+      // O cache do personagem já foi atualizado pelo núcleo; invalidar a lista
       queryClient.invalidateQueries({ queryKey: ['characters'] })
     },
   })
@@ -117,8 +124,7 @@ export const useDeleteCharacter = () => {
 
       if (!response.ok) {
         const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to delete character')
+        throw new Error((error as { error?: string }).error || 'Failed to delete character')
       }
 
       return await response.json()
@@ -126,201 +132,6 @@ export const useDeleteCharacter = () => {
     onSuccess: () => {
       // Invalidar cache da lista para refetch automático
       queryClient.invalidateQueries({ queryKey: ['characters'] })
-    },
-  })
-}
-
-// ============================================
-// LEVEL UP MUTATION
-// ============================================
-
-export const useLevelUpCharacter = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.characters[':id']['level-up'].$post({
-        param: { id },
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to level up character')
-      }
-
-      return await response.json()
-    },
-    onSuccess: (data, id) => {
-      // Invalidar cache do personagem específico e da lista
-      queryClient.invalidateQueries({ queryKey: ['character', id] })
-      queryClient.invalidateQueries({ queryKey: ['characters'] })
-    },
-  })
-}
-
-// ============================================
-// CALCULATE VITALITY MUTATION
-// ============================================
-
-export const useCalculateVitality = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CalculateVitalityRequest }) => {
-      const response = await api.characters[':id']['calculate-vitality'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to calculate vitality')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// CALCULATE BERKANA MUTATION
-// ============================================
-
-export const useCalculateBerkana = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CalculateBerkanaRequest }) => {
-      const response = await api.characters[':id']['calculate-berkana'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to calculate berkana')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// VALIDATE SKILLS MUTATION
-// ============================================
-
-export const useValidateSkills = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ValidateSkillsRequest }) => {
-      const response = await api.characters[':id']['validate-skills'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to validate skills')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// CALCULATE ATTRIBUTES MUTATION
-// ============================================
-
-export const useCalculateAttributes = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CalculateAttributesRequest }) => {
-      const response = await api.characters[':id']['calculate-attributes'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to calculate attributes')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// CALCULATE XP MUTATION
-// ============================================
-
-export const useCalculateXP = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CalculateXPRequest }) => {
-      const response = await api.characters[':id']['calculate-xp'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to calculate XP')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// CALCULATE SKILL POINTS MUTATION
-// ============================================
-
-export const useCalculateSkillPoints = () => {
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CalculateSkillPointsRequest }) => {
-      const response = await api.characters[':id']['calculate-skill-points'].$post({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to calculate skill points')
-      }
-
-      return await response.json()
-    },
-  })
-}
-
-// ============================================
-// RECALCULATE FULL CHARACTER MUTATION
-// ============================================
-
-export const useRecalculateCharacter = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.characters[':id'].recalculate.$post({
-        param: { id },
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to recalculate character')
-      }
-
-      return await response.json()
-    },
-    onSuccess: (data, id) => {
-      // Invalidar cache do personagem específico
-      queryClient.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 }
@@ -335,49 +146,28 @@ export const useRecalculateCharacter = () => {
  */
 export const useCalculateDerivedStats = (characterData: {
   level: number
-  attributes: any
-  vitality: any
-  skills: any
+  attributes: Record<string, AttributeValue>
+  vitality: VitalityBase | null | undefined
+  skills: Record<string, SkillValue>
   maxBerkana: number
   berkanaBonus: number
 }) => {
   return useMemo(() => {
     if (!characterData) return null
 
-    const { level, attributes, vitality, skills, maxBerkana, berkanaBonus } = characterData
+    const { level, attributes, vitality, skills, berkanaBonus } = characterData
 
-    // Importar funções de cálculo no cliente
-    const calculatedAttributes = Object.entries(attributes || {}).reduce((acc, [key, attr]: [string, any]) => {
-      const levelBonus = level >= 5 ? Math.floor(level / 5) : 0
-      acc[key] = attr.race + attr.class + attr.bonus + levelBonus
-      return acc
-    }, {} as Record<string, number>)
+    const calculatedAttributes = calculateAllAttributes(attributes || {}, level)
+    const calculatedVitality = vitality ? calculateVitalityLevels(vitality, level) : null
+    const calculatedBerkana = calculateMaxBerkana(level, getBaseBerkana(), berkanaBonus)
+    const calculatedSkills = calculateAllSkills(skills || {}, level)
 
-    const calculatedVitality = vitality ? (() => {
-      const baseTotal = vitality.race + vitality.class
-      const multiplier = level + 1
-      return {
-        notavel: baseTotal * multiplier,
-        ferido: (baseTotal - 20) * multiplier,
-        gravementeFerido: (baseTotal - 40) * multiplier,
-        condenado: (baseTotal - 60) * multiplier,
-        incapacitado: (baseTotal - 80) * multiplier,
-        coma: (baseTotal - 100) * multiplier
-      }
-    })() : null
-
-    const calculatedBerkana = 100 + (level * 10) + berkanaBonus
-
-    const calculatedSkills = Object.entries(skills || {}).reduce((acc, [key, skill]: [string, any]) => {
-      const levelBonus = Math.floor(level / 5)
-      acc[key] = 1 + skill.distributed + skill.bonus + levelBonus
-      return acc
-    }, {} as Record<string, number>)
-
-    const skillPointsUsed = Object.values(skills || {}).reduce((total: number, skill: any) =>
-      total + (skill?.distributed || 0), 0)
-    const skillPointsAvailable = level * 10
-    const skillPointsRemaining = skillPointsAvailable - skillPointsUsed
+    const skillRecord = Object.fromEntries(
+      Object.entries(skills || {}).map(([key, skill]) => [key, toSkillValue(skill as Partial<SkillValue> | null)])
+    )
+    const skillPointsAvailable = calculateLevelUpSkillPoints(level)
+    const skillPointsUsed = calculateUsedSkillPoints(skillRecord)
+    const skillPointsRemaining = calculateRemainingSkillPoints(skillRecord, skillPointsAvailable)
 
     return {
       calculatedAttributes,

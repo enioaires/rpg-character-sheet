@@ -14,15 +14,18 @@ import {
   Lock,
   Unlock
 } from 'lucide-react'
+import { VITALITY_LEVELS } from '@/lib/constants/character'
 import {
-  calculateVitality,
-  calculateBerkana,
-  VITALITY_LEVELS,
-} from '@/lib/constants/character'
+  calculateVitalityLevels,
+  calculateMaxBerkana,
+  getBaseBerkana,
+  toVitalityBase,
+} from '@/lib/calculations'
 import { cn } from '@/lib/utils'
+import type { CharacterData } from '@/components/character/types'
 
 interface QuickActionsBarProps {
-  character: any
+  character: CharacterData
   onNavigate: (tab: string, section?: string) => void
   onOpenSkillsModal?: () => void
   onOpenAttributesModal?: () => void
@@ -44,13 +47,9 @@ export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOp
   } = character
 
   // Calcular valores
-  const calculatedVitality = calculateVitality(
-    vitality.race || 0,
-    vitality.class || 0,
-    level || 0
-  )
+  const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
-  const calculatedBerkana = calculateBerkana(level || 0, berkanaBonus || 0)
+  const calculatedBerkana = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
 
   // Calcular vitalidade total atual
   const totalCurrentVitality = VITALITY_LEVELS.reduce((sum, key) => {

@@ -15,7 +15,8 @@ export interface VitalityBase {
   class: number
 }
 
-export interface VitalityLevels {
+// type (não interface): precisa ser atribuível ao índice JSON de updateCharacterSchema
+export type VitalityLevels = {
   notavel: number
   ferido: number
   gravementeFerido: number
@@ -34,12 +35,27 @@ export interface SkillValue {
 // ============================================
 
 /**
+ * Bônus de nível dos atributos
+ * Fórmula: level >= 5 ? Math.floor(level / 5) : 0
+ */
+export function getAttributeLevelBonus(level: number): number {
+  return level >= 5 ? Math.floor(level / 5) : 0
+}
+
+/**
+ * Calcular base do atributo, sem o bônus de nível
+ * Fórmula: race + class + bonus
+ */
+export function calculateAttributeBase(attribute: AttributeValue): number {
+  return attribute.race + attribute.class + attribute.bonus
+}
+
+/**
  * Calcular total de atributo
- * Fórmula: race + class + bonus + (level >= 5 ? Math.floor(level / 5) : 0)
+ * Fórmula: race + class + bonus + getAttributeLevelBonus(level)
  */
 export function calculateAttributeTotal(attribute: AttributeValue, level: number): number {
-  const levelBonus = level >= 5 ? Math.floor(level / 5) : 0
-  return attribute.race + attribute.class + attribute.bonus + levelBonus
+  return calculateAttributeBase(attribute) + getAttributeLevelBonus(level)
 }
 
 /**
@@ -93,6 +109,13 @@ export function calculateVitalityLevels(vitality: VitalityBase, level: number): 
 // ============================================
 
 /**
+ * Berkana base de todo personagem (nível 0, sem bônus)
+ */
+export function getBaseBerkana(): number {
+  return 100
+}
+
+/**
  * Calcular Berkana máxima
  * Fórmula: baseValue + (level * 10) + bonus
  */
@@ -105,13 +128,20 @@ export function calculateMaxBerkana(level: number, baseValue: number, bonus: num
 // ============================================
 
 /**
+ * Bônus de nível das perícias
+ * Fórmula: Math.floor(level / 5)
+ */
+export function getSkillLevelBonus(level: number): number {
+  return Math.floor(level / 5)
+}
+
+/**
  * Calcular total de perícia
- * Fórmula: 1 + distributed + bonus + Math.floor(level / 5)
+ * Fórmula: 1 + distributed + bonus + getSkillLevelBonus(level)
  */
 export function calculateSkillTotal(skill: SkillValue, level: number): number {
   const base = 1
-  const levelBonus = Math.floor(level / 5)
-  return base + skill.distributed + skill.bonus + levelBonus
+  return base + skill.distributed + skill.bonus + getSkillLevelBonus(level)
 }
 
 /**
@@ -142,12 +172,37 @@ export function calculateUsedSkillPoints(skills: Record<string, SkillValue>): nu
 }
 
 /**
+ * Total de pontos de perícia da ficha, incluindo o nível 0
+ * Fórmula: (level + 1) * getSkillPointsPerLevel()
+ * Alimenta a aba de perícias ("Disponíveis"). Não é o mesmo pool de calculateLevelUpSkillPoints.
+ */
+export function calculateTotalSkillPoints(level: number): number {
+  return (level + 1) * getSkillPointsPerLevel()
+}
+
+/**
+ * Pontos de perícia ganhos por nível, sem contar o nível 0
+ * Fórmula: level * getSkillPointsPerLevel()
+ * Alimenta calculateAvailableSkillPoints, validateSkillDistribution e os hooks de stats do cliente.
+ */
+export function calculateLevelUpSkillPoints(level: number): number {
+  return level * getSkillPointsPerLevel()
+}
+
+/**
+ * Calcular pontos restantes de um pool informado (pode ser negativo)
+ * Fórmula: totalPoints - calculateUsedSkillPoints(skills)
+ */
+export function calculateRemainingSkillPoints(skills: Record<string, SkillValue>, totalPoints: number): number {
+  return totalPoints - calculateUsedSkillPoints(skills)
+}
+
+/**
  * Calcular pontos de perícia disponíveis para distribuir
+ * Usa o pool de calculateLevelUpSkillPoints e nunca fica abaixo de zero
  */
 export function calculateAvailableSkillPoints(skills: Record<string, SkillValue>, level: number): number {
-  const totalAvailable = level * getSkillPointsPerLevel()
-  const totalUsed = calculateUsedSkillPoints(skills)
-  return Math.max(0, totalAvailable - totalUsed)
+  return Math.max(0, calculateRemainingSkillPoints(skills, calculateLevelUpSkillPoints(level)))
 }
 
 // ============================================
@@ -196,7 +251,7 @@ export function validateSkillDistribution(skills: Record<string, SkillValue>, le
   const errors: string[] = []
   const maxPointsPerSkillPerLevel = 3
   const maxPointsPerSkill = level * maxPointsPerSkillPerLevel
-  const totalAvailable = level * getSkillPointsPerLevel()
+  const totalAvailable = calculateLevelUpSkillPoints(level)
   const totalUsed = calculateUsedSkillPoints(skills)
 
   // Verificar se não ultrapassou o total disponível
@@ -236,7 +291,7 @@ export function processLevelUp(currentData: {
   maxBerkana: number
   berkanaBonus: number
 }) {
-  const { level, currentXP, vitality, maxBerkana, berkanaBonus } = currentData
+  const { level, currentXP, vitality, berkanaBonus } = currentData
 
   if (!canLevelUp(currentXP, level)) {
     throw new Error('XP insuficiente para subir de nível')
@@ -248,7 +303,7 @@ export function processLevelUp(currentData: {
 
   // Recalcular stats derivados
   const newVitalityLevels = calculateVitalityLevels(vitality, newLevel)
-  const newMaxBerkana = calculateMaxBerkana(newLevel, 100, berkanaBonus) // Base de 100
+  const newMaxBerkana = calculateMaxBerkana(newLevel, getBaseBerkana(), berkanaBonus)
 
   return {
     level: newLevel,
@@ -259,6 +314,44 @@ export function processLevelUp(currentData: {
     // Retornar info adicional
     xpUsedForLevelUp: xpUsed,
     newSkillPointsAvailable: getSkillPointsPerLevel()
+  }
+}
+
+// ============================================
+// NORMALIZAÇÃO DE ENTRADAS
+// ============================================
+
+/**
+ * Normalizar atributo vindo de JSON solto
+ * Campos ausentes, nulos, NaN ou vazios viram 0 (regra `|| 0`)
+ */
+export function toAttributeValue(raw: Partial<AttributeValue> | null | undefined): AttributeValue {
+  return {
+    race: raw?.race || 0,
+    class: raw?.class || 0,
+    bonus: raw?.bonus || 0
+  }
+}
+
+/**
+ * Normalizar perícia vinda de JSON solto
+ * Campos ausentes, nulos, NaN ou vazios viram 0 (regra `|| 0`)
+ */
+export function toSkillValue(raw: Partial<SkillValue> | null | undefined): SkillValue {
+  return {
+    distributed: raw?.distributed || 0,
+    bonus: raw?.bonus || 0
+  }
+}
+
+/**
+ * Normalizar vitalidade base vinda de JSON solto
+ * Campos ausentes, nulos, NaN ou vazios viram 0 (regra `|| 0`)
+ */
+export function toVitalityBase(raw: Partial<VitalityBase> | null | undefined): VitalityBase {
+  return {
+    race: raw?.race || 0,
+    class: raw?.class || 0
   }
 }
 

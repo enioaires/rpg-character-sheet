@@ -41,7 +41,7 @@ export default function CharacterPage() {
     try {
       await refetch()
       toast.success('Personagem atualizado!')
-    } catch (error) {
+    } catch {
       toast.error('Erro ao atualizar personagem')
     }
   }

@@ -47,7 +47,7 @@ export default function CreateCharacterPage() {
       const response = await createCharacterMutation.mutateAsync(formData)
       toast.success('Personagem criado com sucesso!')
       router.push(`/character/${response.character.id}`)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao criar personagem')
     }
   }

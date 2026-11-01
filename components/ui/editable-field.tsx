@@ -8,6 +8,21 @@ import { Loader2, Edit, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCharacterStore, useIsFieldEditing } from '@/lib/store/character'
 import { useUpdateCharacter } from '@/lib/api/queries'
+import type { UpdateCharacterRequest } from '@/lib/schemas/character'
+import { calculateAttributeTotal, getAttributeLevelBonus } from '@/lib/calculations'
+
+// ============================================
+// TIPOS DE DADOS
+// ============================================
+
+// Valor que um campo inline edita (texto digitado ou número já convertido)
+type FieldValue = string | number
+
+// Dados atuais do personagem, indexados pelo nome da seção (colunas Json do banco)
+export type CurrentCharacterData = Record<string, unknown>
+
+// Uma seção Json: item → campo → valor (ex.: attributes.agilidade.race, weapons.0.damage.d25)
+type SectionData = Record<string, Record<string, Record<string, unknown>>>
 
 // ============================================
 // UTILITÁRIOS
@@ -17,8 +32,15 @@ import { useUpdateCharacter } from '@/lib/api/queries'
  * Constrói o objeto de update baseado na seção e campo que está sendo editado
  * Preserva valores existentes para campos aninhados
  */
-function buildUpdateData(section: string, field: string, value: any, currentData?: any): Record<string, any> {
-  const updateData: Record<string, any> = {}
+function buildUpdateData(
+  section: string,
+  field: string,
+  value: FieldValue,
+  currentData?: CurrentCharacterData
+): Record<string, unknown> {
+  const updateData: Record<string, unknown> = {}
+  // Seção atual do personagem: item → campo → valor (arrays do banco indexados por "0", "1", ...)
+  const currentSection = currentData?.[section] as SectionData | undefined
 
   // Para campos básicos, usar diretamente
   if (section === 'basic') {
@@ -47,11 +69,11 @@ function buildUpdateData(section: string, field: string, value: any, currentData
     const [parentKey, middleKey, childKey] = fieldPath
 
     // Preservar dados existentes
-    const existingParentData = currentData?.[section]?.[parentKey] || {}
+    const existingParentData = currentSection?.[parentKey] || {}
     const existingMiddleData = existingParentData[middleKey] || {}
 
     const sectionData = {
-      ...currentData?.[section],
+      ...currentSection,
       [parentKey]: {
         ...existingParentData,
         [middleKey]: {
@@ -72,7 +94,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
       updateData[section] = weaponsArray
     } else if (section === 'adventureKit' || section === 'spells' || section === 'talents') {
       // Para arrays (adventureKit, spells, talents), converter objeto para array preservando todos os itens
-      const currentArray = Array.isArray(currentData?.[section]) ? currentData[section] : []
+      const currentArray = Array.isArray(currentSection) ? currentSection : []
       const resultArray = []
 
       // Preservar todos os itens existentes
@@ -93,10 +115,10 @@ function buildUpdateData(section: string, field: string, value: any, currentData
     const [parentKey, childKey] = fieldPath
 
     // Preservar dados existentes do parent
-    const existingParentData = currentData?.[section]?.[parentKey] || {}
+    const existingParentData = currentSection?.[parentKey] || {}
 
     const sectionData = {
-      ...currentData?.[section],
+      ...currentSection,
       [parentKey]: {
         ...existingParentData,
         [childKey]: value
@@ -114,7 +136,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
       updateData[section] = weaponsArray
     } else if (section === 'adventureKit' || section === 'spells' || section === 'talents') {
       // Para arrays (adventureKit, spells, talents), converter objeto para array preservando todos os itens
-      const currentArray = Array.isArray(currentData?.[section]) ? currentData[section] : []
+      const currentArray = Array.isArray(currentSection) ? currentSection : []
       const resultArray = []
 
       // Preservar todos os itens existentes
@@ -133,7 +155,7 @@ function buildUpdateData(section: string, field: string, value: any, currentData
   } else {
     // Campo simples na seção
     updateData[section] = {
-      ...currentData?.[section],
+      ...currentSection,
       [field]: value
     }
   }
@@ -146,11 +168,11 @@ function buildUpdateData(section: string, field: string, value: any, currentData
 // ============================================
 
 interface EditableFieldProps {
-  characterId?: string // ID do personagem para auto-save
+  characterId: string // ID do personagem para auto-save (obrigatório)
   section: string
   field: string
-  value: any
-  currentCharacterData?: any // Dados atuais do personagem para preservar valores aninhados
+  value: FieldValue | null | undefined
+  currentCharacterData?: CurrentCharacterData // Dados atuais do personagem para preservar valores aninhados
   type?: 'input' | 'textarea' | 'number'
   placeholder?: string
   className?: string
@@ -159,9 +181,9 @@ interface EditableFieldProps {
   disabled?: boolean
   multiline?: boolean
   rows?: number
-  onSave?: (value: any) => Promise<void>
-  formatDisplay?: (value: any) => string
-  parseValue?: (value: string) => any
+  onSave?: (value: FieldValue) => Promise<void>
+  formatDisplay?: (value: FieldValue | null | undefined) => string
+  parseValue?: (value: string) => FieldValue
   isEditMode?: boolean // Controle global de edição
 }
 
@@ -197,15 +219,15 @@ export function EditableField({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   // Store Zustand
-  const { startEditing, cancelEditing, saveField, error: storeError } = useCharacterStore()
+  const { startEditing, cancelEditing } = useCharacterStore()
   const isEditing = useIsFieldEditing(section, field)
 
   // Mutation para update automático
   const updateCharacterMutation = useUpdateCharacter()
 
-  // Estados de loading e erro (priorizar mutation se disponível)
-  const isSaving = characterId ? updateCharacterMutation.isPending : useCharacterStore(state => state.isSaving)
-  const error = characterId ? updateCharacterMutation.error?.message : storeError
+  // Estados de loading e erro vêm da mutation
+  const isSaving = updateCharacterMutation.isPending
+  const error = updateCharacterMutation.error?.message
 
   // ============================================
   // EFEITOS
@@ -214,6 +236,7 @@ export function EditableField({
   // Atualizar valor local quando props mudam
   useEffect(() => {
     if (!isEditing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza o rascunho local com a prop `value` quando o campo sai de edição
       setLocalValue(value || '')
       setHasChanges(false)
     }
@@ -256,23 +279,19 @@ export function EditableField({
     }
 
     try {
-      const parsedValue = parseValue ? parseValue(localValue) : localValue
+      const parsedValue = parseValue ? parseValue(localValue as string) : localValue
 
       if (onSave) {
         // Callback customizado
         await onSave(parsedValue)
-      } else if (characterId) {
+      } else {
         // Auto-save usando updateCharacter mutation
         const updateData = buildUpdateData(section, field, parsedValue, currentCharacterData)
 
         await updateCharacterMutation.mutateAsync({
           id: characterId,
-          data: updateData
+          data: updateData as UpdateCharacterRequest
         })
-      } else {
-        // Usar store padrão (fallback)
-        useCharacterStore.getState().updateField(parsedValue)
-        await saveField()
       }
 
       setHasChanges(false)
@@ -391,7 +410,7 @@ export function EditableField({
       {/* Campo de edição */}
       <div className="relative">
         <InputComponent
-          ref={inputRef as any}
+          ref={inputRef as React.Ref<HTMLInputElement & HTMLTextAreaElement>}
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -520,8 +539,8 @@ export function EditableAttributeField({
   attributeData: { race: number; class: number; bonus: number }
   level: number
 }) {
-  const total = attributeData.race + attributeData.class + attributeData.bonus +
-    (level >= 5 ? Math.floor(level / 5) : 0)
+  const total = calculateAttributeTotal(attributeData, level)
+  const levelBonus = getAttributeLevelBonus(level)
 
   return (
     <div className="space-y-2">
@@ -559,7 +578,7 @@ export function EditableAttributeField({
       {/* Fórmula */}
       <div className="text-xs text-muted-foreground text-center">
         {attributeData.race} + {attributeData.class} + {attributeData.bonus}
-        {level >= 5 && ` + ${Math.floor(level / 5)}`} = {total}
+        {levelBonus > 0 && ` + ${levelBonus}`} = {total}
       </div>
     </div>
   )
