@@ -3,7 +3,11 @@
 import { describe, expect, it } from 'bun:test'
 import { DEFAULT_ADVENTURE_KIT } from '@/lib/constants/character'
 import { getDefaultCharacterData } from '@/lib/defaults/character'
-import { updateCharacterSchema, weaponsFieldSchema } from '@/lib/schemas/character'
+import {
+  getCharactersQuerySchema,
+  updateCharacterSchema,
+  weaponsFieldSchema,
+} from '@/lib/schemas/character'
 
 const JSON_FIELDS = [
   'attributes',
@@ -189,4 +193,38 @@ describe('updateCharacterSchema rejeita JSON malformado', () => {
       expect(ok(body)).toBe(false)
     })
   }
+})
+
+// ============================================
+// PAGINAÇÃO (API-03)
+// ============================================
+
+describe('getCharactersQuerySchema', () => {
+  const parse = (q: Record<string, string>) => getCharactersQuerySchema.parse(q)
+
+  it('usa page 1 e limit 10 por padrão', () => {
+    expect(parse({})).toEqual({ page: 1, limit: 10 })
+  })
+
+  it('limita page a 1..10000 com fallback 1', () => {
+    expect(parse({ page: '0' }).page).toBe(1)
+    expect(parse({ page: '-3' }).page).toBe(1)
+    expect(parse({ page: 'abc' }).page).toBe(1)
+    expect(parse({ page: '' }).page).toBe(1)
+    expect(parse({ page: '2' }).page).toBe(2)
+    expect(parse({ page: '99999999999999999999' }).page).toBe(10000)
+  })
+
+  it('limita limit a 1..100 com fallback 10', () => {
+    expect(parse({ limit: '12' }).limit).toBe(12)
+    expect(parse({ limit: '1000000' }).limit).toBe(100)
+    expect(parse({ limit: '100' }).limit).toBe(100)
+    expect(parse({ limit: '0' }).limit).toBe(1)
+    expect(parse({ limit: '-5' }).limit).toBe(1)
+    expect(parse({ limit: 'abc' }).limit).toBe(10)
+  })
+
+  it('repassa search sem alterar', () => {
+    expect(parse({ search: 'ana' }).search).toBe('ana')
+  })
 })

@@ -6,10 +6,35 @@ import {
   vitalityLevelsSchema,
 } from '@/lib/schemas/calculations'
 
+// Limites de paginação: page <= 10000 mantém o skip do Prisma abaixo de 999.900
+export const DEFAULT_CHARACTERS_PAGE_SIZE = 10
+export const MAX_CHARACTERS_PAGE_SIZE = 100
+export const MAX_CHARACTERS_PAGE = 10_000
+
+// Converte para inteiro base 10; valor não numérico vira fallback, o resto é limitado a min..max
+export function parseClampedInt(
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const parsed = parseInt(value ?? '', 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
 // Schema para query parameters do GET /characters
 export const getCharactersQuerySchema = z.object({
-  page: z.string().optional().transform(val => val ? parseInt(val) : 1),
-  limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
+  page: z
+    .string()
+    .optional()
+    .transform(val => parseClampedInt(val, 1, 1, MAX_CHARACTERS_PAGE)),
+  limit: z
+    .string()
+    .optional()
+    .transform(val =>
+      parseClampedInt(val, DEFAULT_CHARACTERS_PAGE_SIZE, 1, MAX_CHARACTERS_PAGE_SIZE),
+    ),
   search: z.string().optional(),
 })
 
