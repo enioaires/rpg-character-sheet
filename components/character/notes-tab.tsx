@@ -1,7 +1,7 @@
 // components/character/notes-tab.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,13 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUpdateCharacter } from "@/lib/api/queries";
 import {
+  claimLegacyMigration,
+  migrateLegacyNotes,
+  parseNotes,
+  serializeNotes,
+  type Note,
+} from "@/lib/notes";
+import {
   Plus,
   Edit,
   Trash2,
@@ -39,14 +46,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 import { CharacterTabProps } from "./types";
 
@@ -63,107 +62,38 @@ export function NotesTab({
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [newNoteContent, setNewNoteContent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const migrationAttemptedRef = useRef(false);
   const updateCharacter = updateCharacterMutation.mutateAsync;
 
-  // Parse notes from character data (função pura do valor de character.notes)
-  const { allNotes, legacyNotesText, hasCorruptedData } = useMemo(() => {
-    const parseNotes = (
-      rawNotes: unknown,
-    ): { allNotes: Note[]; legacyNotesText: string | null } => {
-      // Se não há dados ou é null/undefined
-      if (!rawNotes) {
-        return { allNotes: [], legacyNotesText: null };
-      }
+  // Leitura da coluna `notes` (pura: sem setState nem efeitos durante o render)
+  const parsed = useMemo(() => parseNotes(character.notes), [character.notes]);
+  const allNotes = parsed.notes;
 
-      // Se já é um array (caso improvável mas possível)
-      if (Array.isArray(rawNotes)) {
-        return { allNotes: rawNotes, legacyNotesText: null };
-      }
-
-      // Se é uma string, tentar fazer parse
-      if (typeof rawNotes === "string") {
-        const trimmedNotes = rawNotes.trim();
-
-        // Se é string vazia
-        if (trimmedNotes === "") {
-          return { allNotes: [], legacyNotesText: null };
-        }
-
-        // Verificar se começa com [ ou { (indicando JSON)
-        if (trimmedNotes.startsWith("[") || trimmedNotes.startsWith("{")) {
-          try {
-            const parsed = JSON.parse(trimmedNotes);
-
-            // Verificar se o resultado é um array válido
-            if (Array.isArray(parsed)) {
-              return { allNotes: parsed, legacyNotesText: null };
-            }
-
-            // Se é um objeto, não há anotações
-            if (typeof parsed === "object" && parsed !== null) {
-              return { allNotes: [], legacyNotesText: null };
-            }
-          } catch (parseError) {
-            console.error("Erro ao fazer parse do JSON:", parseError);
-            // Se falhou o parse mas parece JSON, retornar vazio
-            return { allNotes: [], legacyNotesText: null };
-          }
-        }
-
-        // Texto simples: anotações antigas, migradas em um efeito (modo de edição)
-        return { allNotes: [], legacyNotesText: trimmedNotes };
-      }
-
-      // Para qualquer outro tipo, retornar array vazio
-      return { allNotes: [], legacyNotesText: null };
-    };
-
-    try {
-      return { ...parseNotes(character.notes), hasCorruptedData: false };
-    } catch (error) {
-      console.error("Erro ao parsear anotações:", error);
-      return {
-        allNotes: [],
-        legacyNotesText: null,
-        hasCorruptedData: process.env.NODE_ENV === "development",
-      };
-    }
-  }, [character.notes]);
-
-  // Migra anotações antigas (texto simples) para o novo formato, uma vez por montagem
+  // Migra anotações antigas (texto simples) para o novo formato, uma vez por sessão
   useEffect(() => {
-    if (!isEditMode || legacyNotesText === null || migrationAttemptedRef.current) {
-      return;
-    }
-    // Marca antes da escrita assíncrona (cobre também o Strict Mode em dev)
-    migrationAttemptedRef.current = true;
+    if (!isEditMode || parsed.status !== "legacy") return;
+    // Reivindicação em escopo de módulo: cobre Strict Mode e remontagens
+    if (!claimLegacyMigration(characterId, parsed.legacyText)) return;
 
     const migrate = async () => {
       try {
-        const migratedNote: Note = {
-          id: Date.now().toString(),
-          title: "Anotações Antigas",
-          content: legacyNotesText,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
         await updateCharacter({
           id: characterId,
           data: {
-            notes: JSON.stringify([migratedNote]),
+            notes: serializeNotes(migrateLegacyNotes(parsed.legacyText)),
           },
         });
 
         toast.success("Anotações antigas migradas com sucesso!");
       } catch (error) {
         console.error("Erro ao migrar anotações antigas:", error);
+        toast.error(
+          "Erro ao migrar anotações antigas. Recarregue a página para tentar novamente.",
+        );
       }
     };
 
     void migrate();
-  }, [legacyNotesText, isEditMode, characterId, updateCharacter]);
+  }, [isEditMode, parsed, characterId, updateCharacter]);
 
   // Filter notes based on search term
   const notes = allNotes.filter(
@@ -505,7 +435,7 @@ export function NotesTab({
 
           {/* Botão de debug para dados corrompidos (apenas em desenvolvimento) */}
           {process.env.NODE_ENV === "development" &&
-            hasCorruptedData &&
+            parsed.status === "corrupted" &&
             isEditMode && (
               <Button
                 variant="destructive"
