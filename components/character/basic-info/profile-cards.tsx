@@ -1,203 +1,111 @@
 // components/character/basic-info/profile-cards.tsx
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EditableField, EditableNumberField } from '@/components/ui/editable-field'
-import { getXPRequiredForNextLevel } from '@/lib/calculations'
+import { SectionCard } from '@/components/ui/section-card'
+
+import { buildExperienceView } from './basic-info-model'
 
 import type { CharacterTabProps } from '../types'
+
+type BasicInfoField =
+  | 'characterName'
+  | 'playerName'
+  | 'class'
+  | 'race'
+  | 'deity'
+  | 'homeland'
+  | 'alignment'
+  | 'gender'
+  | 'age'
+  | 'weight'
+  | 'height'
+  | 'virtuePoints'
+
+// Os 12 campos de hoje, na ordem de hoje, com os mesmos rótulos e placeholders
+const BASIC_INFO_FIELDS: ReadonlyArray<{ field: BasicInfoField; label: string; placeholder: string }> = [
+  { field: 'characterName', label: 'Nome do Personagem', placeholder: 'Digite o nome do personagem' },
+  { field: 'playerName', label: 'Jogador', placeholder: 'Digite o nome do jogador' },
+  { field: 'class', label: 'Classe', placeholder: 'Digite a classe' },
+  { field: 'race', label: 'Raça', placeholder: 'Digite a raça' },
+  { field: 'deity', label: 'Divindade', placeholder: 'Digite a divindade' },
+  { field: 'homeland', label: 'Terra Natal', placeholder: 'Digite a terra natal' },
+  { field: 'alignment', label: 'Tendência', placeholder: 'Digite a tendência' },
+  { field: 'gender', label: 'Gênero', placeholder: 'Digite o gênero' },
+  { field: 'age', label: 'Idade', placeholder: 'Digite a idade' },
+  { field: 'weight', label: 'Peso', placeholder: 'Digite o peso' },
+  { field: 'height', label: 'Altura', placeholder: 'Digite a altura' },
+  { field: 'virtuePoints', label: 'Pontos de Virtude', placeholder: 'Digite os pontos de virtude' },
+]
 
 type BasicDetailsCardProps = Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'>
 
 export function BasicDetailsCard({ character, characterId, isEditMode }: BasicDetailsCardProps) {
-  const {
-    playerName, characterName, class: charClass, race, deity,
-    homeland, alignment, gender, age, weight, height, virtuePoints,
-  } = character
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Informações Básicas</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <SectionCard title="Informações Básicas">
+      <div className="grid grid-cols-2 gap-x-3.5 gap-y-3">
+        {BASIC_INFO_FIELDS.map(({ field, label, placeholder }) => (
           <EditableField
+            key={field}
             characterId={characterId}
             section="basic"
-            field="characterName"
-            value={characterName}
-            label="Nome do Personagem"
-            placeholder="Digite o nome do personagem"
+            field={field}
+            value={character[field]}
+            label={label}
+            placeholder={placeholder}
             isEditMode={isEditMode}
+            className={field === 'characterName' ? 'col-span-2 min-w-0' : 'min-w-0'}
           />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="playerName"
-            value={playerName}
-            label="Jogador"
-            placeholder="Digite o nome do jogador"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="class"
-            value={charClass}
-            label="Classe"
-            placeholder="Digite a classe"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="race"
-            value={race}
-            label="Raça"
-            placeholder="Digite a raça"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="deity"
-            value={deity}
-            label="Divindade"
-            placeholder="Digite a divindade"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="homeland"
-            value={homeland}
-            label="Terra Natal"
-            placeholder="Digite a terra natal"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="alignment"
-            value={alignment}
-            label="Tendência"
-            placeholder="Digite a tendência"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="gender"
-            value={gender}
-            label="Gênero"
-            placeholder="Digite o gênero"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="age"
-            value={age}
-            label="Idade"
-            placeholder="Digite a idade"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="weight"
-            value={weight}
-            label="Peso"
-            placeholder="Digite o peso"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="height"
-            value={height}
-            label="Altura"
-            placeholder="Digite a altura"
-            isEditMode={isEditMode}
-          />
-
-          <EditableField
-            characterId={characterId}
-            section="basic"
-            field="virtuePoints"
-            value={virtuePoints}
-            label="Pontos de Virtude"
-            placeholder="Digite os pontos de virtude"
-            isEditMode={isEditMode}
-          />
-        </div>
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+    </SectionCard>
   )
 }
 
 type ExperienceCardProps = Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'>
 
 export function ExperienceCard({ character, characterId, isEditMode }: ExperienceCardProps) {
-  const {
-    level, currentXP,
-  } = character
+  const { level, currentXP } = character
+  const view = buildExperienceView(level, currentXP)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Experiência e Nível</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-medium">Nível Atual</label>
-            <div className="text-2xl font-bold text-primary">
-              <EditableNumberField
-                characterId={characterId}
-                section="basic"
-                field="level"
-                value={level || 0}
-                min={0}
-                max={99}
-                className="text-center"
-                displayClassName="text-2xl font-bold text-primary"
-                isEditMode={isEditMode}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium">XP Atual</label>
-            <div className="text-lg font-medium">
+    <SectionCard title="Experiência e Nível" className="gap-3">
+      <div className="flex items-center gap-4">
+        <div className="flex size-[72px] shrink-0 flex-col items-center justify-center rounded-(--radius) border border-primary">
+          <span className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">Nível</span>
+          <EditableNumberField
+            characterId={characterId}
+            section="basic"
+            field="level"
+            value={level || 0}
+            min={0}
+            max={99}
+            className="w-full"
+            displayClassName="justify-center px-1 text-[34px] leading-none font-semibold text-primary"
+            isEditMode={isEditMode}
+          />
+        </div>
+
+        <div className="flex flex-1 flex-col gap-2">
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted-foreground">XP</span>
+            <span className="flex items-baseline gap-1">
               <EditableNumberField
                 characterId={characterId}
                 section="basic"
                 field="currentXP"
                 value={currentXP || 0}
-                className="text-center"
-                displayClassName="text-lg font-medium"
+                displayClassName="px-1 text-[20px] font-semibold"
                 isEditMode={isEditMode}
               />
-            </div>
+              <span className="font-numeric text-[15px] tabular-nums text-muted-foreground">{`/ ${view.required}`}</span>
+            </span>
           </div>
-          <div>
-            <label className="text-sm font-medium">XP para Próximo</label>
-            <div className="text-lg font-medium text-muted-foreground">
-              {getXPRequiredForNextLevel(level || 0)}
-            </div>
+          <div aria-hidden="true" className="h-2 overflow-hidden rounded-[1px] bg-vitality-track">
+            <div className="h-full bg-primary" style={{ width: `${view.percent}%` }} />
           </div>
+          <span className="text-[13px] text-muted-foreground">{view.caption}</span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SectionCard>
   )
 }

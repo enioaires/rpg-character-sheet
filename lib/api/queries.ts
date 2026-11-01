@@ -103,7 +103,7 @@ export const useUpdateCharacter = () => {
       // Conflito: toast em pt-BR e refetch; outros erros seguem para o chamador
       handleCharacterSaveError(error, variables.id, {
         queryClient,
-        notify: (message, options) => toast.error(message, options),
+        notify: (message, options) => toast.warning(message, options),
       })
     },
     onSuccess: () => {

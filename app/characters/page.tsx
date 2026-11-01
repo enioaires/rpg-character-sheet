@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCharacters, useDeleteCharacter } from '@/lib/api/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { PageState, SkeletonBlock } from '@/components/ui/page-state'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,12 +20,13 @@ import {
 import {
     Plus,
     Search,
-    Eye,
     Trash2,
-    Loader2,
-    User,
-    Calendar,
-    Sword
+    LoaderCircle,
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
+    CloudOff,
+    ScrollText
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -73,253 +73,282 @@ export default function CharactersPage() {
         setPage(1) // Reset para primeira página ao pesquisar
     }
 
-    // Estados de loading e erro
-    if (isLoading) {
-        return (
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground">Carregando personagens...</p>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="container mx-auto px-4 py-8">
-                <Card className="max-w-md mx-auto">
-                    <CardContent className="pt-6">
-                        <div className="text-center space-y-4">
-                            <h2 className="text-xl font-semibold text-destructive">
-                                Erro ao carregar personagens
-                            </h2>
-                            <p className="text-muted-foreground">
-                                {error.message || 'Não foi possível carregar a lista de personagens'}
-                            </p>
-                            <Button onClick={() => refetch()}>
-                                Tentar Novamente
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        )
-    }
-
     const characters = charactersResponse?.characters || []
     const total = charactersResponse?.total || 0
     const totalPages = Math.ceil(total / limit)
 
+    // Linha de contagem sob o título (o cabeçalho fica sempre montado)
+    const pluralFichas = (n: number) => (n === 1 ? '1 ficha' : `${n} fichas`)
+    let countLabel: string
+    if (isLoading) {
+        countLabel = 'Carregando fichas…'
+    } else if (error) {
+        countLabel = ''
+    } else if (total === 0 && !search) {
+        countLabel = 'Nenhuma ficha ainda'
+    } else if (search) {
+        countLabel = total === 1 ? '1 ficha encontrada' : `${total} fichas encontradas`
+    } else {
+        countLabel = pluralFichas(total)
+    }
+
+    // Janela de botões numerados (md+): até 5 páginas centradas na atual
+    const maxVisible = 5
+    const windowStart = Math.max(1, Math.min(totalPages - (maxVisible - 1), page - Math.floor(maxVisible / 2)))
+
     return (
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold">Personagens</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                        Gerencie suas fichas de personagem de RPG
-                    </p>
-                </div>
-                <Button onClick={handleCreateCharacter} className="w-full sm:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Personagem
-                </Button>
-            </div>
-
-            {/* Barra de Pesquisa */}
-            <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                    placeholder="Pesquisar por nome do personagem ou jogador..."
-                    value={search}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="pl-10"
-                />
-            </div>
-
-            {/* Lista de Personagens */}
-            {characters.length === 0 ? (
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
-                                <User className="w-8 h-8 text-muted-foreground" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold">Nenhum personagem encontrado</h3>
-                                <p className="text-muted-foreground">
-                                    {search
-                                        ? 'Tente ajustar sua pesquisa ou criar um novo personagem.'
-                                        : 'Comece criando seu primeiro personagem!'
-                                    }
-                                </p>
-                            </div>
-                            <Button onClick={handleCreateCharacter}>
-                                <Plus className="w-4 h-4 mr-2" />
-                                Criar Primeiro Personagem
+        <div className="flex min-h-dvh flex-col">
+            {/* Cabeçalho */}
+            <header className="sticky top-0 z-10 border-b bg-background">
+                <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3.5 px-4 pt-5 pb-3">
+                    <div className="flex items-end justify-between gap-3">
+                        <div className="flex flex-col gap-0.5">
+                            <h1 className="m-0 font-serif text-[30px] leading-[1.1] font-semibold">Personagens</h1>
+                            <span className="text-sm text-muted-foreground">{countLabel}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <ThemeToggle />
+                            <Button
+                                onClick={handleCreateCharacter}
+                                className="hidden h-11 gap-2 px-[18px] text-[15px] font-semibold md:inline-flex"
+                            >
+                                <Plus className="size-[18px]" aria-hidden="true" />
+                                Criar personagem
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <>
-                    {/* Grid de Personagens */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                        {characters.map((character) => (
-                            <Card key={character.id} className="hover:shadow-lg transition-shadow mobile-tap">
-                                <CardHeader className="pb-3 mobile-card-compact">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-base sm:text-lg truncate">
-                                                {character.characterName || 'Sem nome'}
-                                            </CardTitle>
-                                            {character.playerName && (
-                                                <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                                                    Jogador: {character.playerName}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <Badge variant="secondary" className="text-xs shrink-0">
-                                            Nv. {character.level}
-                                        </Badge>
-                                    </div>
-                                </CardHeader>
-
-                                <CardContent className="space-y-3 mobile-card-compact">
-                                    {/* Informações do Personagem */}
-                                    <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                                        {character.race && (
-                                            <div className="flex items-center gap-2">
-                                                <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                                                <span className="text-muted-foreground">Raça:</span>
-                                                <span className="truncate">{character.race}</span>
-                                            </div>
-                                        )}
-                                        {character.class && (
-                                            <div className="flex items-center gap-2">
-                                                <Sword className="w-3 h-3 text-muted-foreground shrink-0" />
-                                                <span className="text-muted-foreground">Classe:</span>
-                                                <span className="truncate">{character.class}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
-                                            <span className="text-muted-foreground">Atualizado:</span>
-                                            <span className="truncate">
-                                                {formatDistanceToNow(new Date(character.updatedAt), {
-                                                    addSuffix: true,
-                                                    locale: ptBR
-                                                })}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Ações */}
-                                    <div className="flex gap-2 pt-2">
-                                        <Button
-                                            variant="default"
-                                            size="sm"
-                                            onClick={() => handleViewCharacter(character.id)}
-                                            className="flex-1 touch-target"
-                                        >
-                                            <Eye className="w-3 h-3 mr-1" />
-                                            <span className="hidden sm:inline">Abrir</span>
-                                            <span className="sm:hidden">Ver</span>
-                                        </Button>
-
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="text-destructive hover:text-destructive touch-target"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="mx-2 sm:mx-auto max-w-md">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Deletar Personagem</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Tem certeza que deseja deletar o personagem &quot;{character.characterName}&quot;?
-                                                        Esta ação não pode ser desfeita.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                                                    <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={() => handleDeleteCharacter(character.id, character.characterName)}
-                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-                                                        disabled={deleteCharacterMutation.isPending}
-                                                    >
-                                                        {deleteCharacterMutation.isPending ? (
-                                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                                        ) : null}
-                                                        Deletar
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
                     </div>
 
-                    {/* Paginação */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-1 sm:gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(page - 1)}
-                                disabled={page === 1}
-                                className="touch-target"
-                            >
-                                <span className="hidden sm:inline">Anterior</span>
-                                <span className="sm:hidden">Ant</span>
-                            </Button>
+                    {/* Barra de Pesquisa */}
+                    <label className="flex h-12 items-center gap-2.5 rounded-(--radius) border border-input bg-card px-3.5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+                        <Search className="size-[18px] text-muted-foreground" aria-hidden="true" />
+                        <input
+                            type="search"
+                            aria-label="Buscar personagens"
+                            value={search}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder="Buscar por nome ou jogador"
+                            className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+                        />
+                    </label>
+                </div>
+            </header>
 
-                            <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(window.innerWidth < 640 ? 3 : 5, totalPages) }, (_, i) => {
-                                    const maxVisible = window.innerWidth < 640 ? 3 : 5
-                                    const pageNum = Math.max(1, Math.min(totalPages - (maxVisible - 1), page - Math.floor(maxVisible / 2))) + i
+            {/* Corpo */}
+            <div className="flex-1">
+                <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2.5 px-4 pt-3 pb-4">
+                    {isLoading ? (
+                        <div role="status" aria-live="polite" aria-busy="true">
+                            <span className="sr-only">Carregando personagens…</span>
+                            <ul
+                                role="list"
+                                className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-2.5"
+                            >
+                                {[0, 1, 2, 3].map((i) => (
+                                    <li
+                                        key={i}
+                                        aria-hidden="true"
+                                        className="flex rounded-(--radius) border bg-card shadow-card"
+                                    >
+                                        <div className="flex flex-1 flex-col gap-2 p-4">
+                                            <SkeletonBlock className="h-5 w-3/5" />
+                                            <SkeletonBlock className="h-3.5 w-2/5" />
+                                            <div className="flex gap-1.5">
+                                                <SkeletonBlock className="h-5 w-16" />
+                                                <SkeletonBlock className="h-5 w-14" />
+                                            </div>
+                                        </div>
+                                        <div className="flex w-16 flex-col items-center justify-center gap-1">
+                                            <SkeletonBlock className="h-3 w-9" />
+                                            <SkeletonBlock className="size-7" />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : error ? (
+                        <PageState
+                            variant="error"
+                            icon={CloudOff}
+                            title="Erro ao carregar personagens"
+                            description="Verifique a conexão ou tente de novo em instantes."
+                        >
+                            <Button onClick={() => refetch()} className="h-12 w-full font-semibold">
+                                <RefreshCw className="size-[18px]" aria-hidden="true" />
+                                Tentar de novo
+                            </Button>
+                        </PageState>
+                    ) : characters.length === 0 ? (
+                        <PageState
+                            variant="empty"
+                            icon={ScrollText}
+                            title={search ? 'Nada encontrado' : 'Nenhum personagem ainda'}
+                            description={
+                                search
+                                    ? <>Nenhuma ficha com “{search}”. Tente outro nome.</>
+                                    : 'Crie a primeira ficha. Só precisa do nome do personagem e do jogador.'
+                            }
+                        />
+                    ) : (
+                        <>
+                            {/* Lista de Personagens */}
+                            <ul
+                                role="list"
+                                className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-2.5"
+                            >
+                                {characters.map((character) => {
+                                    const name = character.characterName || 'Sem nome'
                                     return (
-                                        <Button
-                                            key={pageNum}
-                                            variant={pageNum === page ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setPage(pageNum)}
-                                            className="w-8 sm:w-10 touch-target"
+                                        <li
+                                            key={character.id}
+                                            className="flex items-stretch overflow-hidden rounded-(--radius) border bg-card shadow-card"
                                         >
-                                            {pageNum}
-                                        </Button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleViewCharacter(character.id)}
+                                                className="flex min-w-0 flex-1 items-center gap-3.5 py-3.5 pr-1 pl-4 text-left outline-none hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/50"
+                                            >
+                                                <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                                    <span className="truncate font-serif text-xl leading-[1.15] font-semibold">
+                                                        {name}
+                                                    </span>
+                                                    <span className="truncate text-sm text-muted-foreground">
+                                                        {character.playerName ? `${character.playerName} · ` : ''}
+                                                        atualizada{' '}
+                                                        {formatDistanceToNow(new Date(character.updatedAt), {
+                                                            addSuffix: true,
+                                                            locale: ptBR
+                                                        })}
+                                                    </span>
+                                                    {(character.class || character.race) && (
+                                                        <span className="flex flex-wrap gap-1.5">
+                                                            {character.class && (
+                                                                <span className="rounded-(--radius) bg-secondary px-2 py-0.5 text-[13px] text-secondary-foreground">
+                                                                    {character.class}
+                                                                </span>
+                                                            )}
+                                                            {character.race && (
+                                                                <span className="rounded-(--radius) border px-2 py-0.5 text-[13px] text-muted-foreground">
+                                                                    {character.race}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="flex min-w-12 flex-none flex-col items-center">
+                                                    <span className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                                                        Nível
+                                                    </span>
+                                                    <span className="font-numeric text-[30px] leading-none font-semibold text-primary tabular-nums">
+                                                        {character.level}
+                                                    </span>
+                                                </span>
+                                            </button>
+
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Excluir ${name}`}
+                                                        className="grid w-12 flex-none place-items-center border-l text-muted-foreground outline-none hover:text-destructive focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/50"
+                                                    >
+                                                        <Trash2 className="size-[18px]" aria-hidden="true" />
+                                                    </button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="w-[calc(100%-2.5rem)] max-w-[400px] gap-3 bg-popover p-5 text-popover-foreground sm:max-w-[400px]">
+                                                    <AlertDialogHeader className="gap-3 text-left sm:text-left">
+                                                        <AlertDialogTitle className="font-serif text-[22px] leading-tight font-semibold">
+                                                            Excluir {name}?
+                                                        </AlertDialogTitle>
+                                                        <AlertDialogDescription className="text-[15px] text-pretty">
+                                                            A ficha e todas as anotações serão apagadas. Essa ação não pode ser desfeita.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter className="grid grid-cols-2 gap-2 pt-1.5">
+                                                        <AlertDialogCancel className="h-12 w-full bg-transparent text-base font-semibold dark:bg-transparent">
+                                                            Cancelar
+                                                        </AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleDeleteCharacter(character.id, character.characterName)}
+                                                            className="h-12 w-full bg-destructive text-base font-bold text-destructive-foreground hover:bg-destructive/90"
+                                                            disabled={deleteCharacterMutation.isPending}
+                                                        >
+                                                            {deleteCharacterMutation.isPending ? (
+                                                                <LoaderCircle className="size-[18px] animate-ficha-spin" aria-hidden="true" />
+                                                            ) : null}
+                                                            Excluir
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </li>
                                     )
                                 })}
-                            </div>
+                            </ul>
 
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(page + 1)}
-                                disabled={page === totalPages}
-                                className="touch-target"
-                            >
-                                <span className="hidden sm:inline">Próxima</span>
-                                <span className="sm:hidden">Prox</span>
-                            </Button>
-                        </div>
+                            {/* Paginação */}
+                            {totalPages > 1 && (
+                                <nav
+                                    aria-label="Paginação"
+                                    className="flex items-center justify-between gap-2 pt-1.5"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setPage(page - 1)}
+                                        disabled={page === 1}
+                                        className="h-11 gap-1.5 bg-transparent px-3 text-[15px] dark:bg-transparent"
+                                    >
+                                        <ChevronLeft className="size-[18px]" aria-hidden="true" />
+                                        Anterior
+                                    </Button>
+
+                                    <span className="text-sm text-muted-foreground tabular-nums md:hidden">
+                                        Página {page} de {totalPages}
+                                    </span>
+
+                                    <div className="hidden items-center gap-1 md:flex">
+                                        {Array.from({ length: Math.min(maxVisible, totalPages) }, (_, i) => {
+                                            const pageNum = windowStart + i
+                                            return (
+                                                <Button
+                                                    key={pageNum}
+                                                    variant={pageNum === page ? 'default' : 'outline'}
+                                                    size="icon"
+                                                    aria-current={pageNum === page ? 'page' : undefined}
+                                                    onClick={() => setPage(pageNum)}
+                                                    className="size-11 font-numeric tabular-nums"
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setPage(page + 1)}
+                                        disabled={page === totalPages}
+                                        className="h-11 gap-1.5 bg-transparent px-3 text-[15px] dark:bg-transparent"
+                                    >
+                                        Próxima
+                                        <ChevronRight className="size-[18px]" aria-hidden="true" />
+                                    </Button>
+                                </nav>
+                            )}
+                        </>
                     )}
+                </div>
+            </div>
 
-                    {/* Informações de Paginação */}
-                    <div className="text-center text-sm text-muted-foreground mt-4">
-                        Mostrando {((page - 1) * limit) + 1} a {Math.min(page * limit, total)} de {total} personagens
-                    </div>
-                </>
-            )}
+            {/* Barra inferior de criar (estreito) */}
+            <div className="sticky bottom-0 z-10 border-t bg-card px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
+                <Button
+                    onClick={handleCreateCharacter}
+                    className="h-[52px] w-full gap-2 text-[17px] font-semibold"
+                >
+                    <Plus className="size-5" aria-hidden="true" />
+                    Criar personagem
+                </Button>
+            </div>
         </div>
     )
 }

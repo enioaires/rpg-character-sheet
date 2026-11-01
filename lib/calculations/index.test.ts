@@ -7,11 +7,14 @@
 
 import { describe, expect, it } from 'bun:test'
 import * as calculations from '@/lib/calculations'
+import { VITALITY_LEVELS } from '@/lib/constants/character'
 import {
   calculateAllAttributes,
   calculateAllSkills,
   calculateAttributeBase,
   calculateAttributeTotal,
+  applyVitalityDamage,
+  applyVitalityHeal,
   calculateAvailableSkillPoints,
   calculateLevelUpSkillPoints,
   calculateMaxBerkana,
@@ -20,9 +23,12 @@ import {
   calculateTotalSkillPoints,
   calculateUsedSkillPoints,
   calculateVitalityLevels,
+  calculateVitalityTotal,
   canLevelUp,
   getAttributeLevelBonus,
   getBaseBerkana,
+  getBerkanaState,
+  getCurrentVitalityStage,
   getDefaultSkills,
   getSkillLevelBonus,
   getSkillPointsPerLevel,
@@ -30,13 +36,18 @@ import {
   getXPRequiredForNextLevel,
   initializeSkills,
   processLevelUp,
+  recoverBerkana,
+  resolveBerkanaPool,
+  resolveCurrentVitalityLevels,
+  spendBerkana,
   toAttributeValue,
   toSkillValue,
   toVitalityBase,
   validateSkillDistribution,
   type AttributeValue,
   type SkillValue,
-  type VitalityBase
+  type VitalityBase,
+  type VitalityLevels
 } from '@/lib/calculations'
 
 // ============================================
@@ -654,12 +665,474 @@ describe('toVitalityBase', () => {
 })
 
 // ============================================
+// RECURSOS EM JOGO: VITALIDADE
+// ============================================
+
+// Oráculos congelados: cópias fiéis da lógica do commit-base 13eb61f
+// (components/character/basic-info/vitality-card.tsx e quick-actions-bar.tsx).
+// NUNCA edite estes oráculos: eles provam que os helpers extraídos escrevem
+// exatamente o que o app escrevia antes da extração.
+
+type LegacyVitality = Record<string, unknown>
+
+function legacyApplyDamage(
+  currentVitality: LegacyVitality | null | undefined,
+  calculatedVitality: Record<string, number>,
+  damageAmount: number
+): LegacyVitality {
+  // Criar cópia dos valores atuais de vitalidade
+  const newCurrentVitality: LegacyVitality = { ...currentVitality }
+  let remainingDamage = damageAmount
+
+  // Inicializar currentVitality com valores máximos se ainda não foi definido
+  for (const vitalityKey of VITALITY_LEVELS) {
+    if (newCurrentVitality[vitalityKey] === undefined || newCurrentVitality[vitalityKey] === null) {
+      newCurrentVitality[vitalityKey] = calculatedVitality[vitalityKey]
+    }
+  }
+
+  // Aplicar dano de cima para baixo (do maior para o menor)
+  for (const vitalityKey of VITALITY_LEVELS) {
+    if (remainingDamage <= 0) break
+
+    const currentValue = newCurrentVitality[vitalityKey] as number
+    const damageToApply = Math.min(remainingDamage, currentValue)
+
+    newCurrentVitality[vitalityKey] = Math.max(0, currentValue - damageToApply)
+    remainingDamage -= damageToApply
+  }
+
+  return newCurrentVitality
+}
+
+function legacyResolve(
+  currentVitality: LegacyVitality | null | undefined,
+  calculatedVitality: Record<string, number>,
+  vitalityKey: string
+): number {
+  const stored = (currentVitality ?? {})[vitalityKey] as number | null | undefined
+  return stored !== undefined && stored !== null ? stored : calculatedVitality[vitalityKey]
+}
+
+function legacyTotal(levels: Record<string, number>): number {
+  return Object.values(levels).reduce((sum, val) => sum + (val || 0), 0)
+}
+
+const VIT_LEVELS_GRID = [0, 1, 4, 5, 7, 10]
+const VIT_BASES_GRID: VitalityBase[] = [
+  { race: 0, class: 0 },
+  { race: 30, class: 30 },
+  { race: 200, class: 250 },
+  { race: 999, class: 1 }
+]
+const VIT_DAMAGE_GRID = [1, 7, 100, 3600, 1000000]
+
+function vitStoredShapes(maxima: VitalityLevels): Array<[string, LegacyVitality | null | undefined]> {
+  return [
+    ['undefined', undefined],
+    ['null', null],
+    ['{}', {}],
+    ['todos 0', { notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }],
+    ['{notavel:5}', { notavel: 5 }],
+    ['{notavel:null, ferido:12}', { notavel: null, ferido: 12 }],
+    ['máximos explícitos', { ...maxima }],
+    ['notavel = max+50', { ...maxima, notavel: maxima.notavel + 50 }],
+    ['máximos + chave desconhecida', { ...maxima, extra: 'x' }]
+  ]
+}
+
+function vitGrid(): Array<{
+  level: number
+  base: VitalityBase
+  maxima: VitalityLevels
+}> {
+  const cases: Array<{ level: number; base: VitalityBase; maxima: VitalityLevels }> = []
+  for (const level of VIT_LEVELS_GRID) {
+    for (const base of VIT_BASES_GRID) {
+      cases.push({ level, base, maxima: calculateVitalityLevels(toVitalityBase(base), level) })
+    }
+  }
+  return cases
+}
+
+describe('applyVitalityDamage', () => {
+  it('é igual ao laço congelado do commit-base em toda a grade', () => {
+    let checks = 0
+    for (const { maxima } of vitGrid()) {
+      for (const [, stored] of vitStoredShapes(maxima)) {
+        for (const damage of VIT_DAMAGE_GRID) {
+          const expected = legacyApplyDamage(structuredClone(stored), { ...maxima }, damage)
+          const actual = applyVitalityDamage(structuredClone(stored), { ...maxima }, damage)
+          expect(actual).toEqual(expected as VitalityLevels)
+          checks++
+        }
+      }
+    }
+    expect(checks).toBe(6 * 4 * 9 * 5)
+  })
+
+  it('não muta o objeto de entrada', () => {
+    for (const { maxima } of vitGrid()) {
+      for (const [, stored] of vitStoredShapes(maxima)) {
+        const input = structuredClone(stored)
+        const snapshot = structuredClone(stored)
+        applyVitalityDamage(input, maxima, 100)
+        expect(input).toEqual(snapshot)
+      }
+    }
+  })
+
+  it('drena Notável antes de Ferido e transborda o resto para o próximo nível', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const result = applyVitalityDamage(undefined, maxima, 4000)
+    expect(result.notavel).toBe(0)
+    expect(result.ferido).toBe(3040)
+    expect(result.gravementeFerido).toBe(maxima.gravementeFerido)
+  })
+
+  it('nunca grava valor negativo e mantém chaves desconhecidas', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const result = applyVitalityDamage({ ...maxima, extra: 'x' } as never, maxima, 1000000)
+    for (const key of Object.keys(maxima) as Array<keyof VitalityLevels>) {
+      expect(result[key]).toBeGreaterThanOrEqual(0)
+    }
+    expect((result as Record<string, unknown>).extra).toBe('x')
+  })
+
+  it('caso de máximo negativo (base 30/30, nível 0, dano 1000000) fica igual ao oráculo', () => {
+    const maxima = calculateVitalityLevels({ race: 30, class: 30 }, 0)
+    const expected = legacyApplyDamage(undefined, { ...maxima }, 1000000)
+    expect(applyVitalityDamage(undefined, maxima, 1000000)).toEqual(expected as VitalityLevels)
+  })
+})
+
+describe('resolveCurrentVitalityLevels', () => {
+  it('é igual ao fallback por nível do card em toda a grade', () => {
+    for (const { maxima } of vitGrid()) {
+      for (const [, stored] of vitStoredShapes(maxima)) {
+        const resolved = resolveCurrentVitalityLevels(structuredClone(stored), maxima)
+        for (const key of VITALITY_LEVELS) {
+          expect(resolved[key]).toBe(legacyResolve(stored, { ...maxima }, key))
+        }
+        expect(Object.keys(resolved).sort()).toEqual([...VITALITY_LEVELS].sort())
+      }
+    }
+  })
+
+  it('entrada nula ou indefinida devolve os máximos', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    expect(resolveCurrentVitalityLevels(null, maxima)).toEqual(maxima)
+    expect(resolveCurrentVitalityLevels(undefined, maxima)).toEqual(maxima)
+  })
+})
+
+describe('calculateVitalityTotal', () => {
+  it('é igual ao reduce antigo da barra para máximos e para atuais resolvidos', () => {
+    for (const { maxima } of vitGrid()) {
+      expect(calculateVitalityTotal(maxima)).toBe(legacyTotal({ ...maxima }))
+      for (const [, stored] of vitStoredShapes(maxima)) {
+        const resolved = resolveCurrentVitalityLevels(stored, maxima)
+        expect(calculateVitalityTotal(resolved)).toBe(legacyTotal({ ...resolved }))
+      }
+    }
+  })
+
+  it('base 200/250 nível 7 soma 19200', () => {
+    expect(calculateVitalityTotal(calculateVitalityLevels({ race: 200, class: 250 }, 7))).toBe(19200)
+  })
+
+  it('trata valores não finitos como 0 (regra || 0)', () => {
+    const levels = { notavel: NaN, ferido: 10, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }
+    expect(calculateVitalityTotal(levels)).toBe(10)
+  })
+})
+
+describe('getCurrentVitalityStage', () => {
+  const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+  const stageOf = (stored: LegacyVitality | null | undefined) =>
+    getCurrentVitalityStage(resolveCurrentVitalityLevels(stored, maxima), maxima)
+
+  it('ficha cheia está em Notável', () => {
+    expect(stageOf(undefined)).toBe('notavel')
+  })
+
+  it('primeiro nível, na ordem do dano, com valor maior que 0', () => {
+    expect(stageOf({ notavel: 0, ferido: 1000 })).toBe('ferido')
+    expect(stageOf({ notavel: 0, ferido: 0, gravementeFerido: 5 })).toBe('gravementeFerido')
+    expect(stageOf({ notavel: 10, ferido: 0 })).toBe('notavel')
+  })
+
+  it('tudo em 0 é Coma, inclusive depois de dano enorme', () => {
+    expect(stageOf({ notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 })).toBe('coma')
+    expect(stageOf(applyVitalityDamage(undefined, maxima, 1000000))).toBe('coma')
+  })
+
+  it('vitalidade não configurada (máximos somam <= 0) devolve null', () => {
+    const zero = calculateVitalityLevels({ race: 0, class: 0 }, 0)
+    expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(undefined, zero), zero)).toBeNull()
+    const zeros = { notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }
+    expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(zeros, zero), zero)).toBeNull()
+  })
+})
+
+describe('applyVitalityHeal', () => {
+  const FULL_SHAPES = (maxima: VitalityLevels): Array<[string, LegacyVitality | undefined]> => [
+    ['undefined', undefined],
+    ['máximos explícitos', { ...maxima }],
+    ['máximos + chave desconhecida', { ...maxima, extra: 'x' }]
+  ]
+
+  it('ida e volta: cura(dano(ficha cheia, n), n) devolve todos os níveis ao máximo', () => {
+    let checks = 0
+    for (const { maxima } of vitGrid()) {
+      const total = calculateVitalityTotal(maxima)
+      const amounts = [...VIT_DAMAGE_GRID.filter((n) => n > 0 && n <= total), total].filter((n) => n > 0)
+      for (const [, stored] of FULL_SHAPES(maxima)) {
+        for (const n of amounts) {
+          const damaged = applyVitalityDamage(structuredClone(stored), maxima, n)
+          const healed = applyVitalityHeal(damaged, maxima, n)
+          for (const key of VITALITY_LEVELS) {
+            expect(healed[key]).toBe(maxima[key])
+          }
+          if (stored && 'extra' in stored) {
+            expect((healed as Record<string, unknown>).extra).toBe('x')
+          }
+          checks++
+        }
+      }
+    }
+    expect(checks).toBeGreaterThan(0)
+  })
+
+  it('cura em ficha cheia não muda nada, para qualquer valor da grade', () => {
+    for (const { maxima } of vitGrid()) {
+      for (const [, stored] of FULL_SHAPES(maxima)) {
+        for (const n of VIT_DAMAGE_GRID) {
+          const result = applyVitalityHeal(structuredClone(stored), maxima, n)
+          expect(result).toEqual({ ...maxima, ...(stored && 'extra' in stored ? { extra: 'x' } : {}) } as VitalityLevels)
+        }
+      }
+    }
+  })
+
+  it('nunca passa do máximo de cada nível', () => {
+    for (const { maxima } of vitGrid()) {
+      for (const [, stored] of vitStoredShapes(maxima)) {
+        const resolved = resolveCurrentVitalityLevels(stored, maxima)
+        const allWithinMax = VITALITY_LEVELS.every((key) => resolved[key] <= maxima[key])
+        for (const n of VIT_DAMAGE_GRID) {
+          const result = applyVitalityHeal(structuredClone(stored), maxima, n)
+          for (const key of VITALITY_LEVELS) {
+            if (allWithinMax) expect(result[key]).toBeLessThanOrEqual(maxima[key])
+            // nível com máximo <= 0 nunca muda
+            if (maxima[key] <= 0) expect(result[key]).toBe(resolved[key])
+            // nível acima do máximo (edição manual) nunca é reduzido
+            if (resolved[key] > maxima[key]) expect(result[key]).toBe(resolved[key])
+          }
+        }
+      }
+    }
+  })
+
+  it('nível acima do máximo (notavel = max+50) mantém o valor', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const result = applyVitalityHeal({ ...maxima, notavel: maxima.notavel + 50 }, maxima, 1000000)
+    expect(result.notavel).toBe(maxima.notavel + 50)
+  })
+
+  describe('o nível mais fundo drenado enche primeiro', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const damaged = applyVitalityDamage(undefined, maxima, 8000)
+
+    it('o dano de 8000 deixa notavel 0, ferido 0 e gravementeFerido 2320', () => {
+      expect(damaged.notavel).toBe(0)
+      expect(damaged.ferido).toBe(0)
+      expect(damaged.gravementeFerido).toBe(2320)
+    })
+
+    it('cura 500 enche gravementeFerido (2820) e deixa notavel e ferido em 0', () => {
+      const healed = applyVitalityHeal(damaged, maxima, 500)
+      expect(healed.gravementeFerido).toBe(2820)
+      expect(healed.notavel).toBe(0)
+      expect(healed.ferido).toBe(0)
+    })
+
+    it('cura 2000 completa gravementeFerido (3280) e sobe 1040 em ferido', () => {
+      const healed = applyVitalityHeal(damaged, maxima, 2000)
+      expect(healed.gravementeFerido).toBe(3280)
+      expect(healed.ferido).toBe(1040)
+      expect(healed.notavel).toBe(0)
+    })
+
+    it('cura 1000000 deixa todos os níveis no máximo (o resto é descartado)', () => {
+      expect(applyVitalityHeal(damaged, maxima, 1000000)).toEqual(maxima)
+    })
+  })
+
+  it('{notavel:100, ferido:0} com o resto cheio: cura 50 vai para ferido', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const result = applyVitalityHeal({ ...maxima, notavel: 100, ferido: 0 }, maxima, 50)
+    expect(result.ferido).toBe(50)
+    expect(result.notavel).toBe(100)
+  })
+
+  it('não muta o objeto de entrada', () => {
+    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const input = { ...applyVitalityDamage(undefined, maxima, 8000), extra: 'x' }
+    const snapshot = structuredClone(input)
+    applyVitalityHeal(input, maxima, 500)
+    expect(input).toEqual(snapshot)
+  })
+})
+
+// ============================================
+// RECURSOS EM JOGO: BERKANA
+// ============================================
+
+// Oráculos congelados: cópias fiéis de components/character/basic-info/berkana-card.tsx
+// no commit-base 13eb61f. NUNCA edite estes oráculos.
+
+type LegacyBerkanaInput = {
+  level?: number
+  maxBerkana?: number
+  currentBerkana?: number
+  berkanaBonus?: number
+}
+
+function legacyBerkanaMax(input: LegacyBerkanaInput): { max: number; current: number | undefined } {
+  const {
+    level,
+    maxBerkana = 100,
+    currentBerkana = 100,
+    berkanaBonus = 0,
+  } = input
+
+  const calculatedMax = calculateMaxBerkana(level || 0, getBaseBerkana(), berkanaBonus || 0)
+  const actualMaxBerkana = maxBerkana || calculatedMax
+
+  return { max: actualMaxBerkana, current: currentBerkana }
+}
+
+function legacyQuickEdit(
+  action: 'fill' | 'minus30' | 'minus50',
+  currentBerkana: number | undefined,
+  actualMaxBerkana: number
+): number {
+  let newValue = currentBerkana || 0
+
+  switch (action) {
+    case 'fill':
+      newValue = actualMaxBerkana
+      break
+    case 'minus30':
+      newValue = Math.max(0, newValue - 30)
+      break
+    case 'minus50':
+      newValue = Math.max(0, newValue - 50)
+      break
+  }
+
+  return newValue
+}
+
+const BERK_LEVELS = [0, 3, 7]
+const BERK_MAX_VALUES = [undefined, 0, 170]
+const BERK_CURRENT_VALUES = [undefined, 0, 85, 200]
+const BERK_BONUS_VALUES = [undefined, 0, 15]
+
+function berkGrid(): LegacyBerkanaInput[] {
+  const cases: LegacyBerkanaInput[] = []
+  for (const level of BERK_LEVELS) {
+    for (const maxBerkana of BERK_MAX_VALUES) {
+      for (const currentBerkana of BERK_CURRENT_VALUES) {
+        for (const berkanaBonus of BERK_BONUS_VALUES) {
+          cases.push({ level, maxBerkana, currentBerkana, berkanaBonus })
+        }
+      }
+    }
+  }
+  return cases
+}
+
+describe('resolveBerkanaPool', () => {
+  it('é igual ao cálculo do card (padrões da desestruturação + maxBerkana || calculada) em toda a grade', () => {
+    for (const input of berkGrid()) {
+      const expected = legacyBerkanaMax(input)
+      expect(resolveBerkanaPool(input)).toEqual({ current: expected.current as number, max: expected.max })
+    }
+  })
+
+  it('amostra: nível 7, maxBerkana 0, bônus 15 dá máximo 185', () => {
+    expect(resolveBerkanaPool({ level: 7, maxBerkana: 0, currentBerkana: 85, berkanaBonus: 15 }).max).toBe(185)
+  })
+
+  it('campos indefinidos usam os padrões 100/100/0', () => {
+    expect(resolveBerkanaPool({ level: 0 })).toEqual({ current: 100, max: 100 })
+  })
+})
+
+describe('spendBerkana', () => {
+  const CURRENTS = [0, 1, 29, 30, 31, 50, 100, 170]
+
+  it('com 30 e 50 reproduz o switch antigo (minus30/minus50)', () => {
+    for (const current of CURRENTS) {
+      expect(spendBerkana(current, 30)).toBe(legacyQuickEdit('minus30', current, 170))
+      expect(spendBerkana(current, 50)).toBe(legacyQuickEdit('minus50', current, 170))
+    }
+  })
+
+  it('nunca fica abaixo de 0', () => {
+    expect(spendBerkana(20, 30)).toBe(0)
+  })
+
+  it('restaurar ao máximo equivale ao ramo "fill" antigo', () => {
+    for (const input of berkGrid()) {
+      const pool = resolveBerkanaPool(input)
+      expect(pool.max).toBe(legacyQuickEdit('fill', input.currentBerkana, legacyBerkanaMax(input).max))
+    }
+  })
+})
+
+describe('recoverBerkana', () => {
+  it('soma até o máximo e nunca ultrapassa', () => {
+    expect(recoverBerkana(100, 170, 30)).toBe(130)
+    expect(recoverBerkana(160, 170, 30)).toBe(170)
+  })
+
+  it('nunca reduz um valor que já está acima do máximo', () => {
+    expect(recoverBerkana(200, 170, 30)).toBe(200)
+  })
+
+  it('recuperar 0 não muda o valor', () => {
+    expect(recoverBerkana(0, 170, 0)).toBe(0)
+  })
+})
+
+describe('getBerkanaState', () => {
+  it('esgotada, cheia, metade e disponível seguem os limiares do README', () => {
+    expect(getBerkanaState(0, 170)).toBe('esgotada')
+    expect(getBerkanaState(170, 170)).toBe('cheia')
+    expect(getBerkanaState(200, 170)).toBe('cheia')
+    expect(getBerkanaState(85, 170)).toBe('metade')
+    expect(getBerkanaState(1, 170)).toBe('metade')
+    expect(getBerkanaState(86, 170)).toBe('disponivel')
+  })
+
+  it('máximo 0: zerada é esgotada, qualquer valor positivo é cheia', () => {
+    expect(getBerkanaState(0, 0)).toBe('esgotada')
+    expect(getBerkanaState(5, 0)).toBe('cheia')
+  })
+})
+
+// ============================================
 // COBERTURA DOS EXPORTS
 // ============================================
 
 // Ao adicionar um export em lib/calculations sem teste, este guard falha:
 // inclua o nome em TESTED_FUNCTIONS junto com um describe com o mesmo nome.
 const TESTED_FUNCTIONS = [
+  'applyVitalityDamage',
+  'applyVitalityHeal',
   'calculateAllAttributes',
   'calculateAllSkills',
   'calculateAttributeBase',
@@ -672,9 +1145,12 @@ const TESTED_FUNCTIONS = [
   'calculateTotalSkillPoints',
   'calculateUsedSkillPoints',
   'calculateVitalityLevels',
+  'calculateVitalityTotal',
   'canLevelUp',
   'getAttributeLevelBonus',
   'getBaseBerkana',
+  'getBerkanaState',
+  'getCurrentVitalityStage',
   'getDefaultSkills',
   'getSkillLevelBonus',
   'getSkillPointsPerLevel',
@@ -682,6 +1158,10 @@ const TESTED_FUNCTIONS = [
   'getXPRequiredForNextLevel',
   'initializeSkills',
   'processLevelUp',
+  'recoverBerkana',
+  'resolveBerkanaPool',
+  'resolveCurrentVitalityLevels',
+  'spendBerkana',
   'toAttributeValue',
   'toSkillValue',
   'toVitalityBase',
@@ -695,6 +1175,6 @@ describe('exports de lib/calculations', () => {
       .map(([name]) => name)
       .sort()
     expect(exported).toEqual([...TESTED_FUNCTIONS].sort())
-    expect(TESTED_FUNCTIONS.length).toBe(26)
+    expect(TESTED_FUNCTIONS.length).toBe(35)
   })
 })

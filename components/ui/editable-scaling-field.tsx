@@ -3,8 +3,17 @@
 import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, Check, X, Edit } from 'lucide-react'
+import { Check, LoaderCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  INLINE_FIELD_LABEL_CLASS,
+  InlineFieldRetry,
+  InlineFieldStatusIcon,
+  SAVED_FEEDBACK_MS,
+  inlineFieldFrameClassName,
+  resolveInlineFieldState,
+  type SaveStatus,
+} from '@/components/ui/inline-field-state'
 import type { CurrentCharacterData } from '@/components/ui/editable-field'
 import { useCharacterStore, useIsFieldEditing } from '@/lib/store/character'
 import { useUpdateCharacter } from '@/lib/api/queries'
@@ -176,6 +185,7 @@ export function EditableScalingField({
   const [localBase, setLocalBase] = useState(normalizedData.base?.toString() || '')
   const [localPerLevel, setLocalPerLevel] = useState(normalizedData.perLevel?.toString() || '')
   const [hasChanges, setHasChanges] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
 
   const baseInputRef = useRef<HTMLInputElement>(null)
 
@@ -215,12 +225,20 @@ export function EditableScalingField({
     }
   }, [isEditing])
 
+  // Some o check de "salvo" depois de um instante
+  useEffect(() => {
+    if (saveStatus !== 'saved') return
+    const timer = setTimeout(() => setSaveStatus('idle'), SAVED_FEEDBACK_MS)
+    return () => clearTimeout(timer)
+  }, [saveStatus])
+
   // ============================================
   // HANDLERS
   // ============================================
 
   const handleStartEdit = () => {
     if (!isEditMode) return
+    setSaveStatus('idle')
     startEditing(section, field, normalizedData)
     setLocalBase(normalizedData.base?.toString() || '')
     setLocalPerLevel(normalizedData.perLevel?.toString() || '')
@@ -228,6 +246,7 @@ export function EditableScalingField({
   }
 
   const handleCancel = () => {
+    setSaveStatus('idle')
     setLocalBase(normalizedData.base?.toString() || '')
     setLocalPerLevel(normalizedData.perLevel?.toString() || '')
     setHasChanges(false)
@@ -266,8 +285,10 @@ export function EditableScalingField({
 
       setHasChanges(false)
       cancelEditing()
+      setSaveStatus('saved')
     } catch (error) {
       console.error('Erro ao salvar campo:', error)
+      setSaveStatus('error')
     }
   }
 
@@ -281,39 +302,57 @@ export function EditableScalingField({
     }
   }
 
+  const state = resolveInlineFieldState({
+    isEditing,
+    canEdit: isEditMode,
+    isSaving,
+    saveStatus,
+  })
+
   // ============================================
   // RENDER - MODO VISUALIZAÇÃO
   // ============================================
 
   if (!isEditing) {
-    return (
-      <div className={cn("group", className)}>
-        {label && (
-          <label className="text-sm font-medium text-muted-foreground mb-1 block">
-            {label}
-          </label>
-        )}
-
-        <div
-          onClick={handleStartEdit}
-          className={cn(
-            "relative cursor-pointer rounded-md border border-transparent p-2 transition-all",
-            "hover:border-border hover:bg-muted/50",
-            !isEditMode && "cursor-not-allowed bg-muted/30"
-          )}
-        >
-          <span className="font-medium">{calculated.total}</span>
+    const content = (
+      <>
+        <span className="min-w-0 flex-1 break-words">
+          <span className="font-numeric font-medium tabular-nums">{calculated.total}</span>
 
           {normalizedData.perLevel && normalizedData.perLevel > 0 && (
-            <span className="text-xs text-muted-foreground ml-2">
+            <span className="ml-2 text-xs text-muted-foreground">
               ({calculated.formula})
             </span>
           )}
+        </span>
+        <InlineFieldStatusIcon state={state} />
+      </>
+    )
 
-          {isEditMode && (
-            <Edit className="absolute top-2 right-2 size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-          )}
-        </div>
+    return (
+      <div className={cn("flex flex-col gap-1", className)}>
+        {label && <label className={INLINE_FIELD_LABEL_CLASS}>{label}</label>}
+
+        {state === 'readonly' ? (
+          <span className={inlineFieldFrameClassName(state)}>{content}</span>
+        ) : (
+          <div
+            role="button"
+            tabIndex={isEditMode ? 0 : -1}
+            onClick={handleStartEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleStartEdit()
+              }
+            }}
+            className={inlineFieldFrameClassName(state)}
+          >
+            {content}
+          </div>
+        )}
+
+        {state === 'error' && <InlineFieldRetry onRetry={handleStartEdit} />}
       </div>
     )
   }
@@ -322,15 +361,16 @@ export function EditableScalingField({
   // RENDER - MODO EDIÇÃO
   // ============================================
 
-  return (
-    <div className={cn("space-y-2", className)}>
-      {label && (
-        <label className="text-sm font-medium text-muted-foreground">
-          {label}
-        </label>
-      )}
+  const inputClassName = cn(
+    inlineFieldFrameClassName(state),
+    "h-11 text-center font-numeric tabular-nums"
+  )
 
-      <div className="flex items-center gap-2">
+  return (
+    <div className={cn("flex flex-col gap-1", className)}>
+      {label && <label className={INLINE_FIELD_LABEL_CLASS}>{label}</label>}
+
+      <div className="flex items-start gap-2">
         {/* Base */}
         <div className="flex-1">
           <Input
@@ -341,15 +381,12 @@ export function EditableScalingField({
             placeholder={type === 'damage' ? '0' : '1d6'}
             type={type === 'damage' ? 'number' : 'text'}
             disabled={isSaving}
-            className={cn(
-              "text-center",
-              hasChanges && "border-yellow-500 ring-1 ring-yellow-500/20"
-            )}
+            className={inputClassName}
           />
-          <div className="text-xs text-muted-foreground text-center mt-1">Base</div>
+          <div className={cn(INLINE_FIELD_LABEL_CLASS, "mt-1 text-center")}>Base</div>
         </div>
 
-        <span className="text-muted-foreground">+</span>
+        <span className="flex h-11 items-center text-muted-foreground">+</span>
 
         {/* Por Nível */}
         <div className="flex-1">
@@ -360,45 +397,46 @@ export function EditableScalingField({
             placeholder="0"
             type="number"
             disabled={isSaving}
-            className={cn(
-              "text-center",
-              hasChanges && "border-yellow-500 ring-1 ring-yellow-500/20"
-            )}
+            className={inputClassName}
           />
-          <div className="text-xs text-muted-foreground text-center mt-1">/Nível</div>
+          <div className={cn(INLINE_FIELD_LABEL_CLASS, "mt-1 text-center")}>/Nível</div>
         </div>
 
         {/* Botões */}
-        <div className="flex gap-1">
+        <div className="flex">
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
+            size="icon"
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
-            className="size-7 p-0"
+            className="size-11"
+            aria-label="Salvar"
           >
             {isSaving ? (
-              <Loader2 className="size-3 animate-spin" />
+              <LoaderCircle className="size-5 animate-ficha-spin" aria-hidden="true" />
             ) : (
-              <Check className="size-3" />
+              <Check className="size-5" aria-hidden="true" />
             )}
           </Button>
 
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
+            size="icon"
             onClick={handleCancel}
             disabled={isSaving}
-            className="size-7 p-0"
+            className="size-11"
+            aria-label="Cancelar"
           >
-            <X className="size-3" />
+            <X className="size-5" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
       {/* Preview do cálculo */}
       {(localBase || localPerLevel) && (
-        <div className="text-xs text-muted-foreground text-center">
+        <div className="text-center font-numeric text-xs tabular-nums text-muted-foreground">
           {(() => {
             const previewBase = type === 'damage' ? parseInt(localBase) || 0 : localBase
             const previewPerLevel = localPerLevel ? parseInt(localPerLevel) : null
@@ -407,6 +445,8 @@ export function EditableScalingField({
           })()}
         </div>
       )}
+
+      {state === 'error' && <InlineFieldRetry onRetry={handleSave} />}
     </div>
   )
 }

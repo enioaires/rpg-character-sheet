@@ -1,36 +1,66 @@
 // components/character/spells-talents/talents-card.tsx
+// Lista de talentos (DS-06): mesma estrutura das magias, mantendo "usado hoje", "Novo dia"
+// e o uso limitado. Devolve um fragmento para fluir no layout em colunas da aba.
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { EditableField, EditableTextArea, EditableNumberField } from '@/components/ui/editable-field'
-import { Checkbox } from '@/components/ui/checkbox'
-import { ChevronDown, ChevronRight, Zap, RotateCcw } from 'lucide-react'
+import { Plus, RotateCcw } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  countGroupedEntries,
+  firstLine,
+  groupEntriesByLevel,
+  listLevels,
+  magicCountNoun,
+  magicResultLabel,
+  removeIndexFromSet,
+  resolveLevelFilter,
+  type LevelFilter,
+} from '@/lib/spells-talents'
 import type { CharacterTabProps, UpdateCharacterMutation } from '../types'
 import type { Talent } from '@/lib/schemas/character'
+import {
+  MagicEmptyState,
+  MagicEntryActions,
+  MagicEntryRow,
+  MagicLevelGroup,
+  MagicListToolbar,
+  MagicOncePerDayBadge,
+} from './magic-list'
+import { TalentDetails, TalentEditFields } from './talent-body'
 
 interface TalentsCardProps extends Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'> {
   updateCharacterMutation: UpdateCharacterMutation
 }
 
 export function TalentsCard({ character, characterId, isEditMode, updateCharacterMutation }: TalentsCardProps) {
-  const [expandedTalents, setExpandedTalents] = useState<Set<number>>(new Set())
+  // Busca, filtro e linhas abertas só existem na tela: nunca são gravados
+  const [query, setQuery] = useState('')
+  const [level, setLevel] = useState<LevelFilter>('todos')
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [editing, setEditing] = useState<Set<number>>(new Set())
 
-  const {
-    talents = [],
-  } = character
+  const talents: Talent[] = Array.isArray(character.talents) ? character.talents : []
+  const isPending = updateCharacterMutation.isPending
 
-  const toggleTalentExpanded = (index: number) => {
-    const newExpanded = new Set(expandedTalents)
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index)
+  const levels = listLevels(talents)
+  const activeLevel = resolveLevelFilter(level, levels)
+  const groups = groupEntriesByLevel(talents, {
+    level: activeLevel,
+    query,
+    searchFields: t => [t?.name, t?.description],
+  })
+  const shown = countGroupedEntries(groups)
+
+  const toggleExpanded = (index: number) => {
+    const next = new Set(expanded)
+    if (next.has(index)) {
+      next.delete(index)
     } else {
-      newExpanded.add(index)
+      next.add(index)
     }
-    setExpandedTalents(newExpanded)
+    setExpanded(next)
   }
 
   // Toggle usedToday para um talento específico
@@ -64,204 +94,188 @@ export function TalentsCard({ character, characterId, isEditMode, updateCharacte
     }
   }
 
+  // Uso limitado (1x por dia) de um talento
+  const handleOncePerDayChange = async (index: number, checked: boolean) => {
+    if (!isEditMode) return
+    try {
+      const updatedTalents = talents.map((t: Talent, i: number) =>
+        i === index ? { ...t, oncePerDay: checked, usedToday: checked ? t.usedToday : false } : t
+      )
+      // usedToday pode ficar indefinido (como antes); o JSON da gravação descarta a chave
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: { talents: updatedTalents as typeof talents }
+      })
+    } catch (error) {
+      console.error('Erro ao atualizar talento:', error)
+    }
+  }
+
+  const handleAddTalent = async () => {
+    try {
+      const newTalent = {
+        name: '',
+        level: 0,
+        description: '',
+        oncePerDay: false,
+        usedToday: false
+      }
+      const updatedTalents = [...talents, newTalent]
+      const updateData = { talents: updatedTalents }
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: updateData
+      })
+      // Conveniência de tela: limpa os filtros e abre o novo talento já em edição
+      const newIndex = talents.length
+      setQuery('')
+      setLevel('todos')
+      setExpanded(prev => new Set(prev).add(newIndex))
+      setEditing(prev => new Set(prev).add(newIndex))
+    } catch (error) {
+      console.error('Erro ao adicionar talento:', error)
+    }
+  }
+
+  const handleDeleteTalent = async (index: number) => {
+    try {
+      const updatedTalents = talents.filter((_: Talent, i: number) => i !== index)
+      const updateData = { talents: updatedTalents }
+      await updateCharacterMutation.mutateAsync({
+        id: characterId,
+        data: updateData
+      })
+      // Os índices depois do excluído descem uma posição: as linhas abertas seguem os mesmos talentos
+      setExpanded(prev => removeIndexFromSet(prev, index))
+      setEditing(prev => removeIndexFromSet(prev, index))
+    } catch (error) {
+      console.error('Erro ao remover talento:', error)
+    }
+  }
+
   // Verificar se há talentos com oncePerDay que foram usados
-  const hasUsedTalents = talents.some((t: Talent) => t.oncePerDay && t.usedToday)
+  const hasUsedTalents = talents.some((t: Talent) => t?.oncePerDay && t?.usedToday)
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Talentos</CardTitle>
-          <div className="flex items-center gap-2">
+    <>
+      <MagicListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Buscar talento ou efeito"
+        levels={levels}
+        activeLevel={activeLevel}
+        onLevelChange={setLevel}
+        countLabel={magicResultLabel('talentos', shown, talents.length)}
+        actions={
+          <>
             {hasUsedTalents && (
               <Button
-                size="sm"
+                type="button"
                 variant="outline"
-                disabled={updateCharacterMutation.isPending}
+                disabled={isPending}
                 onClick={resetAllTalentsUsage}
                 title="Resetar usos diários"
+                className="h-[46px] gap-1.5 px-3"
               >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Novo Dia
+                <RotateCcw aria-hidden="true" className="size-4" />
+                Novo dia
               </Button>
             )}
-            <Button
-              size="sm"
-              disabled={!isEditMode || updateCharacterMutation.isPending}
-              onClick={async () => {
-              try {
-                const newTalent = {
-                  name: '',
-                  level: 0,
-                  description: '',
-                  oncePerDay: false,
-                  usedToday: false
-                }
-                const updatedTalents = [...talents, newTalent]
-                const updateData = { talents: updatedTalents }
-                await updateCharacterMutation.mutateAsync({
-                  id: characterId,
-                  data: updateData
-                })
-              } catch (error) {
-                console.error('Erro ao adicionar talento:', error)
-              }
-            }}
-          >
-            + Adicionar Talento
-          </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[70vh] md:h-96">
-          <div className="space-y-2">
-            {talents && talents.length > 0 ? (
-              talents.map((talent: Talent, index: number) => {
-                const isExpanded = expandedTalents.has(index)
-                return (
-                  <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleTalentExpanded(index)}>
-                    <div className="border rounded-lg bg-muted/30">
-                      {/* Header Compacto */}
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer">
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                          )}
-                          <Zap className={`w-4 h-4 ${talent.oncePerDay && talent.usedToday ? 'text-muted-foreground' : 'text-orange-500'}`} />
-                          <div className="flex-1 min-w-0">
-                            <div className={`font-medium truncate ${talent.oncePerDay && talent.usedToday ? 'text-muted-foreground line-through' : ''}`}>
-                              {talent.name || 'Novo Talento'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Nível {talent.level || 0}{talent.oncePerDay ? ' • 1x/dia' : ''}
-                            </div>
-                          </div>
-                          {talent.oncePerDay && (
-                            <Checkbox
-                              checked={talent.usedToday || false}
-                              onCheckedChange={() => toggleTalentUsed(index, talent.usedToday || false)}
-                              onClick={(e) => e.stopPropagation()}
-                              disabled={updateCharacterMutation.isPending}
-                              className="mr-2"
-                              title={talent.usedToday ? 'Marcar como disponível' : 'Marcar como usado'}
-                            />
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async (e) => {
-                              e.stopPropagation()
-                              try {
-                                const updatedTalents = talents.filter((_: Talent, i: number) => i !== index)
-                                const updateData = { talents: updatedTalents }
-                                await updateCharacterMutation.mutateAsync({
-                                  id: characterId,
-                                  data: updateData
-                                })
-                              } catch (error) {
-                                console.error('Erro ao remover talento:', error)
-                              }
-                            }}
-                            disabled={!isEditMode || updateCharacterMutation.isPending}
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      </CollapsibleTrigger>
-
-                      {/* Conteúdo Expandido */}
-                      <CollapsibleContent>
-                        <div className="p-3 pt-0 space-y-3 border-t">
-                          {/* Nome e Nível */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="col-span-2">
-                              <EditableField
-                                characterId={characterId}
-                                currentCharacterData={character}
-                                section="talents"
-                                field={`${index}.name`}
-                                value={talent.name}
-                                placeholder="Nome do talento"
-                                label="Nome"
-                                isEditMode={isEditMode}
-                              />
-                            </div>
-                            <div>
-                              <EditableNumberField
-                                characterId={characterId}
-                                currentCharacterData={character}
-                                section="talents"
-                                field={`${index}.level`}
-                                value={talent.level || 0}
-                                label="Nível"
-                                className="text-center"
-                                isEditMode={isEditMode}
-                              />
-                            </div>
-                          </div>
-
-                          {/* 1x por dia */}
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={`talent-${index}-oncePerDay`}
-                              checked={talent.oncePerDay || false}
-                              onCheckedChange={async (checked) => {
-                                if (!isEditMode) return
-                                try {
-                                  const updatedTalents = talents.map((t: Talent, i: number) =>
-                                    i === index ? { ...t, oncePerDay: checked, usedToday: checked ? t.usedToday : false } : t
-                                  )
-                                  await updateCharacterMutation.mutateAsync({
-                                    id: characterId,
-                                    data: { talents: updatedTalents }
-                                  })
-                                } catch (error) {
-                                  console.error('Erro ao atualizar talento:', error)
-                                }
-                              }}
-                              disabled={!isEditMode || updateCharacterMutation.isPending}
-                            />
-                            <label
-                              htmlFor={`talent-${index}-oncePerDay`}
-                              className="text-sm text-muted-foreground cursor-pointer"
-                            >
-                              Uso limitado (1x por dia)
-                            </label>
-                          </div>
-
-                          {/* Descrição */}
-                          <div>
-                            <EditableTextArea
-                              characterId={characterId}
-                              currentCharacterData={character}
-                              section="talents"
-                              field={`${index}.description`}
-                              value={talent.description}
-                              placeholder="Descrição do talento"
-                              label="Descrição"
-                              rows={2}
-                              isEditMode={isEditMode}
-                            />
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                )
-              })
-            ) : (
-              <div className="text-center text-muted-foreground py-8">
-                <p>Nenhum talento cadastrado</p>
-                <p className="text-xs mt-1">Os talentos aparecerão aqui conforme forem adicionados</p>
-              </div>
+            {isEditMode && (
+              <Button
+                type="button"
+                aria-label="Novo talento"
+                disabled={isPending}
+                onClick={handleAddTalent}
+                className="size-[46px] shrink-0"
+              >
+                <Plus aria-hidden="true" className="size-5" />
+              </Button>
             )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+          </>
+        }
+      />
+
+      {talents.length === 0 ? (
+        <MagicEmptyState
+          title="Nenhum talento cadastrado"
+          hint="Os talentos aparecerão aqui conforme forem adicionados"
+        />
+      ) : shown === 0 ? (
+        <MagicEmptyState title="Nada encontrado com esse filtro." />
+      ) : (
+        groups.map(group => (
+          <MagicLevelGroup
+            key={group.level}
+            level={group.level}
+            tone="primary"
+            countLabel={magicCountNoun('talentos', group.entries.length)}
+          >
+            {group.entries.map(({ item: talent, index }) => (
+              <MagicEntryRow
+                key={index}
+                name={talent.name || 'Novo Talento'}
+                sub={firstLine(talent.description)}
+                isOpen={expanded.has(index)}
+                onToggle={() => toggleExpanded(index)}
+                muted={Boolean(talent.oncePerDay && talent.usedToday)}
+                badges={talent.oncePerDay ? <MagicOncePerDayBadge /> : undefined}
+                leading={
+                  talent.oncePerDay ? (
+                    <label className="grid size-11 shrink-0 cursor-pointer place-items-center">
+                      <Checkbox
+                        aria-label="Usado hoje"
+                        checked={talent.usedToday || false}
+                        onCheckedChange={() => toggleTalentUsed(index, talent.usedToday || false)}
+                        disabled={isPending}
+                        title={talent.usedToday ? 'Marcar como disponível' : 'Marcar como usado'}
+                      />
+                    </label>
+                  ) : undefined
+                }
+              >
+                {isEditMode && editing.has(index) ? (
+                  <>
+                    <TalentEditFields
+                      talent={talent}
+                      index={index}
+                      character={character}
+                      characterId={characterId}
+                      isEditMode={isEditMode}
+                      isPending={isPending}
+                      onOncePerDayChange={checked => handleOncePerDayChange(index, checked)}
+                    />
+                    <MagicEntryActions
+                      mode="edit"
+                      onDone={() =>
+                        setEditing(prev => {
+                          const next = new Set(prev)
+                          next.delete(index)
+                          return next
+                        })
+                      }
+                      onDelete={() => handleDeleteTalent(index)}
+                      deleteDisabled={isPending}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <TalentDetails talent={talent} />
+                    {isEditMode && (
+                      <MagicEntryActions
+                        mode="view"
+                        onEdit={() => setEditing(prev => new Set(prev).add(index))}
+                        onDelete={() => handleDeleteTalent(index)}
+                        deleteDisabled={isPending}
+                      />
+                    )}
+                  </>
+                )}
+              </MagicEntryRow>
+            ))}
+          </MagicLevelGroup>
+        ))
+      )}
+    </>
   )
 }

@@ -4,8 +4,17 @@ import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Loader2, Edit, Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  INLINE_FIELD_LABEL_CLASS,
+  InlineFieldRetry,
+  InlineFieldStatusIcon,
+  SAVED_FEEDBACK_MS,
+  inlineFieldFrameClassName,
+  resolveInlineFieldState,
+  type SaveStatus,
+} from '@/components/ui/inline-field-state'
 import { useCharacterStore, useIsFieldEditing } from '@/lib/store/character'
 import { useUpdateCharacter } from '@/lib/api/queries'
 import type { UpdateCharacterRequest } from '@/lib/schemas/character'
@@ -216,6 +225,7 @@ export function EditableField({
 
   const [localValue, setLocalValue] = useState(value || '')
   const [hasChanges, setHasChanges] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   // Store Zustand
@@ -225,9 +235,8 @@ export function EditableField({
   // Mutation para update automático
   const updateCharacterMutation = useUpdateCharacter()
 
-  // Estados de loading e erro vêm da mutation
+  // Estado de loading vem da mutation
   const isSaving = updateCharacterMutation.isPending
-  const error = updateCharacterMutation.error?.message
 
   // ============================================
   // EFEITOS
@@ -250,18 +259,27 @@ export function EditableField({
     }
   }, [isEditing])
 
+  // Some o check de "salvo" depois de um instante
+  useEffect(() => {
+    if (saveStatus !== 'saved') return
+    const timer = setTimeout(() => setSaveStatus('idle'), SAVED_FEEDBACK_MS)
+    return () => clearTimeout(timer)
+  }, [saveStatus])
+
   // ============================================
   // HANDLERS
   // ============================================
 
   const handleStartEdit = () => {
     if (disabled || !isEditMode) return
+    setSaveStatus('idle')
     startEditing(section, field, value)
     setLocalValue(value || '')
     setHasChanges(false)
   }
 
   const handleCancel = () => {
+    setSaveStatus('idle')
     setLocalValue(value || '')
     setHasChanges(false)
     cancelEditing()
@@ -296,8 +314,10 @@ export function EditableField({
 
       setHasChanges(false)
       cancelEditing()
+      setSaveStatus('saved')
     } catch (error) {
       console.error('Erro ao salvar campo:', error)
+      setSaveStatus('error')
     }
   }
 
@@ -333,62 +353,67 @@ export function EditableField({
 
   const isEmpty = !value || value === ''
 
+  const canEdit = isEditMode && !disabled
+  const state = resolveInlineFieldState({ isEditing, canEdit, isSaving, saveStatus })
+  const numericClass = type === 'number' ? 'font-numeric tabular-nums' : undefined
+
   // ============================================
   // RENDER - MODO VISUALIZAÇÃO
   // ============================================
 
   if (!isEditing) {
+    // Somente leitura: texto simples, travessão quando vazio
+    const readonlyText = formatDisplay ? formatDisplay(value) : value || '—'
+    const readonlyEmpty = !formatDisplay && isEmpty
+
     return (
-      <div className={cn("group", className)}>
-        {label && (
-          <label className="text-sm font-medium text-muted-foreground mb-1 block">
-            {label}
-          </label>
-        )}
+      <div className={cn("flex flex-col gap-1", className)}>
+        {label && <label className={INLINE_FIELD_LABEL_CLASS}>{label}</label>}
 
-        <div
-          onClick={handleStartEdit}
-          className={cn(
-            // Base styles
-            "relative cursor-pointer rounded-md border border-transparent p-2 transition-all",
-            "hover:border-border hover:bg-muted/50",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-
-            // Empty state
-            isEmpty && "text-muted-foreground italic",
-
-            // Disabled state  
-            disabled && "cursor-not-allowed opacity-50",
-
-            // Edit mode disabled (locked)
-            !isEditMode && "cursor-not-allowed bg-muted/30",
-
-            // Multiline
-            multiline && "min-h-[60px]",
-
-            // Custom display classes
-            displayClassName
-          )}
-          tabIndex={disabled || !isEditMode ? -1 : 0}
-        >
-          {/* Conteúdo */}
-          <span className={cn(
-            "block",
-            multiline && "whitespace-pre-wrap"
-          )}>
-            {displayValue}
+        {state === 'readonly' ? (
+          <span
+            className={cn(
+              inlineFieldFrameClassName(state),
+              numericClass,
+              readonlyEmpty && "text-muted-foreground",
+              multiline && "whitespace-pre-wrap",
+              displayClassName
+            )}
+          >
+            {readonlyText}
           </span>
-
-          {/* Ícone de edição */}
-          {!disabled && (
-            <Edit className="absolute top-2 right-2 size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-          )}
-        </div>
-
-        {/* Erro */}
-        {error && (
-          <p className="text-sm text-destructive mt-1">{error}</p>
+        ) : (
+          <div
+            role="button"
+            tabIndex={canEdit ? 0 : -1}
+            onClick={handleStartEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleStartEdit()
+              }
+            }}
+            className={cn(
+              inlineFieldFrameClassName(state),
+              numericClass,
+              multiline && "min-h-[60px] items-start py-2",
+              displayClassName
+            )}
+          >
+            <span
+              className={cn(
+                "min-w-0 flex-1 break-words",
+                multiline && "whitespace-pre-wrap",
+                isEmpty && !formatDisplay && "text-muted-foreground"
+              )}
+            >
+              {displayValue}
+            </span>
+            <InlineFieldStatusIcon state={state} />
+          </div>
         )}
+
+        {state === 'error' && <InlineFieldRetry onRetry={handleStartEdit} />}
       </div>
     )
   }
@@ -400,12 +425,8 @@ export function EditableField({
   const InputComponent = multiline || type === 'textarea' ? Textarea : Input
 
   return (
-    <div className={cn("space-y-2", className)}>
-      {label && (
-        <label className="text-sm font-medium text-muted-foreground">
-          {label}
-        </label>
-      )}
+    <div className={cn("flex flex-col gap-1", className)}>
+      {label && <label className={INLINE_FIELD_LABEL_CLASS}>{label}</label>}
 
       {/* Campo de edição */}
       <div className="relative">
@@ -419,57 +440,43 @@ export function EditableField({
           type={type === 'number' ? 'number' : 'text'}
           rows={multiline ? rows : undefined}
           disabled={isSaving}
+          aria-invalid={state === 'error' ? true : undefined}
           className={cn(
-            "pr-20", // Espaço para botões
-            hasChanges && "border-yellow-500 ring-1 ring-yellow-500/20"
+            inlineFieldFrameClassName(state),
+            state === 'error' ? "pr-20" : "pr-12",
+            multiline || type === 'textarea' ? "py-2" : "h-11",
+            numericClass
           )}
         />
 
-        {/* Botões de ação */}
-        <div className="absolute right-1 top-1 flex gap-1">
-          {/* Botão salvar */}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            className="size-7 p-0"
-          >
-            {isSaving ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <Check className="size-3" />
-            )}
-          </Button>
-
-          {/* Botão cancelar */}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleCancel}
-            disabled={isSaving}
-            className="size-7 p-0"
-          >
-            <X className="size-3" />
-          </Button>
+        {/* Ícone de estado e cancelar */}
+        <div className="absolute top-0 right-0 flex h-11 items-center">
+          <InlineFieldStatusIcon state={state} />
+          {!isSaving && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 text-muted-foreground"
+              aria-label="Cancelar edição"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleCancel}
+            >
+              <X className="size-5" aria-hidden="true" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Feedback visual */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {hasChanges ? 'Mudanças não salvas' : 'Enter para salvar • Esc para cancelar'}
+      {/* Dica (só texto longo: Ctrl+Enter não é descobrível) */}
+      {multiline && (
+        <span className="text-xs text-muted-foreground">
+          Ctrl+Enter ou toque fora para salvar · Esc cancela
         </span>
-
-        {multiline && (
-          <span>Ctrl+Enter para salvar</span>
-        )}
-      </div>
-
-      {/* Erro */}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
       )}
+
+      {/* Erro ao salvar */}
+      {state === 'error' && <InlineFieldRetry keepFocus onRetry={handleSave} />}
     </div>
   )
 }

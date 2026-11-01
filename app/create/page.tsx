@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCreateCharacter } from '@/lib/api/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Loader2, User } from 'lucide-react'
+import { ArrowLeft, ChevronDown, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CreateCharacterPage() {
@@ -57,194 +56,181 @@ export default function CreateCharacterPage() {
   }
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-2xl">
+    <div className="flex min-h-dvh flex-col">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-8">
-        <Button onClick={handleBack} variant="outline" size="sm" className="w-fit">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar
-        </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Criar Novo Personagem</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Preencha as informações básicas do seu personagem
-          </p>
+      <header className="border-b">
+        <div className="mx-auto flex w-full max-w-[1200px] items-center gap-1 p-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label="Voltar"
+            onClick={handleBack}
+          >
+            <ArrowLeft className="size-[22px]" aria-hidden="true" />
+          </Button>
+          <h1 className="font-serif text-xl font-semibold">Novo personagem</h1>
         </div>
-      </div>
+      </header>
 
       {/* Formulário */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Informações Básicas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Informações Essenciais */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="characterName">
-                  Nome do Personagem *
-                </Label>
-                <Input
-                  id="characterName"
-                  value={formData.characterName}
-                  onChange={(e) => handleInputChange('characterName', e.target.value)}
-                  placeholder="Digite o nome do personagem"
-                  required
-                />
-              </div>
+      <div className="flex flex-1 justify-center px-4 py-6">
+        <form onSubmit={handleSubmit} className="flex w-full max-w-[440px] flex-col gap-[22px]">
+          <p className="m-0 text-[15px] text-pretty text-muted-foreground">
+            Comece pelo nome. Atributos, perícias e o resto da ficha você preenche depois, direto na ficha.
+          </p>
 
-              <div className="space-y-2">
-                <Label htmlFor="playerName">Nome do Jogador</Label>
-                <Input
-                  id="playerName"
-                  value={formData.playerName}
-                  onChange={(e) => handleInputChange('playerName', e.target.value)}
-                  placeholder="Digite o nome do jogador"
-                />
-              </div>
-            </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="characterName" className="text-sm font-semibold">Nome do personagem</Label>
+            <Input
+              id="characterName"
+              value={formData.characterName}
+              onChange={(e) => handleInputChange('characterName', e.target.value)}
+              placeholder="Digite o nome do personagem"
+              required
+              className="h-[52px] bg-card px-3.5 text-[17px] dark:bg-card md:text-[17px]"
+            />
+          </div>
 
-            {/* Classe e Raça */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="class">Classe</Label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="playerName" className="text-sm font-semibold">Nome do jogador</Label>
+            <Input
+              id="playerName"
+              value={formData.playerName}
+              onChange={(e) => handleInputChange('playerName', e.target.value)}
+              placeholder="Digite o nome do jogador"
+              className="h-[52px] bg-card px-3.5 text-[17px] dark:bg-card md:text-[17px]"
+            />
+          </div>
+
+          <details className="group rounded-(--radius) border">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+              Mais detalhes (opcional)
+              <ChevronDown
+                className="size-[18px] text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div className="grid grid-cols-1 gap-3.5 border-t p-3.5 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="class" className="text-sm font-semibold">Classe</Label>
                 <Input
                   id="class"
                   value={formData.class}
                   onChange={(e) => handleInputChange('class', e.target.value)}
                   placeholder="Ex: Guerreiro, Mago, Ladino..."
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="race">Raça</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="race" className="text-sm font-semibold">Raça</Label>
                 <Input
                   id="race"
                   value={formData.race}
                   onChange={(e) => handleInputChange('race', e.target.value)}
                   placeholder="Ex: Humano, Elfo, Anão..."
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-            </div>
-
-            {/* Informações Adicionais */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="deity">Divindade</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="deity" className="text-sm font-semibold">Divindade</Label>
                 <Input
                   id="deity"
                   value={formData.deity}
                   onChange={(e) => handleInputChange('deity', e.target.value)}
                   placeholder="Divindade adorada"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="homeland">Terra Natal</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="homeland" className="text-sm font-semibold">Terra natal</Label>
                 <Input
                   id="homeland"
                   value={formData.homeland}
                   onChange={(e) => handleInputChange('homeland', e.target.value)}
                   placeholder="Local de origem"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="alignment">Tendência</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="alignment" className="text-sm font-semibold">Tendência</Label>
                 <Input
                   id="alignment"
                   value={formData.alignment}
                   onChange={(e) => handleInputChange('alignment', e.target.value)}
                   placeholder="Ex: Leal e Bom, Neutro..."
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gênero</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="gender" className="text-sm font-semibold">Gênero</Label>
                 <Input
                   id="gender"
                   value={formData.gender}
                   onChange={(e) => handleInputChange('gender', e.target.value)}
                   placeholder="Gênero do personagem"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-            </div>
-
-            {/* Características Físicas */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="age">Idade</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="age" className="text-sm font-semibold">Idade</Label>
                 <Input
                   id="age"
                   value={formData.age}
                   onChange={(e) => handleInputChange('age', e.target.value)}
                   placeholder="Ex: 25 anos"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="weight">Peso</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="weight" className="text-sm font-semibold">Peso</Label>
                 <Input
                   id="weight"
                   value={formData.weight}
                   onChange={(e) => handleInputChange('weight', e.target.value)}
                   placeholder="Ex: 70kg"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="height">Altura</Label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="height" className="text-sm font-semibold">Altura</Label>
                 <Input
                   id="height"
                   value={formData.height}
                   onChange={(e) => handleInputChange('height', e.target.value)}
                   placeholder="Ex: 1,75m"
+                  className="h-12 bg-card text-base dark:bg-card md:text-base"
                 />
               </div>
             </div>
+          </details>
 
-            {/* Botões */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                className="flex-1 order-2 sm:order-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={createCharacterMutation.isPending || !formData.characterName.trim()}
-                className="flex-1 order-1 sm:order-2"
-              >
-                {createCharacterMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Criando...
-                  </>
-                ) : (
-                  'Criar Personagem'
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Nota */}
-      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-        <p className="text-sm text-muted-foreground">
-          <strong>Nota:</strong> Você pode preencher apenas o nome do personagem agora e 
-          completar as outras informações depois na ficha do personagem. Todos os campos 
-          podem ser editados posteriormente.
-        </p>
+          <div className="flex flex-col gap-2.5 pt-1.5">
+            <Button
+              type="submit"
+              disabled={createCharacterMutation.isPending || !formData.characterName.trim()}
+              className="h-[52px] w-full text-[17px] font-semibold"
+            >
+              {createCharacterMutation.isPending ? (
+                <>
+                  <LoaderCircle className="size-5 animate-ficha-spin" aria-hidden="true" />
+                  Criando...
+                </>
+              ) : (
+                'Criar personagem'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+              className="h-12 w-full bg-transparent text-base dark:bg-transparent"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )

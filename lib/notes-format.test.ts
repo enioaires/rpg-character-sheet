@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { escapeHtml, formatNoteHtml } from './notes-format'
+import { getNotePreview } from './notes-format'
 
 // Tags que o formatador pode emitir (com ou sem atributo class)
 const ALLOWED_TAG = /<\/?(strong|em|code|h1|h2|h3|li|p|br)(\s+class="[^"]*")?\s*\/?>/g
@@ -209,5 +210,42 @@ describe('formatNoteHtml — paridade de formatação', () => {
     for (const input of corpus) {
       expect(formatNoteHtml(input)).toBe(legacyFormat(input))
     }
+  })
+})
+
+// ============================================
+// getNotePreview
+// ============================================
+
+describe('getNotePreview', () => {
+  test('desembrulha negrito e usa só a primeira linha', () => {
+    expect(getNotePreview('**Negrito** e texto\nsegunda')).toBe('Negrito e texto')
+  })
+
+  test('ignora linhas em branco e remove marcador de título', () => {
+    expect(getNotePreview('\n  \n# Título\ncorpo')).toBe('Título')
+    expect(getNotePreview('### Sub')).toBe('Sub')
+  })
+
+  test('remove marcador de lista', () => {
+    expect(getNotePreview('- item um\n- item dois')).toBe('item um')
+  })
+
+  test('desembrulha código e itálico', () => {
+    expect(getNotePreview('Use `código` e *itálico*')).toBe('Use código e itálico')
+  })
+
+  test('aceita quebra de linha CRLF', () => {
+    expect(getNotePreview('linha\r\nsegunda')).toBe('linha')
+  })
+
+  test('conteúdo vazio ou só espaços retorna string vazia', () => {
+    expect(getNotePreview('')).toBe('')
+    expect(getNotePreview('  \n ')).toBe('')
+  })
+
+  test('não escapa HTML: texto retornado é puro e o React escapa ao renderizar', () => {
+    const payload = '<img src=x onerror=alert(1)>'
+    expect(getNotePreview(payload)).toBe(payload)
   })
 })

@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "batch_id": "261101-mvs",
+  "created_at": "2026-11-01T19:28:33.147Z",
+  "options": {},
+  "base_revision": "e2740820e63cb3a88e91ba8987455d22be22905f",
+  "items": [
+    {
+      "quick_id": "261101-mvt",
+      "client_id": null,
+      "description": "Redesign foundation (DS-01): implement the \"Ferro & Brasa\" design system from .planning/design/ferro-brasa/ (read README.md, ficha-tokens.css and Ficha.dc.html). Replace the :root and .dark token blocks in app/globals.css with ficha-tokens.css values (keep shadcn variable names), map the extras in @theme inline (--color-vitality-notavel/ferido/grave/condenado/incapacitado/coma/track, --color-berkana, --color-berkana-foreground, --color-berkana-track, --color-success, --color-warning, --color-overlay, --font-numeric, shadow tokens) and add the ficha-pulse/ficha-spin keyframes; load Spectral, Barlow, Barlow Semi Condensed and JetBrains Mono through next/font/google in app/layout.tsx instead of the CSS @import and replace Geist; add a next-themes ThemeProvider (attribute class, default dark) and a small theme toggle reachable from the characters list header; restyle the inline edit primitives in components/ui/editable-field.tsx and editable-scaling-field.tsx to the design states (read-only plain text, idle dashed border 44px min height, editing ring, saving spinner, saved check, error border with cloud-off icon and \"Não salvou · tentar de novo\") without changing their save logic or props; add small shared presentational pieces used by later items (section card with the 7px diamond title marker, numeric display with font-numeric + tabular-nums, stat tile, bottom sheet wrapper built on components/ui/sheet.tsx side=bottom); restyle the sonner Toaster to the design toast look. No business logic changes; derived numbers unchanged",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "app/globals.css",
+        "app/layout.tsx",
+        "providers/theme-provider.tsx",
+        "components/ui/theme-toggle.tsx",
+        "app/characters/page.tsx",
+        "components/ui/inline-field-state.tsx",
+        "components/ui/design-primitives.render.test.ts",
+        "components/ui/editable-field.tsx",
+        "components/ui/editable-scaling-field.tsx",
+        "components/ui/section-card.tsx",
+        "components/ui/numeric-display.tsx",
+        "components/ui/stat-tile.tsx",
+        "components/ui/bottom-sheet.tsx",
+        "lib/api/queries.ts"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "2bd50f4",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvu",
+      "client_id": null,
+      "description": "Redesign list, create and page states (DS-02): restyle app/characters/page.tsx, app/create/page.tsx and the loading / not-found / network-error states of app/character/[id]/page.tsx to match Ficha.dc.html screens lista, vazia, criar, carregando (skeleton with ficha-pulse), naoEncontrado, erroRede and the excluir alert dialog (\"Excluir <nome>?\" with Cancelar/Excluir), mobile-first at 390px and the wide desktop layout; keep search, pagination, create, delete and navigation behavior and the existing hooks exactly as they are",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt"
+      ],
+      "planned_files": [
+        "components/ui/page-state.tsx",
+        "components/character/sheet-states.tsx",
+        "components/character/sheet-states.render.test.ts",
+        "app/character/[id]/page.tsx",
+        "app/characters/page.tsx",
+        "app/create/page.tsx"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 1,
+      "commit": "13eb61f",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvv",
+      "client_id": null,
+      "description": "Redesign sheet shell and quick actions (DS-03): restyle app/character/[id]/page.tsx header and components/forms/character-layout.tsx to the design ficha shell (back button, serif name, \"jogador · classe · Nv N\" subtitle, refresh button, 4 underline tabs Básicos/Perícias/Magias/Notas with long labels on wide screens, \"Modo edição · as alterações são salvas sozinhas\" banner when unlocked, multi-column card flow with column-width 340px); rebuild components/character/quick-actions-bar.tsx as the design bottom bar (vitality button with stage icon/color/short label, Berkana current/max button, Armas, Perícias, Atributos, and the lock toggle Bloqueado/Desbloqueado driving the existing isEditMode) and replace the current quick-action dialogs and the skills/attributes modals with design bottom sheets (vit: amount input + 4 chips + preview + Dano/Cura + restore; berk: amount + chips + Gastar/Recuperar + restore; arma: weapon damage grid; atributos: 3-column totals; pericias: in-use skills with totals). Every value and every write must go through the existing calculation functions, mutation hooks and current damage/heal/spend semantics; derived numbers must stay identical; conflict and error toasts use the design toast style",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt",
+        "261101-mvu"
+      ],
+      "planned_files": [
+        "lib/calculations/index.ts",
+        "lib/calculations/index.test.ts",
+        "components/character/resource-display.ts",
+        "components/character/quick-sheets/quick-sheet-context.tsx",
+        "components/character/quick-sheets/vitality-sheet.tsx",
+        "components/character/quick-sheets/berkana-sheet.tsx",
+        "components/character/quick-sheets/reference-sheets.tsx",
+        "components/character/quick-actions.render.test.ts",
+        "components/character/basic-info/vitality-card.tsx",
+        "components/character/basic-info/berkana-card.tsx",
+        "components/forms/character-layout.tsx",
+        "components/character/quick-actions-bar.tsx",
+        "components/character/index.ts",
+        "app/character/[id]/page.tsx"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 2,
+      "commit": "9cc4966",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvw",
+      "client_id": null,
+      "description": "Redesign Básicos tab (DS-04): restyle components/character/basic-info/*.tsx to the design basicos screen: Vitalidade card (stage badge with icon + position, big current/max number, 6-segment bar, Dano/Cura buttons opening the vit sheet from DS-03, per-stage rows with current marker), Berkana card (state label, big number, bar, Gastar/Recuperar opening the berk sheet, bonus), Armas (name, level badge, 5-cell damage grid with highlighted critical), Atributos (totals grid + collapsible distribution table), Experiência e Nível (level box, XP progress bar, \"Faltam N XP para o nível N+1\"), Armadura (name, description, current/total bar), Informações Básicas (2-column labeled inline fields), Linguagens (toggle chips with icon + \"Outra\" for custom languages). Keep all fields editable exactly as today through the existing EditableField components and mutation; numbers from lib/calculations only",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt",
+        "261101-mvv"
+      ],
+      "planned_files": [
+        "components/character/basic-info/basic-info-model.ts",
+        "components/character/basic-info/basic-info-model.test.ts",
+        "components/character/basic-info-tab.render.test.ts",
+        "components/character/basic-info-tab.tsx",
+        "components/character/basic-info/vitality-card.tsx",
+        "components/character/basic-info/berkana-card.tsx",
+        "components/character/basic-info/attribute-cards.tsx",
+        "components/character/basic-info/profile-cards.tsx",
+        "components/character/basic-info/equipment-cards.tsx",
+        "components/character/basic-info/languages-card.tsx",
+        "components/character/quick-sheets/reference-sheets.tsx",
+        "components/character/quick-actions.render.test.ts"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 3,
+      "commit": "8f0ff27",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvx",
+      "client_id": null,
+      "description": "Redesign Perícias & Kit tab (DS-05): rebuild components/character/skills-kit-tab.tsx to the design pericias screen and split it into components/character/skills-kit/ cards (each file under ~300 lines): skill points summary (Disponíveis/Gastos/Restantes with the remaining color), \"Em uso / Todas\" segmented filter, skills grouped by category with expandable rows showing distributed+bonus detail, total, and minus/plus steppers for distributed and bonus when unlocked; Finanças tiles; Kit de Aventureiro with custom items first, add item, and collapsible \"Itens padrão · N\". Keep the current skill-point pool, totals and persisted keys exactly as today (do not fix the known SKILLS key mismatch or pool question here); writes through the existing mutation",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt",
+        "261101-mvv"
+      ],
+      "planned_files": [
+        "components/character/skills-kit-tab.tsx",
+        "components/character/skills-kit-tab.render.test.ts",
+        "components/character/skills-kit/skills-kit-model.ts",
+        "components/character/skills-kit/skills-kit-model.test.ts",
+        "components/character/skills-kit/skills-card.tsx",
+        "components/character/skills-kit/skill-row.tsx",
+        "components/character/skills-kit/skill-stepper.tsx",
+        "components/character/skills-kit/finances-card.tsx",
+        "components/character/skills-kit/adventure-kit-card.tsx"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 3,
+      "commit": "b94f7e7",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvy",
+      "client_id": null,
+      "description": "Redesign Magias & Talentos tab (DS-06): restyle components/character/spells-talents/*.tsx and spells-talents-tab.tsx to the design magias screen: Magias/Talentos segmented toggle, search field, \"Nova\" button when unlocked, horizontal level filter chips, cards grouped by level, collapsible rows (name, type/sub line, Berkana cost badge, \"1× ao dia\" badge for talents), expanded body with damage highlight, 2-column stats, description with preserved line breaks, and Editar/Excluir when unlocked. Keep the existing create/edit/delete dialogs, the EditableScalingField level scaling and all persisted fields unchanged",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt",
+        "261101-mvv"
+      ],
+      "planned_files": [
+        "lib/spells-talents.ts",
+        "lib/spells-talents.test.ts",
+        "components/character/spells-talents/magic-list.tsx",
+        "components/character/spells-talents/spells-card.tsx",
+        "components/character/spells-talents/spell-body.tsx",
+        "components/character/spells-talents/talents-card.tsx",
+        "components/character/spells-talents/talent-body.tsx",
+        "components/character/spells-talents-tab.tsx",
+        "components/character/spells-talents.render.test.ts"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 3,
+      "commit": "a7e1c23",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261101-mvz",
+      "client_id": null,
+      "description": "Redesign Anotações tab (DS-07): restyle components/character/notes-tab.tsx and components/character/notes/*.tsx to the design anotacoes screen: header with count, Ordenar/Concluir toggle and new-note button when writable, search field, collapsed note cards with serif title and one-line preview, expand to show formatted content and Editar/Excluir, reorder mode with grip icon and up/down 44px arrow buttons (using the existing moveNote), corrupted-notes alert with \"Copiar texto original\" (clipboard of the raw notes string) and legacy-notes alert with \"Migrar anotações\" wired to the existing one-time migration. Keep lib/notes.ts guarantees, the escape-then-format renderer from lib/notes-format.ts (never render unescaped HTML) and existing tests passing. Final gate for the whole batch: npx tsc --noEmit, bun run lint, bun test and bun run build all pass",
+      "status": "complete",
+      "depends_on": [
+        "261101-mvt",
+        "261101-mvu",
+        "261101-mvv",
+        "261101-mvw",
+        "261101-mvx",
+        "261101-mvy"
+      ],
+      "planned_files": [
+        "components/character/notes-tab.tsx",
+        "components/character/notes/notes-header.tsx",
+        "components/character/notes/notes-list.tsx",
+        "components/character/notes/note-card.tsx",
+        "components/character/notes/notes-status-alert.tsx",
+        "components/character/notes/note-form.tsx",
+        "components/character/notes/edit-note-dialog.tsx",
+        "lib/notes-format.ts",
+        "lib/notes-format.test.ts",
+        "lib/clipboard.ts",
+        "lib/clipboard.test.ts",
+        "components/character/notes-tab.render.test.ts"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 4,
+      "commit": "1d5830f",
+      "failure_reason": null
+    }
+  ]
+}

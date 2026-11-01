@@ -65,3 +65,21 @@ export function formatNoteHtml(text: string): string {
 
   return formatted
 }
+
+/**
+ * Prévia de uma linha para o cartão recolhido: primeira linha com texto, sem
+ * marcador de título/lista e sem negrito, itálico ou código.
+ * Retorna texto simples, SEM escape: use apenas como texto filho do React
+ * (que escapa por conta própria), nunca como HTML.
+ */
+export function getNotePreview(content: string): string {
+  const firstLine =
+    content.split(/\r?\n/).find((line) => line.trim() !== '') ?? ''
+  return firstLine
+    .trim()
+    .replace(/^(?:### |## |# |- )/, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .trim()
+}

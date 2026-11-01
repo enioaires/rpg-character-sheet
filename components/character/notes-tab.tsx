@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUpdateCharacter } from "@/lib/api/queries";
 import {
   canWriteNotes,
@@ -14,12 +13,17 @@ import {
   serializeNotes,
   type Note,
 } from "@/lib/notes";
-import { FileText } from "lucide-react";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 
 import { CharacterTabProps } from "./types";
 import { NotesHeader } from "./notes/notes-header";
 import { NotesList } from "./notes/notes-list";
+import {
+  NotesStatusAlert,
+  PreservedNotesText,
+  type LegacyMigrationStatus,
+} from "./notes/notes-status-alert";
 import { EditNoteDialog } from "./notes/edit-note-dialog";
 
 type NotesTabProps = CharacterTabProps;
@@ -35,12 +39,16 @@ export function NotesTab({
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [newNoteContent, setNewNoteContent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isReorderRequested, setIsReorderRequested] = useState(false);
+  const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const updateCharacter = updateCharacterMutation.mutateAsync;
 
   // Leitura da coluna `notes` (pura: sem setState nem efeitos durante o render)
   const parsed = useMemo(() => parseNotes(character.notes), [character.notes]);
   const allNotes = parsed.notes;
   const canWrite = canWriteNotes(parsed);
+  const canReorder = isEditMode && canWrite && allNotes.length > 1;
+  const isReordering = isReorderRequested && canReorder;
 
   // Recusa gravações enquanto o valor salvo é ilegível ou ainda não foi migrado
   const guardWrite = (): boolean => {
@@ -87,6 +95,21 @@ export function NotesTab({
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.content.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const countLabel = !canWrite
+    ? null
+    : searchTerm !== "" && !isReordering
+      ? `${notes.length} de ${allNotes.length}`
+      : String(allNotes.length);
+
+  const handleToggleReorder = () => {
+    setIsReorderRequested(!isReordering);
+    setOpenNoteId(null);
+  };
+
+  const handleToggleNote = (noteId: string) => {
+    setOpenNoteId((current) => (current === noteId ? null : noteId));
+  };
 
   const handleAddNote = async () => {
     if (!newNoteTitle.trim() || !newNoteContent.trim()) {
@@ -172,6 +195,7 @@ export function NotesTab({
         },
       });
 
+      setOpenNoteId((current) => (current === noteId ? null : current));
       toast.success("Anotação removida com sucesso!");
     } catch (error) {
       console.error("Erro ao remover anotação:", error);
@@ -206,7 +230,9 @@ export function NotesTab({
         },
       });
 
-      toast.success("Posição da anotação atualizada!");
+      toast.success("Posição da anotação atualizada!", {
+        id: `notes-move-${characterId}`,
+      });
     } catch (error) {
       console.error("Erro ao mover anotação:", error);
       toast.error("Erro ao mover anotação");
@@ -232,13 +258,59 @@ export function NotesTab({
     }
   };
 
+  // Copia o texto original (somente leitura); nunca registra nem exibe o conteúdo
+  const handleCopyOriginal = async () => {
+    if (parsed.status !== "corrupted") return;
+    const result = await copyTextToClipboard(
+      parsed.raw,
+      typeof navigator === "undefined" ? undefined : navigator.clipboard,
+    );
+    if (result === "copied") {
+      toast.success("Texto original copiado.");
+    } else if (result === "unavailable") {
+      toast.error(
+        "Não foi possível copiar: a área de transferência não está disponível neste navegador. Selecione o texto abaixo e copie manualmente.",
+      );
+    } else {
+      toast.error(
+        "Não foi possível copiar o texto original. Selecione o texto abaixo e copie manualmente.",
+      );
+    }
+  };
+
+  // Estado da conversão automática, derivado só durante o render
+  const legacyMigrationStatus: LegacyMigrationStatus = !isEditMode
+    ? "locked"
+    : updateCharacterMutation.isPending
+      ? "converting"
+      : updateCharacterMutation.isError
+        ? "failed"
+        : "waiting";
+
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="[column-span:all] flex flex-col gap-3">
+      {parsed.status === "corrupted" && (
+        <NotesStatusAlert
+          status="corrupted"
+          onCopyOriginal={handleCopyOriginal}
+        />
+      )}
+      {parsed.status === "legacy" && (
+        <NotesStatusAlert
+          status="legacy"
+          migrationStatus={legacyMigrationStatus}
+        />
+      )}
+
       <NotesHeader
+        countLabel={countLabel}
         isEditMode={isEditMode}
         canWrite={canWrite}
         isCorrupted={parsed.status === "corrupted"}
         isSaving={updateCharacterMutation.isPending}
+        canReorder={canReorder}
+        isReordering={isReordering}
+        onToggleReorder={handleToggleReorder}
         isAddDialogOpen={isAddDialogOpen}
         onAddDialogOpenChange={setIsAddDialogOpen}
         noteTitle={newNoteTitle}
@@ -250,31 +322,10 @@ export function NotesTab({
       />
 
       {/* Lista de anotações */}
-      {!canWrite ? (
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="w-4 h-4 text-muted-foreground" />
-            {parsed.status === "legacy"
-              ? "Anotações em formato antigo"
-              : "Não foi possível ler as anotações"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {parsed.status === "legacy"
-              ? "Este conteúdo será convertido em uma anotação ao entrar no modo de edição."
-              : "O conteúdo salvo foi preservado e nenhuma alteração será salva até que ele seja corrigido."}
-          </p>
-          <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-muted rounded p-3 max-h-64 overflow-auto">
-            {parsed.status === "legacy"
-              ? parsed.legacyText
-              : parsed.status === "corrupted"
-                ? parsed.raw
-                : ""}
-          </pre>
-        </CardContent>
-      </Card>
+      {parsed.status === "corrupted" || parsed.status === "legacy" ? (
+        <PreservedNotesText
+          text={parsed.status === "corrupted" ? parsed.raw : parsed.legacyText}
+        />
       ) : (
         <NotesList
           notes={notes}
@@ -283,6 +334,9 @@ export function NotesTab({
           onSearchTermChange={setSearchTerm}
           isEditMode={isEditMode}
           isSaving={updateCharacterMutation.isPending}
+          isReordering={isReordering}
+          openNoteId={openNoteId}
+          onToggleNote={handleToggleNote}
           onOpenAddDialog={() => setIsAddDialogOpen(true)}
           onMoveUp={moveNoteUp}
           onMoveDown={moveNoteDown}

@@ -1,8 +1,7 @@
 // components/character/notes/note-card.tsx
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { useId } from "react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,9 +13,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { formatNoteHtml } from "@/lib/notes-format";
+import { formatNoteHtml, getNotePreview } from "@/lib/notes-format";
 import type { Note } from "@/lib/notes";
-import { Edit, Trash2, Calendar, ChevronUp, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("pt-BR", {
@@ -37,11 +45,13 @@ const renderFormattedText = (text: string) => (
 
 interface NoteCardProps {
   note: Note;
-  isEditMode: boolean;
+  isOpen: boolean;
+  isReordering: boolean;
+  canEdit: boolean;
   isSaving: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  showReorderButtons: boolean;
+  onToggle: (noteId: string) => void;
   onMoveUp: (noteId: string) => void;
   onMoveDown: (noteId: string) => void;
   onEdit: (note: Note) => void;
@@ -50,115 +60,147 @@ interface NoteCardProps {
 
 export function NoteCard({
   note,
-  isEditMode,
+  isOpen,
+  isReordering,
+  canEdit,
   isSaving,
   canMoveUp,
   canMoveDown,
-  showReorderButtons,
+  onToggle,
   onMoveUp,
   onMoveDown,
   onEdit,
   onDelete,
 }: NoteCardProps) {
+  const bodyId = useId();
+  const preview = getNotePreview(note.content);
+
+  if (isReordering) {
+    return (
+      <section className="mb-2 break-inside-avoid rounded-md border border-border bg-card shadow-card">
+        <div className="grid min-h-14 grid-cols-[20px_minmax(0,1fr)_44px_44px] items-center gap-1.5 pl-3.5 pr-1.5">
+          <GripVertical
+            aria-hidden="true"
+            className="size-[18px] text-muted-foreground"
+          />
+          <span className="truncate font-serif text-[17px] font-semibold">
+            {note.title}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            className="size-11 p-0 disabled:opacity-30"
+            aria-label={`Subir: ${note.title}`}
+            disabled={!canMoveUp || isSaving}
+            onClick={() => onMoveUp(note.id)}
+          >
+            <ArrowUp className="size-5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="size-11 p-0 disabled:opacity-30"
+            aria-label={`Descer: ${note.title}`}
+            disabled={!canMoveDown || isSaving}
+            onClick={() => onMoveDown(note.id)}
+          >
+            <ArrowDown className="size-5" />
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <Card
-      className="overflow-hidden hover:shadow-md transition-shadow"
+    <section
+      className={cn(
+        "mb-2 break-inside-avoid rounded-md border bg-card shadow-card",
+        isOpen ? "border-input" : "border-border",
+      )}
     >
-      <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base sm:text-lg break-words line-clamp-2">
-              {note.title}
-            </CardTitle>
-            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                <span>Criado: {formatDate(note.createdAt)}</span>
-              </div>
-              {note.updatedAt !== note.createdAt && (
-                <div className="flex items-center gap-1">
-                  <Separator
-                    orientation="vertical"
-                    className="h-3"
-                  />
-                  <span>Editado: {formatDate(note.updatedAt)}</span>
-                </div>
-              )}
-            </div>
+      <button
+        type="button"
+        onClick={() => onToggle(note.id)}
+        aria-expanded={isOpen}
+        aria-controls={bodyId}
+        className="grid min-h-[60px] w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-serif text-[17px] font-semibold">
+            {note.title}
+          </span>
+          {!isOpen && preview !== "" && (
+            <span className="block truncate text-sm text-muted-foreground">
+              {preview}
+            </span>
+          )}
+        </span>
+        {isOpen ? (
+          <ChevronUp
+            aria-hidden="true"
+            className="size-[18px] text-muted-foreground"
+          />
+        ) : (
+          <ChevronDown
+            aria-hidden="true"
+            className="size-[18px] text-muted-foreground"
+          />
+        )}
+      </button>
+
+      {isOpen && (
+        <div
+          id={bodyId}
+          className="flex flex-col gap-2.5 break-words px-4 pb-3.5 text-[15px] leading-[1.55]"
+        >
+          {renderFormattedText(note.content)}
+          <div className="text-xs text-muted-foreground">
+            <span>Criado: {formatDate(note.createdAt)}</span>
+            {note.updatedAt !== note.createdAt && (
+              <span> · Editado: {formatDate(note.updatedAt)}</span>
+            )}
           </div>
-
-          {isEditMode && (
-            <div className="flex gap-1 shrink-0">
-              {/* Botões de reordenação - só aparecem quando não há filtro */}
-              {showReorderButtons && (
-                <div className="flex flex-col gap-0.5 mr-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onMoveUp(note.id)}
-                    disabled={
-                      !canMoveUp ||
-                      isSaving
-                    }
-                    className="h-4 w-6 p-0 hover:bg-primary/10 disabled:opacity-30"
-                    title="Mover para cima"
-                  >
-                    <ChevronUp className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onMoveDown(note.id)}
-                    disabled={
-                      !canMoveDown ||
-                      isSaving
-                    }
-                    className="h-4 w-6 p-0 hover:bg-primary/10 disabled:opacity-30"
-                    title="Mover para baixo"
-                  >
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-
+          {canEdit && (
+            <div className="flex gap-2 pt-1">
               <Button
-                variant="ghost"
-                size="sm"
+                type="button"
+                variant="outline"
+                className="h-11 px-3.5"
                 onClick={() => onEdit(note)}
-                className="h-8 w-8 p-0 hover:bg-primary/10"
-                title="Editar anotação"
               >
-                <Edit className="w-3 h-3" />
+                <Pencil className="size-4" />
+                Editar
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
+                    type="button"
                     variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    title="Excluir anotação"
+                    className="h-11 border px-3.5 text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="size-4" />
+                    Excluir
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="w-[95vw] max-w-md">
+                <AlertDialogContent className="w-[95vw] max-w-[400px]">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Confirmar exclusão
+                    <AlertDialogTitle className="font-serif text-[22px] font-semibold">
+                      Excluir “{note.title}”?
                     </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tem certeza que deseja excluir a anotação &quot;
-                      {note.title}&quot;? Esta ação não pode ser
-                      desfeita.
+                    <AlertDialogDescription className="text-[15px]">
+                      A anotação será apagada. Essa ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                    <AlertDialogCancel className="w-full sm:w-auto">
+                  <AlertDialogFooter className="grid grid-cols-2 gap-2 pt-1.5">
+                    <AlertDialogCancel className="h-12 font-semibold">
                       Cancelar
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => onDelete(note.id)}
-                      className="w-full sm:w-auto bg-destructive hover:bg-destructive/90"
+                      className={cn(
+                        buttonVariants({ variant: "destructive" }),
+                        "h-12 font-bold",
+                      )}
                     >
                       Excluir
                     </AlertDialogAction>
@@ -168,14 +210,7 @@ export function NoteCard({
             </div>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="max-h-32 sm:max-h-80 overflow-auto">
-          <div className="text-sm leading-relaxed break-words pr-3">
-            {renderFormattedText(note.content)}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      )}
+    </section>
   );
 }
