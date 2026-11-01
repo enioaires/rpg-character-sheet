@@ -158,3 +158,22 @@ export async function saveCharacterUpdate({
     return result
   })
 }
+
+// Conflito: um toast (id estável, para várias gravações rejeitadas pelo mesmo
+// conflito gerarem um só) e refetch do personagem. Outros erros ficam com o
+// catch de cada chamador.
+export function handleCharacterSaveError(
+  error: unknown,
+  id: string,
+  {
+    queryClient,
+    notify,
+  }: {
+    queryClient: QueryClient
+    notify: (message: string, options: { id: string }) => void
+  },
+): void {
+  if (!isCharacterConflictError(error)) return
+  notify(CHARACTER_CONFLICT_MESSAGE, { id: 'character-conflict-' + id })
+  void queryClient.invalidateQueries({ queryKey: characterQueryKey(id), exact: true })
+}

@@ -60,6 +60,9 @@ const {
   readUpdatedAt,
   saveCharacterUpdate,
   isCharacterConflictError,
+  CharacterConflictError,
+  CHARACTER_CONFLICT_MESSAGE,
+  handleCharacterSaveError,
 } = await import('./character-concurrency')
 
 // ============================================
@@ -352,5 +355,43 @@ describe('saveCharacterUpdate (fila serial por personagem)', () => {
     expect(readUpdatedAt(queryClient.getQueryData(characterQueryKey(row.id)))).toBe(
       row.updatedAt.toISOString(),
     )
+  })
+})
+
+// ============================================
+// UX DE CONFLITO
+// ============================================
+
+describe('handleCharacterSaveError', () => {
+  it('(o) conflito notifica uma vez com id estável e invalida a query do personagem', () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    const calls: { message: string; options: { id: string } }[] = []
+    handleCharacterSaveError(new CharacterConflictError(), row.id, {
+      queryClient,
+      notify: (message, options) => calls.push({ message, options }),
+    })
+    expect(calls).toEqual([
+      { message: CHARACTER_CONFLICT_MESSAGE, options: { id: 'character-conflict-' + row.id } },
+    ])
+    expect(queryClient.getQueryState(characterQueryKey(row.id))?.isInvalidated).toBe(true)
+  })
+
+  it('(p) erro comum não notifica nem invalida', () => {
+    const row = seed()
+    const queryClient = seedClient(row)
+    let notified = 0
+    handleCharacterSaveError(new Error('falhou'), row.id, {
+      queryClient,
+      notify: () => {
+        notified++
+      },
+    })
+    expect(notified).toBe(0)
+    expect(queryClient.getQueryState(characterQueryKey(row.id))?.isInvalidated).toBe(false)
+  })
+
+  it('(q) a mensagem de conflito está em pt-BR e cita outro dispositivo', () => {
+    expect(CHARACTER_CONFLICT_MESSAGE).toContain('outro dispositivo')
   })
 })

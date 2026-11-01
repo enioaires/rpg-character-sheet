@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { GetCharactersQuery, CreateCharacterRequest, UpdateCharacterRequest } from '@/lib/schemas/character'
-import { saveCharacterUpdate } from './character-concurrency'
+import { toast } from 'sonner'
+import { handleCharacterSaveError, saveCharacterUpdate } from './character-concurrency'
 import { useMemo } from 'react'
 import {
   calculateAllAttributes,
@@ -96,6 +97,13 @@ export const useUpdateCharacter = () => {
         fetchCharacter,
         put: (body) => api.characters[':id'].$put({ param: { id }, json: body }),
       }),
+    onError: (error, variables) => {
+      // Conflito: toast em pt-BR e refetch; outros erros seguem para o chamador
+      handleCharacterSaveError(error, variables.id, {
+        queryClient,
+        notify: (message, options) => toast.error(message, options),
+      })
+    },
     onSuccess: () => {
       // O cache do personagem já foi atualizado pelo núcleo; invalidar a lista
       queryClient.invalidateQueries({ queryKey: ['characters'] })
