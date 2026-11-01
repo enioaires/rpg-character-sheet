@@ -17,7 +17,7 @@ import {
   toVitalityBase,
 } from '@/lib/calculations'
 import type { AttributeValue, CurrentVitalityInput, VitalityBase, VitalityStageKey } from '@/lib/calculations'
-import { ATTRIBUTES, ATTRIBUTE_LABELS, VITALITY_LEVELS } from '@/lib/constants/character'
+import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES, VITALITY_LEVELS } from '@/lib/constants/character'
 
 // ============================================
 // BARRAS
@@ -152,4 +152,71 @@ export function buildExperienceView(level: number | null | undefined, currentXP:
   }
 
   return { level: lvl, xp, required, remaining, percent: getFillPercent(xp, required), caption }
+}
+
+// ============================================
+// ARMAS
+// ============================================
+
+function isNonEmptyString(value: unknown): boolean {
+  return typeof value === 'string' && value !== ''
+}
+
+/**
+ * Uma arma "tem conteúdo" quando alguma parte foi preenchida (nome, nível, descrição ou dano).
+ * Aceita JSON solto: qualquer coisa que não seja objeto dá false.
+ */
+export function hasWeaponContent(weapon: unknown): boolean {
+  if (typeof weapon !== 'object' || weapon === null) return false
+
+  const { name, level, description, damage } = weapon as Record<string, unknown>
+  if (isNonEmptyString(name) || Boolean(level) || isNonEmptyString(description)) return true
+
+  if (typeof damage !== 'object' || damage === null) return false
+  const damageValues = damage as Record<string, unknown>
+  return ['d25', 'd50', 'd75', 'd100', 'critical'].some((key) => isNonEmptyString(damageValues[key]))
+}
+
+// ============================================
+// LINGUAGENS
+// ============================================
+
+export type StandardLanguageKey = (typeof STANDARD_LANGUAGES)[number]
+
+// Só exibição: as chaves gravadas continuam as de STANDARD_LANGUAGES
+export const STANDARD_LANGUAGE_LABELS: Record<StandardLanguageKey, string> = {
+  comum: 'Comum',
+  errante: 'Errante',
+  elfico: 'Élfico',
+  sombrio: 'Sombrio',
+  'anão': 'Anão',
+  sigilico: 'Sigílico',
+}
+
+interface LanguagesInput {
+  standard?: Record<string, boolean | null | undefined> | null
+  custom?: unknown
+}
+
+/**
+ * Chips de linguagem. As customizadas só aparecem quando `custom` é array
+ * (um objeto indexado não é lido, como no card original) e mantêm o índice de armazenamento.
+ */
+export function buildLanguageChips(languages: LanguagesInput | null | undefined) {
+  const standard = STANDARD_LANGUAGES.map((key) => ({
+    key,
+    label: STANDARD_LANGUAGE_LABELS[key],
+    known: Boolean(languages?.standard?.[key]),
+  }))
+
+  const custom: Array<{ index: number; name: string; known: boolean }> = []
+  if (Array.isArray(languages?.custom)) {
+    languages.custom.forEach((entry: unknown, index: number) => {
+      if (typeof entry !== 'object' || entry === null) return
+      const { name, known } = entry as Record<string, unknown>
+      custom.push({ index, name: typeof name === 'string' ? name : '', known: Boolean(known) })
+    })
+  }
+
+  return { standard, custom }
 }
