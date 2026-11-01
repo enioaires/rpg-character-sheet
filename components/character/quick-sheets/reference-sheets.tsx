@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { StatTile } from '@/components/ui/stat-tile'
-import { calculateAttributeBase, calculateSkillTotal, toAttributeValue, toSkillValue } from '@/lib/calculations'
+import { calculateAttributeTotal, calculateSkillTotal, toAttributeValue, toSkillValue } from '@/lib/calculations'
 import { ATTRIBUTES, ATTRIBUTE_LABELS, SKILLS, SKILL_LABELS } from '@/lib/constants/character'
 import { cn } from '@/lib/utils'
 import type { CharacterData } from '@/components/character/types'
@@ -140,15 +140,22 @@ export function WeaponsSheet({ open, onOpenChange, character }: ReferenceSheetPr
 
 type AttributesInput = CharacterData['attributes'] | null | undefined
 
-// Mesmo valor do antigo AttributesModal: calculateAttributeBase (sem bônus de nível)
-export function AttributesSheetBody({ attributes }: { attributes: AttributesInput }) {
+// Total com bônus de nível (calculateAttributeTotal), por decisão do dono em 2026-11-01:
+// o mesmo número do card de Atributos da aba Básicos
+export function AttributesSheetBody({
+  attributes,
+  level,
+}: {
+  attributes: AttributesInput
+  level: number | null | undefined
+}) {
   return (
     <div className="grid grid-cols-3 gap-1.5">
       {ATTRIBUTES.map((attributeKey) => (
         <StatTile
           key={attributeKey}
           label={ATTRIBUTE_LABELS[attributeKey]}
-          value={calculateAttributeBase(toAttributeValue(attributes?.[attributeKey]))}
+          value={calculateAttributeTotal(toAttributeValue(attributes?.[attributeKey]), level || 0)}
         />
       ))}
     </div>
@@ -158,7 +165,7 @@ export function AttributesSheetBody({ attributes }: { attributes: AttributesInpu
 export function AttributesSheet({ open, onOpenChange, character }: ReferenceSheetProps) {
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Atributos">
-      <AttributesSheetBody attributes={character.attributes} />
+      <AttributesSheetBody attributes={character.attributes} level={character.level} />
     </BottomSheet>
   )
 }

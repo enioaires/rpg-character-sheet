@@ -4,7 +4,7 @@ import { useUpdateCharacter } from '@/lib/api/queries'
 
 import { CharacterTabProps } from './types'
 import { BasicDetailsCard, ExperienceCard } from './basic-info/profile-cards'
-import { AttributesSummaryCard, AttributesDistributionCard } from './basic-info/attribute-cards'
+import { AttributesCard } from './basic-info/attribute-cards'
 import { VitalityCard } from './basic-info/vitality-card'
 import { BerkanaCard } from './basic-info/berkana-card'
 import { WeaponsCard, ArmorCard } from './basic-info/equipment-cards'
@@ -25,8 +25,7 @@ export function BasicInfoTab({
       <VitalityCard {...cardProps} />
       <BerkanaCard {...cardProps} />
       <WeaponsCard {...cardProps} />
-      <AttributesSummaryCard {...cardProps} />
-      <AttributesDistributionCard {...cardProps} />
+      <AttributesCard {...cardProps} />
       <ExperienceCard {...cardProps} />
       <ArmorCard {...cardProps} />
       <BasicDetailsCard {...cardProps} />

@@ -1,173 +1,107 @@
 // components/character/basic-info/attribute-cards.tsx
+// Card Atributos: grade de totais (com bônus de nível) e tabela de distribuição recolhida.
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useId, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+
 import { EditableNumberField } from '@/components/ui/editable-field'
-import { ChevronDown, ChevronUp, Maximize2 } from 'lucide-react'
-import { ATTRIBUTES, ATTRIBUTE_LABELS } from '@/lib/constants/character'
-import { calculateAttributeTotal, getAttributeLevelBonus, toAttributeValue } from '@/lib/calculations'
+import { SectionCard } from '@/components/ui/section-card'
+import { StatTile } from '@/components/ui/stat-tile'
+import { getAttributeLevelBonus } from '@/lib/calculations'
+
+import { buildAttributeRows } from './basic-info-model'
 
 import type { CharacterTabProps } from '../types'
 
-interface AttributesSummaryCardProps extends Pick<CharacterTabProps, 'character'> {
-  setIsAttributesModalOpen?: CharacterTabProps['setIsAttributesModalOpen']
-}
+type AttributesCardProps = Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'>
 
-export function AttributesSummaryCard({ character, setIsAttributesModalOpen }: AttributesSummaryCardProps) {
-  const {
-    level,
-    attributes = {},
-  } = character
+const CELL_CLASS = 'justify-center px-1 text-base'
+const TABLE_GRID = 'grid grid-cols-[minmax(0,1fr)_repeat(3,2.75rem)_2.25rem_2.5rem] gap-0.5'
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Atributos - Resumo</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0"
-            title="Expandir atributos"
-            onClick={() => setIsAttributesModalOpen?.(true)}
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-0.5 text-sm">
-          {ATTRIBUTES.map((attributeKey, index) => {
-            const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-            const total = calculateAttributeTotal(toAttributeValue(attr), level || 0)
+export function AttributesCard({ character, characterId, isEditMode }: AttributesCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const tableId = useId()
 
-            return (
-              <div
-                key={attributeKey}
-                className={`flex items-center py-1.5 px-2 rounded-sm transition-colors hover:bg-muted/50 ${index % 2 === 0 ? 'bg-muted/20' : 'bg-transparent'
-                  }`}
-              >
-                {/* Nome do Atributo */}
-                <span className="flex-1 text-left">
-                  {ATTRIBUTE_LABELS[attributeKey]}
-                </span>
-
-                {/* Linha Pontilhada */}
-                <div className="flex-1 mx-3 border-b border-dotted border-muted-foreground/30"></div>
-
-                {/* Valor Total */}
-                <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded min-w-[2rem] text-center">
-                  {total}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-type AttributesDistributionCardProps = Pick<CharacterTabProps, 'character' | 'characterId' | 'isEditMode'>
-
-export function AttributesDistributionCard({ character, characterId, isEditMode }: AttributesDistributionCardProps) {
-  const [isAttributesExpanded, setIsAttributesExpanded] = useState(false)
-
-  const {
-    level,
-    attributes = {},
-  } = character
+  const { level, attributes = {} } = character
+  const rows = buildAttributeRows(attributes, level)
+  const levelBonus = getAttributeLevelBonus(level || 0)
+  const ToggleIcon = isExpanded ? ChevronUp : ChevronDown
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Distribuição de Atributos</CardTitle>
-            <div className="text-sm text-muted-foreground">
-              Edite os valores de raça, classe e bônus
+    <SectionCard
+      title="Atributos"
+      className="gap-3"
+      action={
+        levelBonus > 0 ? (
+          <span className="text-[13px] text-muted-foreground">{`inclui +${levelBonus} de nível`}</span>
+        ) : undefined
+      }
+    >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5">
+        {rows.map((row) => (
+          <StatTile key={row.key} label={row.label} value={row.total} />
+        ))}
+      </div>
+
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-controls={tableId}
+        onClick={() => setIsExpanded((open) => !open)}
+        className="flex h-11 w-full items-center justify-between border-t bg-transparent text-[15px] font-semibold"
+      >
+        Distribuição (raça + classe + bônus + nível)
+        <ToggleIcon className="size-[18px]" aria-hidden="true" />
+      </button>
+
+      {isExpanded && (
+        <div id={tableId} className="flex flex-col text-sm">
+          <div className={`${TABLE_GRID} pb-1.5 text-center text-xs text-muted-foreground`}>
+            <span className="text-left">Atributo</span>
+            <span>Raça</span>
+            <span>Cla.</span>
+            <span>Bôn.</span>
+            <span>Nív.</span>
+            <span>Total</span>
+          </div>
+          {rows.map((row) => (
+            <div key={row.key} className={`${TABLE_GRID} min-h-11 items-center border-t text-center`}>
+              <span className="truncate text-left" title={row.label}>
+                {row.label}
+              </span>
+              <EditableNumberField
+                characterId={characterId}
+                currentCharacterData={character}
+                section="attributes"
+                field={`${row.key}.race`}
+                value={row.race}
+                displayClassName={CELL_CLASS}
+                isEditMode={isEditMode}
+              />
+              <EditableNumberField
+                characterId={characterId}
+                currentCharacterData={character}
+                section="attributes"
+                field={`${row.key}.class`}
+                value={row.class}
+                displayClassName={CELL_CLASS}
+                isEditMode={isEditMode}
+              />
+              <EditableNumberField
+                characterId={characterId}
+                currentCharacterData={character}
+                section="attributes"
+                field={`${row.key}.bonus`}
+                value={row.bonus}
+                displayClassName={CELL_CLASS}
+                isEditMode={isEditMode}
+              />
+              <span className="font-numeric tabular-nums text-muted-foreground">{row.levelBonus}</span>
+              <span className="font-numeric font-bold tabular-nums text-primary">{row.total}</span>
             </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAttributesExpanded(!isAttributesExpanded)}
-            className="h-8 w-8 p-0"
-          >
-            {isAttributesExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </Button>
+          ))}
         </div>
-      </CardHeader>
-      {isAttributesExpanded && (
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ATTRIBUTES.map((attributeKey) => {
-              const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-              const levelBonus = getAttributeLevelBonus(level || 0)
-              const total = calculateAttributeTotal(toAttributeValue(attr), level || 0)
-
-              return (
-                <div key={attributeKey} className="space-y-2 p-3 bg-muted/50 rounded">
-                  <div className="text-center">
-                    <label className="text-sm font-medium">{ATTRIBUTE_LABELS[attributeKey]}</label>
-                    <div className="text-2xl font-bold text-primary">{total}</div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1 sm:gap-2 text-xs">
-                    <div>
-                      <label className="text-muted-foreground">Raça</label>
-                      <EditableNumberField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="attributes"
-                        field={`${attributeKey}.race`}
-                        value={attr.race || 0}
-                        className="text-center text-xs"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground">Classe</label>
-                      <EditableNumberField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="attributes"
-                        field={`${attributeKey}.class`}
-                        value={attr.class || 0}
-                        className="text-center text-xs"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground">Bônus</label>
-                      <EditableNumberField
-                        characterId={characterId}
-                        currentCharacterData={character}
-                        section="attributes"
-                        field={`${attributeKey}.bonus`}
-                        value={attr.bonus || 0}
-                        className="text-center text-xs"
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                  </div>
-
-                  {levelBonus > 0 && (
-                    <div className="text-xs text-center text-muted-foreground">
-                      +{levelBonus} (nível)
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
       )}
-    </Card>
+    </SectionCard>
   )
 }
