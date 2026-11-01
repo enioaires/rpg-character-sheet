@@ -96,6 +96,37 @@ export const createCharacterResponseSchema = z.object({
   message: z.string(),
 })
 
+// ============================================
+// CAMPOS JSON
+// ============================================
+// Política de tolerância: toda chave declarada é opcional, chaves desconhecidas
+// (dados legados) são preservadas, as folhas têm o tipo checado e não há
+// limites de faixa além dos dois fundamentados (distributed >= 0 e armas <= 3).
+// Nunca usar o modo strip: a rota grava a saída validada e apagaria dados antigos.
+// .loose()/.passthrough() não servem: o índice `unknown` não é aceito pelo Prisma.
+const jsonExtra = z.json()
+
+const jsonObject = <T extends z.ZodRawShape>(shape: T) =>
+  z.object(shape).catchall(jsonExtra)
+
+export const weaponDamageSchema = jsonObject({
+  d25: z.string().optional(),
+  d50: z.string().optional(),
+  d75: z.string().optional(),
+  d100: z.string().optional(),
+  critical: z.string().optional(),
+})
+
+export const weaponSchema = jsonObject({
+  name: z.string().optional(),
+  level: z.number().optional(),
+  damage: weaponDamageSchema.optional(),
+  description: z.string().optional(),
+})
+
+// Itens nulos: buildUpdateData gera array esparso quando uma arma posterior é editada primeiro
+export const weaponsFieldSchema = z.array(weaponSchema.nullable()).max(3)
+
 // Schema para atualização de personagem - todos os campos opcionais
 export const updateCharacterSchema = z.object({
   // Informações Básicas
@@ -123,7 +154,7 @@ export const updateCharacterSchema = z.object({
   vitality: z.any().optional(),
   currentVitality: z.any().optional(),
   skills: z.any().optional(),
-  weapons: z.any().optional(),
+  weapons: weaponsFieldSchema.optional(),
   armor: z.any().optional(),
   adventureKit: z.any().optional(),
   finances: z.any().optional(),

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
+import type { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import {
   getCharactersQuerySchema,
@@ -13,6 +15,21 @@ import {
 } from "@/lib/schemas/character";
 import { db } from "@/lib/db";
 import { getDefaultCharacterData } from "@/lib/defaults/character";
+
+// Hook 400 compartilhado para corpos JSON inválidos. Devolve apenas path e
+// message de cada issue, nunca o corpo da requisição.
+export const invalidJsonHook = (
+  result: { success: true } | { success: false; error: z.core.$ZodError },
+  c: Context,
+) => {
+  if (!result.success) {
+    const issues = result.error.issues.map(issue => ({
+      path: issue.path.map(String).join('.'),
+      message: issue.message,
+    }))
+    return c.json({ error: 'Dados inválidos', issues }, 400)
+  }
+}
 
 const app = new Hono()
   .get(
@@ -125,7 +142,7 @@ const app = new Hono()
   .put(
     '/:id',
     zValidator('param', getCharacterParamsSchema),
-    zValidator('json', updateCharacterSchema),
+    zValidator('json', updateCharacterSchema, invalidJsonHook),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
