@@ -194,7 +194,7 @@ describe('buildSkillStepUpdate', () => {
       for (const delta of [1, 2, 3, -1]) {
         const before = structuredClone(stepSkills)
         expect(buildSkillStepUpdate(stepSkills, key as SkillKey, 'distributed', delta)).toEqual(
-          legacyQuickAdd(stepSkills, key, delta),
+          legacyQuickAdd(stepSkills, key, delta) as unknown as ReturnType<typeof buildSkillStepUpdate>,
         )
         expect(stepSkills).toEqual(before)
       }
