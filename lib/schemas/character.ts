@@ -284,6 +284,10 @@ export const updateCharacterSchema = z.object({
   spells: spellsFieldSchema.optional(),
   talents: talentsFieldSchema.optional(),
   notes: z.string().optional(),
+  // Versão (updatedAt) que o cliente viu pela última vez. Não é coluna: a rota
+  // remove a chave antes de gravar. Opcional por compatibilidade com abas
+  // abertas antes do deploy, que ainda não enviam o token.
+  expectedUpdatedAt: z.iso.datetime().optional(),
 })
 
 export const updateCharacterResponseSchema = z.object({

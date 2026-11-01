@@ -31,6 +31,16 @@ export const invalidJsonHook = (
   }
 }
 
+// Prisma sinaliza "nenhum registro casou" com o código P2025. Checagem por
+// duck typing para que o banco falso dos testes possa lançar o mesmo erro.
+function isRecordNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2025'
+  )
+}
+
 const app = new Hono()
   .get(
     '/',
@@ -146,22 +156,53 @@ const app = new Hono()
     async (c) => {
       try {
         const { id } = c.req.valid('param')
-        const updates = c.req.valid('json')
+        const { expectedUpdatedAt, ...updates } = c.req.valid('json')
 
-        // Verificar se personagem existe
-        const existingCharacter = await db.character.findUnique({
-          where: { id }
-        })
+        let character
+        if (expectedUpdatedAt) {
+          // Compare-and-set atômico: um único UPDATE condicional (id + updatedAt).
+          // A resposta é a linha devolvida por este próprio UPDATE, nunca uma
+          // releitura, para que o updatedAt devolvido seja o desta gravação.
+          try {
+            character = await db.character.update({
+              where: { id, updatedAt: new Date(expectedUpdatedAt) },
+              data: { ...updates, updatedAt: new Date() }
+            })
+          } catch (error) {
+            if (!isRecordNotFoundError(error)) throw error
 
-        if (!existingCharacter) {
-          return c.json({ error: 'Character not found' }, 404)
+            // Nenhuma linha casou: distinguir personagem inexistente de conflito
+            const exists = await db.character.findUnique({
+              where: { id },
+              select: { id: true }
+            })
+
+            if (!exists) {
+              return c.json({ error: 'Character not found' }, 404)
+            }
+            return c.json({ error: 'Character was modified by another session' }, 409)
+          }
+        } else {
+          // Exceção de compatibilidade aceita: abas abertas antes do deploy não
+          // enviam expectedUpdatedAt e continuam gravando sem condição.
+          // Follow-up: tornar o token obrigatório (ausente -> 400) e remover
+          // este ramo quando essas abas não existirem mais.
+
+          // Verificar se personagem existe
+          const existingCharacter = await db.character.findUnique({
+            where: { id }
+          })
+
+          if (!existingCharacter) {
+            return c.json({ error: 'Character not found' }, 404)
+          }
+
+          // Atualizar apenas os campos enviados
+          character = await db.character.update({
+            where: { id },
+            data: updates
+          })
         }
-
-        // Atualizar apenas os campos enviados
-        const character = await db.character.update({
-          where: { id },
-          data: updates
-        })
 
         const response = updateCharacterResponseSchema.parse({
           character,

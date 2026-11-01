@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { GetCharactersQuery, CreateCharacterRequest, UpdateCharacterRequest } from '@/lib/schemas/character'
+import { saveCharacterUpdate } from './character-concurrency'
 import { useMemo } from 'react'
 import {
   calculateAllAttributes,
@@ -36,23 +37,25 @@ export const useCharacters = (params?: GetCharactersQuery) => {
   })
 }
 
+export async function fetchCharacter(id: string) {
+  const response = await api.characters[':id'].$get({
+    param: { id }
+  })
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Character not found')
+    }
+    throw new Error('Failed to fetch character')
+  }
+
+  return await response.json()
+}
+
 export const useCharacter = (id: string) => {
   return useQuery({
     queryKey: ['character', id],
-    queryFn: async () => {
-      const response = await api.characters[':id'].$get({
-        param: { id }
-      })
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Character not found')
-        }
-        throw new Error('Failed to fetch character')
-      }
-
-      return await response.json()
-    },
+    queryFn: () => fetchCharacter(id),
     enabled: !!id, // Só executa se tiver ID
   })
 }
@@ -84,25 +87,17 @@ export const useUpdateCharacter = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateCharacterRequest }) => {
-      const response = await api.characters[':id'].$put({
-        param: { id },
-        json: data
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to update character')
-      }
-
-      return await response.json()
-    },
-    onSuccess: (data, variables) => {
-      // Atualizar o cache diretamente com os dados retornados
-      queryClient.setQueryData(['character', variables.id], data)
-      
-      // Invalidar cache da lista
+    // Toda gravação envia o updatedAt visto pelo usuário (concorrência otimista)
+    mutationFn: ({ id, data }: { id: string; data: UpdateCharacterRequest }) =>
+      saveCharacterUpdate({
+        queryClient,
+        id,
+        data,
+        fetchCharacter,
+        put: (body) => api.characters[':id'].$put({ param: { id }, json: body }),
+      }),
+    onSuccess: () => {
+      // O cache do personagem já foi atualizado pelo núcleo; invalidar a lista
       queryClient.invalidateQueries({ queryKey: ['characters'] })
     },
   })
