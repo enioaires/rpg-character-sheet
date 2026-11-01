@@ -25,7 +25,7 @@ import {
 interface EditingField {
   section: string
   field: string
-  originalValue: any
+  originalValue: unknown
 }
 
 interface CharacterState {
@@ -39,7 +39,7 @@ interface CharacterState {
   setCharacter: (character: CharacterFull) => void
 
   // Edição inline
-  startEditing: (section: string, field: string, currentValue: any) => void
+  startEditing: (section: string, field: string, currentValue: unknown) => void
   cancelEditing: () => void
 
   // Reset

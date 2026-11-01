@@ -1,14 +1,12 @@
 // components/character/BasicInfoTab.tsx
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { EditableField, EditableNumberField, EditableTextArea } from '@/components/ui/editable-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
-import { useCharacterStore } from '@/lib/store/character'
 import { ChevronDown, ChevronUp, Heart, Zap, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -30,14 +28,14 @@ import {
 } from '@/lib/calculations'
 
 import { CharacterTabProps } from './types'
+import type { CustomLanguage } from '@/lib/schemas/character'
 
-interface BasicInfoTabProps extends CharacterTabProps {}
+type BasicInfoTabProps = CharacterTabProps
 
 export function BasicInfoTab({ 
   character, 
   characterId, 
   isEditMode, 
-  isAttributesModalOpen = false, 
   setIsAttributesModalOpen 
 }: BasicInfoTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
@@ -70,7 +68,7 @@ export function BasicInfoTab({
       const calculatedVitality = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
 
       // Criar cópia dos valores atuais de vitalidade
-      let newCurrentVitality = { ...currentVitality }
+      const newCurrentVitality = { ...currentVitality }
       let remainingDamage = damageAmount
 
       // Inicializar currentVitality com valores máximos se ainda não foi definido
@@ -335,7 +333,6 @@ export function BasicInfoTab({
             <div className="space-y-0.5 text-sm">
               {ATTRIBUTES.map((attributeKey, index) => {
                 const attr = attributes[attributeKey] || { race: 0, class: 0, bonus: 0 }
-                const levelBonus = getAttributeLevelBonus(level || 0)
                 const total = calculateAttributeTotal(toAttributeValue(attr), level || 0)
 
                 return (
@@ -991,7 +988,7 @@ export function BasicInfoTab({
 
             {languages.custom && languages.custom.length > 0 ? (
               <div className="space-y-2">
-                {languages.custom.map((lang: any, index: number) => {
+                {languages.custom.map((lang: CustomLanguage, index: number) => {
                   const handleCustomLanguageChange = async (checked: boolean) => {
                     try {
                       const updatedCustom = [...languages.custom]
@@ -1037,7 +1034,7 @@ export function BasicInfoTab({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Nenhuma linguagem customizada. Clique em "Adicionar" para criar uma.
+                Nenhuma linguagem customizada. Clique em &quot;Adicionar&quot; para criar uma.
               </p>
             )}
           </div>

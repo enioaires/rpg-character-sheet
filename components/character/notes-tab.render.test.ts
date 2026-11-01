@@ -10,8 +10,9 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
+import type { CharacterData } from './types'
 
-const mutateAsync = mock(async (_variables?: unknown) => ({}))
+const mutateAsync = mock(async () => ({}))
 const useUpdateCharacter = mock(() => ({
   mutateAsync,
   isPending: false,
@@ -26,7 +27,8 @@ async function render({ notes, isEditMode }: Props): Promise<string> {
   const { NotesTab } = await import('./notes-tab')
   return renderToString(
     createElement(NotesTab, {
-      character: { notes },
+      // Só `notes` importa para este componente; o resto do personagem não é lido
+      character: { notes } as unknown as CharacterData,
       characterId: 'test-char',
       isEditMode,
     }),

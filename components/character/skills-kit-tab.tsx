@@ -21,14 +21,14 @@ import {
 } from '@/lib/calculations'
 
 import { CharacterTabProps } from './types'
+import type { AdventureKitItem } from '@/lib/schemas/character'
 
-interface SkillsKitTabProps extends CharacterTabProps {}
+type SkillsKitTabProps = CharacterTabProps
 
 export function SkillsKitTab({ 
   character, 
   characterId, 
   isEditMode, 
-  isSkillsModalOpen = false, 
   setIsSkillsModalOpen 
 }: SkillsKitTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
@@ -73,7 +73,6 @@ export function SkillsKitTab({
               <div className="space-y-0.5 text-sm pr-4">
                 {SKILLS.map((skillKey, index) => {
                   const skill = skills[skillKey] || { distributed: 0, bonus: 0 }
-                  const levelBonus = getSkillLevelBonus(level || 0)
                   const total = calculateSkillTotal(toSkillValue(skill), level || 0)
 
                   return (
@@ -232,7 +231,7 @@ export function SkillsKitTab({
             <ScrollArea className="h-96">
               <div className="space-y-2 pr-4">
                 {adventureKit && adventureKit.length > 0 ? (
-                  adventureKit.map((item: any, index: number) => (
+                  adventureKit.map((item: AdventureKitItem, index: number) => (
                     <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
                       <div className="flex-1">
                         {item.isDefault ? (
@@ -278,7 +277,7 @@ export function SkillsKitTab({
                             disabled={!isEditMode}
                             onClick={async () => {
                               try {
-                                const updatedKit = adventureKit.filter((_: any, i: number) => i !== index)
+                                const updatedKit = adventureKit.filter((_: AdventureKitItem, i: number) => i !== index)
                                 const updateData = {
                                   adventureKit: updatedKit
                                 }

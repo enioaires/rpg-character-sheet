@@ -4,14 +4,15 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EditableField, EditableTextArea, EditableNumberField } from '@/components/ui/editable-field'
-import { EditableScalingField, ScalingData } from '@/components/ui/editable-scaling-field'
+import { EditableScalingField } from '@/components/ui/editable-scaling-field'
 import { useUpdateCharacter } from '@/lib/api/queries'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronDown, ChevronRight, Sparkles, Zap, RotateCcw } from 'lucide-react'
 
 import { CharacterTabProps } from './types'
+import type { Spell, Talent } from '@/lib/schemas/character'
 
-interface SpellsTalentsTabProps extends CharacterTabProps { }
+type SpellsTalentsTabProps = CharacterTabProps
 
 export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsTalentsTabProps) {
   const updateCharacterMutation = useUpdateCharacter()
@@ -46,7 +47,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
   // Toggle usedToday para um talento específico
   const toggleTalentUsed = async (index: number, currentValue: boolean) => {
     try {
-      const updatedTalents = talents.map((t: any, i: number) =>
+      const updatedTalents = talents.map((t: Talent, i: number) =>
         i === index ? { ...t, usedToday: !currentValue } : t
       )
       await updateCharacterMutation.mutateAsync({
@@ -61,7 +62,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
   // Resetar todos os talentos usedToday para false
   const resetAllTalentsUsage = async () => {
     try {
-      const updatedTalents = talents.map((t: any) => ({
+      const updatedTalents = talents.map((t: Talent) => ({
         ...t,
         usedToday: false
       }))
@@ -75,7 +76,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
   }
 
   // Verificar se há talentos com oncePerDay que foram usados
-  const hasUsedTalents = talents.some((t: any) => t.oncePerDay && t.usedToday)
+  const hasUsedTalents = talents.some((t: Talent) => t.oncePerDay && t.usedToday)
 
   return (
     <div className="space-y-4">
@@ -123,7 +124,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
             <ScrollArea className="h-[70vh] md:h-96">
               <div className="space-y-2">
                 {spells && spells.length > 0 ? (
-                  spells.map((spell: any, index: number) => {
+                  spells.map((spell: Spell, index: number) => {
                     const isExpanded = expandedSpells.has(index)
                     return (
                       <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleSpellExpanded(index)}>
@@ -151,7 +152,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                 onClick={async (e) => {
                                   e.stopPropagation()
                                   try {
-                                    const updatedSpells = spells.filter((_: any, i: number) => i !== index)
+                                    const updatedSpells = spells.filter((_: Spell, i: number) => i !== index)
                                     const updateData = { spells: updatedSpells }
                                     await updateCharacterMutation.mutateAsync({
                                       id: characterId,
@@ -391,7 +392,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
             <ScrollArea className="h-[70vh] md:h-96">
               <div className="space-y-2">
                 {talents && talents.length > 0 ? (
-                  talents.map((talent: any, index: number) => {
+                  talents.map((talent: Talent, index: number) => {
                     const isExpanded = expandedTalents.has(index)
                     return (
                       <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleTalentExpanded(index)}>
@@ -429,7 +430,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                 onClick={async (e) => {
                                   e.stopPropagation()
                                   try {
-                                    const updatedTalents = talents.filter((_: any, i: number) => i !== index)
+                                    const updatedTalents = talents.filter((_: Talent, i: number) => i !== index)
                                     const updateData = { talents: updatedTalents }
                                     await updateCharacterMutation.mutateAsync({
                                       id: characterId,
@@ -486,7 +487,7 @@ export function SpellsTalentsTab({ character, characterId, isEditMode }: SpellsT
                                   onCheckedChange={async (checked) => {
                                     if (!isEditMode) return
                                     try {
-                                      const updatedTalents = talents.map((t: any, i: number) =>
+                                      const updatedTalents = talents.map((t: Talent, i: number) =>
                                         i === index ? { ...t, oncePerDay: checked, usedToday: checked ? t.usedToday : false } : t
                                       )
                                       await updateCharacterMutation.mutateAsync({

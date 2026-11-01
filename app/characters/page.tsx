@@ -63,7 +63,7 @@ export default function CharactersPage() {
             await deleteCharacterMutation.mutateAsync(id)
             toast.success(`Personagem "${name}" deletado com sucesso!`)
             refetch()
-        } catch (error) {
+        } catch {
             toast.error('Erro ao deletar personagem')
         }
     }
@@ -244,7 +244,7 @@ export default function CharactersPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Deletar Personagem</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        Tem certeza que deseja deletar o personagem "{character.characterName}"?
+                                                        Tem certeza que deseja deletar o personagem &quot;{character.characterName}&quot;?
                                                         Esta ação não pode ser desfeita.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>

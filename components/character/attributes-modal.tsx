@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ATTRIBUTES, ATTRIBUTE_LABELS } from '@/lib/constants/character'
 import { calculateAttributeBase, toAttributeValue } from '@/lib/calculations'
+import type { CharacterData } from '@/components/character/types'
 
 interface AttributesModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  character: any
+  character: CharacterData
 }
 
 export function AttributesModal({ isOpen, onOpenChange, character }: AttributesModalProps) {

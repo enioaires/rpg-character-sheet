@@ -14,7 +14,9 @@ import {
   calculateVitalityLevels,
   getBaseBerkana,
   toSkillValue,
-  type SkillValue
+  type AttributeValue,
+  type SkillValue,
+  type VitalityBase
 } from '@/lib/calculations'
 
 export const useCharacters = (params?: GetCharactersQuery) => {
@@ -122,8 +124,7 @@ export const useDeleteCharacter = () => {
 
       if (!response.ok) {
         const error = await response.json()
-        // @ts-ignore
-        throw new Error(error.error || 'Failed to delete character')
+        throw new Error((error as { error?: string }).error || 'Failed to delete character')
       }
 
       return await response.json()
@@ -145,16 +146,16 @@ export const useDeleteCharacter = () => {
  */
 export const useCalculateDerivedStats = (characterData: {
   level: number
-  attributes: any
-  vitality: any
-  skills: any
+  attributes: Record<string, AttributeValue>
+  vitality: VitalityBase | null | undefined
+  skills: Record<string, SkillValue>
   maxBerkana: number
   berkanaBonus: number
 }) => {
   return useMemo(() => {
     if (!characterData) return null
 
-    const { level, attributes, vitality, skills, maxBerkana, berkanaBonus } = characterData
+    const { level, attributes, vitality, skills, berkanaBonus } = characterData
 
     const calculatedAttributes = calculateAllAttributes(attributes || {}, level)
     const calculatedVitality = vitality ? calculateVitalityLevels(vitality, level) : null

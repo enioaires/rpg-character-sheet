@@ -22,9 +22,10 @@ import {
   toVitalityBase,
 } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
+import type { CharacterData } from '@/components/character/types'
 
 interface QuickActionsBarProps {
-  character: any
+  character: CharacterData
   onNavigate: (tab: string, section?: string) => void
   onOpenSkillsModal?: () => void
   onOpenAttributesModal?: () => void

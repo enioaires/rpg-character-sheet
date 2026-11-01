@@ -291,7 +291,7 @@ export function processLevelUp(currentData: {
   maxBerkana: number
   berkanaBonus: number
 }) {
-  const { level, currentXP, vitality, maxBerkana, berkanaBonus } = currentData
+  const { level, currentXP, vitality, berkanaBonus } = currentData
 
   if (!canLevelUp(currentXP, level)) {
     throw new Error('XP insuficiente para subir de nível')

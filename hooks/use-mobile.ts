@@ -12,6 +12,7 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
     mql.addEventListener("change", onChange)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- valor inicial lido do window só no cliente (evita divergência de hidratação)
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     return () => mql.removeEventListener("change", onChange)
   }, [])
@@ -28,6 +29,7 @@ export function useIsSmallMobile() {
       setIsSmallMobile(window.innerWidth < SMALL_MOBILE_BREAKPOINT)
     }
     mql.addEventListener("change", onChange)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- valor inicial lido do window só no cliente (evita divergência de hidratação)
     setIsSmallMobile(window.innerWidth < SMALL_MOBILE_BREAKPOINT)
     return () => mql.removeEventListener("change", onChange)
   }, [])

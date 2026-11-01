@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2, Check, X, Edit } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { CurrentCharacterData } from '@/components/ui/editable-field'
 import { useCharacterStore, useIsFieldEditing } from '@/lib/store/character'
 import { useUpdateCharacter } from '@/lib/api/queries'
+import type { ScalingValue, UpdateCharacterRequest } from '@/lib/schemas/character'
 
 // ============================================
 // TIPOS
@@ -19,10 +21,10 @@ export interface ScalingData {
 
 interface EditableScalingFieldProps {
   characterId?: string
-  currentCharacterData?: any
+  currentCharacterData?: CurrentCharacterData
   section: string
   field: string
-  scalingData: ScalingData
+  scalingData: ScalingValue
   spellLevel: number
   characterLevel: number
   label?: string
@@ -40,7 +42,7 @@ interface EditableScalingFieldProps {
  * Lida com dados antigos (strings) e converte para o novo formato
  */
 export function normalizeScalingData(
-  data: any,
+  data: ScalingValue,
   type: 'damage' | 'duration'
 ): ScalingData {
   // Já está no formato correto
@@ -123,16 +125,17 @@ function buildScalingUpdateData(
   section: string,
   field: string,
   value: ScalingData,
-  currentData?: any
-): Record<string, any> {
+  currentData?: CurrentCharacterData
+): Record<string, unknown> {
   const fieldPath = field.split('.')
-  const updateData: Record<string, any> = {}
+  const updateData: Record<string, unknown> = {}
 
   if (fieldPath.length === 2) {
     // Campo como "0.damage"
     const [index, fieldName] = fieldPath
 
-    const currentArray = Array.isArray(currentData?.[section]) ? currentData[section] : []
+    const currentSection = currentData?.[section]
+    const currentArray: Record<string, unknown>[] = Array.isArray(currentSection) ? currentSection : []
     const resultArray = [...currentArray]
 
     const idx = parseInt(index)
@@ -198,6 +201,7 @@ export function EditableScalingField({
 
   useEffect(() => {
     if (!isEditing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza o rascunho local com a prop `scalingData` quando o campo sai de edição
       setLocalBase(normalizedData.base?.toString() || '')
       setLocalPerLevel(normalizedData.perLevel?.toString() || '')
       setHasChanges(false)
@@ -256,7 +260,7 @@ export function EditableScalingField({
         const updateData = buildScalingUpdateData(section, field, newValue, currentCharacterData)
         await updateCharacterMutation.mutateAsync({
           id: characterId,
-          data: updateData
+          data: updateData as UpdateCharacterRequest
         })
       }
 

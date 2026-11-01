@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUpdateCharacter } from "@/lib/api/queries";
 import { formatNoteHtml } from "@/lib/notes-format";
 import {
@@ -53,7 +52,7 @@ import { toast } from "sonner";
 
 import { CharacterTabProps } from "./types";
 
-interface NotesTabProps extends CharacterTabProps {}
+type NotesTabProps = CharacterTabProps;
 
 export function NotesTab({
   character,
@@ -448,8 +447,8 @@ export function NotesTab({
               Nenhuma anotação encontrada
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Não encontramos anotações que correspondam à sua busca por "
-              {searchTerm}".
+              Não encontramos anotações que correspondam à sua busca por &quot;
+              {searchTerm}&quot;.
             </p>
             <Button variant="outline" onClick={() => setSearchTerm("")}>
               Limpar busca
@@ -573,8 +572,8 @@ export function NotesTab({
                                   Confirmar exclusão
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Tem certeza que deseja excluir a anotação "
-                                  {note.title}"? Esta ação não pode ser
+                                  Tem certeza que deseja excluir a anotação &quot;
+                                  {note.title}&quot;? Esta ação não pode ser
                                   desfeita.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
