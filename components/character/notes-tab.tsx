@@ -35,12 +35,16 @@ export function NotesTab({
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [newNoteContent, setNewNoteContent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isReorderRequested, setIsReorderRequested] = useState(false);
+  const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const updateCharacter = updateCharacterMutation.mutateAsync;
 
   // Leitura da coluna `notes` (pura: sem setState nem efeitos durante o render)
   const parsed = useMemo(() => parseNotes(character.notes), [character.notes]);
   const allNotes = parsed.notes;
   const canWrite = canWriteNotes(parsed);
+  const canReorder = isEditMode && canWrite && allNotes.length > 1;
+  const isReordering = isReorderRequested && canReorder;
 
   // Recusa gravações enquanto o valor salvo é ilegível ou ainda não foi migrado
   const guardWrite = (): boolean => {
@@ -87,6 +91,21 @@ export function NotesTab({
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.content.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const countLabel = !canWrite
+    ? null
+    : searchTerm !== "" && !isReordering
+      ? `${notes.length} de ${allNotes.length}`
+      : String(allNotes.length);
+
+  const handleToggleReorder = () => {
+    setIsReorderRequested(!isReordering);
+    setOpenNoteId(null);
+  };
+
+  const handleToggleNote = (noteId: string) => {
+    setOpenNoteId((current) => (current === noteId ? null : noteId));
+  };
 
   const handleAddNote = async () => {
     if (!newNoteTitle.trim() || !newNoteContent.trim()) {
@@ -172,6 +191,7 @@ export function NotesTab({
         },
       });
 
+      setOpenNoteId((current) => (current === noteId ? null : current));
       toast.success("Anotação removida com sucesso!");
     } catch (error) {
       console.error("Erro ao remover anotação:", error);
@@ -206,7 +226,9 @@ export function NotesTab({
         },
       });
 
-      toast.success("Posição da anotação atualizada!");
+      toast.success("Posição da anotação atualizada!", {
+        id: `notes-move-${characterId}`,
+      });
     } catch (error) {
       console.error("Erro ao mover anotação:", error);
       toast.error("Erro ao mover anotação");
@@ -233,12 +255,16 @@ export function NotesTab({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="[column-span:all] flex flex-col gap-3">
       <NotesHeader
+        countLabel={countLabel}
         isEditMode={isEditMode}
         canWrite={canWrite}
         isCorrupted={parsed.status === "corrupted"}
         isSaving={updateCharacterMutation.isPending}
+        canReorder={canReorder}
+        isReordering={isReordering}
+        onToggleReorder={handleToggleReorder}
         isAddDialogOpen={isAddDialogOpen}
         onAddDialogOpenChange={setIsAddDialogOpen}
         noteTitle={newNoteTitle}
@@ -283,6 +309,9 @@ export function NotesTab({
           onSearchTermChange={setSearchTerm}
           isEditMode={isEditMode}
           isSaving={updateCharacterMutation.isPending}
+          isReordering={isReordering}
+          openNoteId={openNoteId}
+          onToggleNote={handleToggleNote}
           onOpenAddDialog={() => setIsAddDialogOpen(true)}
           onMoveUp={moveNoteUp}
           onMoveDown={moveNoteDown}

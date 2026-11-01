@@ -1,11 +1,8 @@
 // components/character/notes/notes-list.tsx
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import type { Note } from "@/lib/notes";
-import { Plus, FileText, Search } from "lucide-react";
+import { FileText, Plus, Search } from "lucide-react";
 
 import { NoteCard } from "./note-card";
 
@@ -16,6 +13,9 @@ interface NotesListProps {
   onSearchTermChange: (value: string) => void;
   isEditMode: boolean;
   isSaving: boolean;
+  isReordering: boolean;
+  openNoteId: string | null;
+  onToggleNote: (noteId: string) => void;
   onOpenAddDialog: () => void;
   onMoveUp: (noteId: string) => void;
   onMoveDown: (noteId: string) => void;
@@ -30,95 +30,108 @@ export function NotesList({
   onSearchTermChange,
   isEditMode,
   isSaving,
+  isReordering,
+  openNoteId,
+  onToggleNote,
   onOpenAddDialog,
   onMoveUp,
   onMoveDown,
   onEdit,
   onDelete,
 }: NotesListProps) {
-  return allNotes.length === 0 ? (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
+  if (allNotes.length === 0) {
+    return (
+      <section className="mx-auto flex w-full max-w-[720px] flex-col items-center rounded-md border border-dashed border-border bg-card py-12 text-center">
+        <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+          <FileText aria-hidden="true" className="size-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">Nenhuma anotação ainda</h3>
-        <p className="text-sm text-muted-foreground mb-6 max-w-md">
+        <h3 className="mb-2 font-serif text-[19px] font-semibold">
+          Nenhuma anotação ainda
+        </h3>
+        <p className="mb-6 max-w-md px-4 text-[15px] text-muted-foreground">
           Comece criando sua primeira anotação para organizar informações
           importantes do seu personagem.
         </p>
         {isEditMode && (
-          <Button onClick={onOpenAddDialog} size="lg">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button type="button" onClick={onOpenAddDialog} className="h-12">
+            <Plus className="size-4" />
             Criar primeira anotação
           </Button>
         )}
-      </CardContent>
-    </Card>
-  ) : notes.length === 0 && searchTerm ? (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-          <Search className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-medium mb-2">
-          Nenhuma anotação encontrada
-        </h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Não encontramos anotações que correspondam à sua busca por &quot;
-          {searchTerm}&quot;.
-        </p>
-        <Button variant="outline" onClick={() => onSearchTermChange("")}>
-          Limpar busca
-        </Button>
-      </CardContent>
-    </Card>
-  ) : (
-    <div className="space-y-4">
-      {/* Barra de busca e contador */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar anotações..."
-            value={searchTerm}
-            onChange={(e) => onSearchTermChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
-            {notes.length} de {allNotes.length}{" "}
-            {allNotes.length === 1 ? "anotação" : "anotações"}
-          </Badge>
-        </div>
-      </div>
+      </section>
+    );
+  }
 
-      {/* Grid de anotações */}
-      <div className="grid gap-4">
-        {notes.map((note) => {
-          const noteIndex = allNotes.findIndex((n) => n.id === note.id);
-          const canMoveUp = noteIndex > 0;
-          const canMoveDown = noteIndex < allNotes.length - 1;
-          const showReorderButtons = isEditMode && searchTerm === ""; // Só mostra quando não há filtro
+  const noMatch = !isReordering && searchTerm !== "" && notes.length === 0;
+  const visibleNotes = isReordering ? allNotes : notes;
 
-          return (
-            <NoteCard
-              key={note.id}
-              note={note}
-              isEditMode={isEditMode}
-              isSaving={isSaving}
-              canMoveUp={canMoveUp}
-              canMoveDown={canMoveDown}
-              showReorderButtons={showReorderButtons}
-              onMoveUp={onMoveUp}
-              onMoveDown={onMoveDown}
-              onEdit={onEdit}
-              onDelete={onDelete}
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex max-w-[720px] flex-col gap-2.5">
+        {isReordering ? (
+          <p className="text-sm text-muted-foreground">
+            Use as setas para mudar a ordem. Toque em Concluir quando terminar.
+          </p>
+        ) : (
+          <label className="flex h-[46px] items-center gap-2.5 rounded-md border border-input bg-card px-3">
+            <Search
+              aria-hidden="true"
+              className="size-[18px] shrink-0 text-muted-foreground"
             />
-          );
-        })}
+            <input
+              type="search"
+              aria-label="Buscar anotações"
+              placeholder="Buscar em títulos e textos"
+              value={searchTerm}
+              onChange={(e) => onSearchTermChange(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-base outline-none"
+            />
+          </label>
+        )}
       </div>
+
+      {noMatch ? (
+        <div className="flex max-w-[720px] flex-col items-center gap-3 py-8 text-center text-muted-foreground">
+          <p>Nenhuma anotação com “{searchTerm}”.</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11"
+            onClick={() => onSearchTermChange("")}
+          >
+            Limpar busca
+          </Button>
+        </div>
+      ) : (
+        <div
+          className={
+            isReordering
+              ? "flex max-w-[720px] flex-col"
+              : "columns-[340px] gap-3"
+          }
+        >
+          {visibleNotes.map((note) => {
+            const noteIndex = allNotes.findIndex((n) => n.id === note.id);
+            return (
+              <NoteCard
+                key={note.id}
+                note={note}
+                isOpen={openNoteId === note.id}
+                isReordering={isReordering}
+                canEdit={isEditMode}
+                isSaving={isSaving}
+                canMoveUp={noteIndex > 0}
+                canMoveDown={noteIndex < allNotes.length - 1}
+                onToggle={onToggleNote}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
