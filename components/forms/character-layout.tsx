@@ -1,5 +1,5 @@
 // components/forms/character-layout.tsx
-import { useState, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   BasicInfoTab,
@@ -11,6 +11,9 @@ import {
 import { QuickActionsBar } from '@/components/character/quick-actions-bar'
 import { SkillsModal } from '@/components/character/skills-modal'
 import { AttributesModal } from '@/components/character/attributes-modal'
+import { QuickSheetContext, type QuickSheetApi, type QuickSheetKind } from '@/components/character/quick-sheets/quick-sheet-context'
+import { VitalitySheet } from '@/components/character/quick-sheets/vitality-sheet'
+import { useUpdateCharacter } from '@/lib/api/queries'
 
 // ============================================
 // TIPOS
@@ -29,6 +32,10 @@ export function CharacterLayout({ character, characterId, isEditMode, onToggleEd
   const tabsRef = useRef<HTMLDivElement>(null)
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
   const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false)
+  const [openSheet, setOpenSheet] = useState<QuickSheetKind | null>(null)
+  // Única instância de useUpdateCharacter para as sheets de jogo
+  const updateCharacterMutation = useUpdateCharacter()
+  const quickSheetApi = useMemo<QuickSheetApi>(() => ({ openSheet: setOpenSheet }), [])
 
   // Função para navegar entre tabs e seções
   const handleNavigate = (tab: string, section?: string) => {
@@ -81,6 +88,7 @@ export function CharacterLayout({ character, characterId, isEditMode, onToggleEd
 
   return (
     <div className="w-full relative">
+      <QuickSheetContext.Provider value={quickSheetApi}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" ref={tabsRef}>
         {/* Navegação de Tabs Fixa */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
@@ -153,8 +161,19 @@ export function CharacterLayout({ character, characterId, isEditMode, onToggleEd
           onOpenAttributesModal={handleOpenAttributesModal}
           isEditMode={isEditMode}
           onToggleEditMode={onToggleEditMode}
+          onOpenSheet={setOpenSheet}
         />
       </Tabs>
+      </QuickSheetContext.Provider>
+
+      <VitalitySheet
+        open={openSheet === 'vit'}
+        onOpenChange={(open) => setOpenSheet(open ? 'vit' : null)}
+        character={character}
+        characterId={characterId}
+        isEditMode={isEditMode}
+        updateCharacterMutation={updateCharacterMutation}
+      />
 
       {/* Modais - fora das tabs */}
       <SkillsModal

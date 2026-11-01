@@ -23,6 +23,7 @@ import {
 } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
 import type { CharacterData } from '@/components/character/types'
+import type { QuickSheetKind } from '@/components/character/quick-sheets/quick-sheet-context'
 
 interface QuickActionsBarProps {
   character: CharacterData
@@ -31,9 +32,10 @@ interface QuickActionsBarProps {
   onOpenAttributesModal?: () => void
   isEditMode?: boolean
   onToggleEditMode?: () => void
+  onOpenSheet: (kind: QuickSheetKind) => void
 }
 
-export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOpenAttributesModal, isEditMode = true, onToggleEditMode }: QuickActionsBarProps) {
+export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOpenAttributesModal, isEditMode = true, onToggleEditMode, onOpenSheet }: QuickActionsBarProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   const {
@@ -74,7 +76,7 @@ export function QuickActionsBar({ character, onNavigate, onOpenSkillsModal, onOp
       value: `${totalCurrentVitality}/${totalMaxVitality}`,
       color: totalCurrentVitality <= totalMaxVitality * 0.3 ? 'destructive' :
         totalCurrentVitality <= totalMaxVitality * 0.6 ? 'warning' : 'default',
-      onClick: () => onNavigate('basicos', 'vitality')
+      onClick: () => onOpenSheet('vit')
     },
     {
       id: 'berkana',
