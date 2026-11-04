@@ -141,10 +141,16 @@ async function renderRow(options: {
   isOpen: boolean
   isEditMode: boolean
   isStepDisabled?: boolean
+  attributes?: Record<string, unknown>
 }): Promise<string> {
   const { SkillRow } = await import('./skills-kit/skill-row')
   const { buildSkillRow } = await import('./skills-kit/skills-kit-model')
-  const row = buildSkillRow(fixtureA.skills, 'percepção', 7)
+  const row = buildSkillRow(
+    fixtureA.skills,
+    'percepção',
+    7,
+    options.attributes as Parameters<typeof buildSkillRow>[3],
+  )
   return renderToString(
     createElement(SkillRow, {
       row,
@@ -195,5 +201,84 @@ describe('SkillRow', () => {
     const html = await renderRow({ isOpen: true, isEditMode: true, isStepDisabled: true })
     expect(isButtonDisabled(html, 'Aumentar distribuídos de Percepção')).toBe(true)
     expect(isButtonDisabled(html, 'Aumentar bônus de Percepção')).toBe(true)
+  })
+})
+
+// ============================================
+// Teto de distribuídos (261104-fp8)
+// ============================================
+
+// Valor de Distribuídos em vermelho (campo editável ou span de leitura)
+const OVER_CAP_VALUE = /text-destructive[^<]*>(?:<span[^>]*>)?17</
+const OVER_CAP_DETAIL = /class="[^"]*text-destructive[^"]*">17 \+ 0</
+
+describe('teto de distribuídos na linha', () => {
+  it('mostra a legenda com o teto e a sigla, com e sem atributos', async () => {
+    const withAttrs = await renderRow({
+      isOpen: true,
+      isEditMode: true,
+      attributes: { inteligencia: { race: 20 } },
+    })
+    expect(withAttrs).toContain('máx 21 · INT')
+    expect(withAttrs).toContain('Base 1 · Nível +1')
+    const without = await renderRow({ isOpen: true, isEditMode: true })
+    expect(without).toContain('máx 1 · INT')
+  })
+
+  it('abaixo do teto: + habilitado e valor sem vermelho', async () => {
+    const html = await renderRow({
+      isOpen: true,
+      isEditMode: true,
+      attributes: { inteligencia: { race: 20 } },
+    })
+    expect(isButtonDisabled(html, 'Aumentar distribuídos de Percepção')).toBe(false)
+    expect(OVER_CAP_VALUE.test(html)).toBe(false)
+  })
+
+  it('no teto exato: + desabilitado e sem vermelho', async () => {
+    const html = await renderRow({
+      isOpen: true,
+      isEditMode: true,
+      attributes: { inteligencia: { race: 16 } },
+    })
+    expect(html).toContain('máx 17 · INT')
+    expect(isButtonDisabled(html, 'Aumentar distribuídos de Percepção')).toBe(true)
+    expect(OVER_CAP_VALUE.test(html)).toBe(false)
+  })
+
+  it('acima do teto: + travado, − e bônus ativos, valor e detalhe em vermelho', async () => {
+    const html = await renderRow({
+      isOpen: true,
+      isEditMode: true,
+      attributes: { inteligencia: { race: 10 } },
+    })
+    expect(html).toContain('máx 11 · INT')
+    expect(isButtonDisabled(html, 'Aumentar distribuídos de Percepção')).toBe(true)
+    expect(isButtonDisabled(html, 'Diminuir distribuídos de Percepção')).toBe(false)
+    expect(isButtonDisabled(html, 'Aumentar bônus de Percepção')).toBe(false)
+    expect(OVER_CAP_VALUE.test(html)).toBe(true)
+    expect(OVER_CAP_DETAIL.test(html)).toBe(true)
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('acima do teto e bloqueado: sem botões e valor de leitura em vermelho', async () => {
+    const html = await renderRow({
+      isOpen: true,
+      isEditMode: false,
+      attributes: { inteligencia: { race: 10 } },
+    })
+    expect(html).not.toContain('Aumentar')
+    expect(html).not.toContain('Diminuir')
+    expect(html).toContain('máx 11 · INT')
+    expect(OVER_CAP_VALUE.test(html)).toBe(true)
+  })
+})
+
+describe('SkillsKitTab: teto vem de character.attributes', () => {
+  it('sem attributes o detalhe de Percepção fica vermelho; com INT 20 não', async () => {
+    const over = await render(fixtureA, true)
+    expect(OVER_CAP_DETAIL.test(over)).toBe(true)
+    const ok = await render({ ...fixtureA, attributes: { inteligencia: { race: 20 } } }, true)
+    expect(OVER_CAP_DETAIL.test(ok)).toBe(false)
   })
 })

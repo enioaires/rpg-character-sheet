@@ -27,6 +27,10 @@ interface SkillStepperProps {
   disabled: boolean
   onStep: (delta: number) => Promise<void>
   min?: number
+  // Teto de distribuídos: trava o + e limita o valor digitado
+  max?: number
+  // Valor gravado acima do teto: mostrado em vermelho, sem alterar o dado
+  isOverCap?: boolean
 }
 
 export function SkillStepper({
@@ -40,6 +44,8 @@ export function SkillStepper({
   disabled,
   onStep,
   min,
+  max,
+  isOverCap,
 }: SkillStepperProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [isSaving, setIsSaving] = useState(false)
@@ -106,8 +112,12 @@ export function SkillStepper({
           field={field}
           value={value}
           min={min}
+          max={max}
           isEditMode={isEditMode}
-          displayClassName="justify-center text-center text-[19px] font-semibold"
+          displayClassName={cn(
+            'justify-center text-center text-[19px] font-semibold',
+            isOverCap && 'text-destructive',
+          )}
         />
         {isEditMode && (
           <Button
@@ -116,7 +126,7 @@ export function SkillStepper({
             size="icon"
             className="size-11"
             aria-label={`Aumentar ${lowerLabel} de ${skillLabel}`}
-            disabled={disabled || isSaving}
+            disabled={disabled || isSaving || (max !== undefined && value >= max)}
             onClick={() => handleStep(1)}
           >
             <Plus aria-hidden="true" />

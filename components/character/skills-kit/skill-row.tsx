@@ -45,7 +45,12 @@ export function SkillRow({
         )}
       >
         <span className="truncate text-[15px]">{row.label}</span>
-        <span className="font-numeric text-[13px] tabular-nums text-muted-foreground">
+        <span
+          className={cn(
+            'font-numeric text-[13px] tabular-nums',
+            row.isOverCap ? 'text-destructive' : 'text-muted-foreground',
+          )}
+        >
           {row.detail}
         </span>
         <span className="font-numeric text-right text-[21px] font-semibold tabular-nums">
@@ -62,6 +67,8 @@ export function SkillRow({
             field={`${row.key}.distributed`}
             value={row.distributed}
             min={0}
+            max={row.max}
+            isOverCap={row.isOverCap}
             isEditMode={isEditMode}
             disabled={isStepDisabled}
             onStep={(delta) => onStep('distributed', delta)}
@@ -78,7 +85,7 @@ export function SkillRow({
             onStep={(delta) => onStep('bonus', delta)}
           />
           <span className="col-span-2 text-xs text-muted-foreground">
-            {`Base 1 · Nível +${levelBonus}`}
+            {`Base 1 · Nível +${levelBonus} · máx ${row.max} · ${row.attributeAbbr}`}
           </span>
         </div>
       )}
