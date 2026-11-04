@@ -153,6 +153,9 @@ export const STANDARD_LANGUAGES = [
   'sigilico'
 ] as const
 
+// Vitalidade ganha por nível quando vitality.perLevel não está gravado (linhas antigas)
+export const DEFAULT_VITALITY_PER_LEVEL = 700
+
 // Nomes das vitalidades
 export const VITALITY_LEVELS = [
   'notavel',

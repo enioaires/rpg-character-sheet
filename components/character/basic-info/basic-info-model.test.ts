@@ -2,15 +2,8 @@
 // O modelo só compõe funções de lib/calculations; aqui se fixam os números exibidos.
 
 import { describe, expect, it } from 'bun:test'
-import {
-  calculateAttributeTotal,
-  calculateVitalityLevels,
-  calculateVitalityTotal,
-  resolveCurrentVitalityLevels,
-  toAttributeValue,
-  toVitalityBase,
-} from '@/lib/calculations'
-import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES, VITALITY_LEVELS } from '@/lib/constants/character'
+import { calculateAttributeTotal, toAttributeValue } from '@/lib/calculations'
+import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES } from '@/lib/constants/character'
 import {
   buildAttributeRows,
   buildBerkanaView,
@@ -52,57 +45,41 @@ describe('buildVitalityView', () => {
     currentVitality: { notavel: 0, ferido: 1000 },
   }
 
-  it('totais, estágio e posição vêm dos helpers de lib/calculations', () => {
+  it('máximo = raça + classe + por nível × nível; chaves antigas ignoradas dão vida cheia', () => {
     const view = buildVitalityView(input)
-    const maxLevels = calculateVitalityLevels(toVitalityBase(input.vitality), 7)
-    const current = resolveCurrentVitalityLevels(input.currentVitality, maxLevels)
 
-    expect(view.maxTotal).toBe(19200)
-    expect(view.currentTotal).toBe(13160)
-    expect(view.maxTotal).toBe(calculateVitalityTotal(maxLevels))
-    expect(view.currentTotal).toBe(calculateVitalityTotal(current))
-    expect(view.stage).toBe('ferido')
-    expect(view.stagePosition).toBe(2)
+    expect(view.max).toBe(5350)
+    expect(view.current).toBe(5350)
+    expect(view.percent).toBe(100)
+    expect(view.isConfigured).toBe(true)
+    expect(view.base).toEqual({ race: 200, class: 250, perLevel: 700 })
   })
 
-  it('seis linhas na ordem de VITALITY_LEVELS, com a atual marcada', () => {
-    const view = buildVitalityView(input)
-    const maxLevels = calculateVitalityLevels(toVitalityBase(input.vitality), 7)
-    const current = resolveCurrentVitalityLevels(input.currentVitality, maxLevels)
+  it('atual gravado entra no percentual', () => {
+    const view = buildVitalityView({ ...input, currentVitality: { ...input.currentVitality, current: 1070 } })
 
-    expect(view.rows.map((row) => row.key)).toEqual([...VITALITY_LEVELS])
-    for (const row of view.rows) {
-      expect(row.current).toBe(current[row.key])
-    }
-
-    const ferido = view.rows[1]
-    expect(ferido.current).toBe(1000)
-    expect(ferido.max).toBe(3440)
-    expect(ferido.isCurrent).toBe(true)
-
-    const notavel = view.rows[0]
-    expect(notavel.percent).toBe(0)
-    expect(notavel.isCurrent).toBe(false)
-
-    const grave = view.rows[2]
-    expect(grave.current).toBe(3280)
-    expect(grave.max).toBe(3280)
-    expect(grave.percent).toBe(100)
+    expect(view.current).toBe(1070)
+    expect(view.percent).toBe(20)
   })
 
-  it('vitalidade não configurada: sem estágio, sem posição, tudo 0%', () => {
+  it('por nível gravado substitui o padrão', () => {
+    const view = buildVitalityView({ ...input, vitality: { race: 200, class: 250, perLevel: 0 } })
+
+    expect(view.max).toBe(450)
+    expect(view.base.perLevel).toBe(0)
+  })
+
+  it('vitalidade não configurada: máximo 0, não configurada, 0%', () => {
     const view = buildVitalityView({ level: 0, vitality: { race: 0, class: 0 }, currentVitality: {} })
-    expect(view.stage).toBeNull()
-    expect(view.stagePosition).toBeNull()
-    for (const row of view.rows) {
-      expect(row.percent).toBe(0)
-      expect(row.isCurrent).toBe(false)
-    }
+
+    expect(view.max).toBe(0)
+    expect(view.isConfigured).toBe(false)
+    expect(view.percent).toBe(0)
   })
 
   it('entradas todas indefinidas não lançam', () => {
     expect(() => buildVitalityView({ level: undefined, vitality: undefined, currentVitality: undefined })).not.toThrow()
-    expect(buildVitalityView({}).stage).toBeNull()
+    expect(buildVitalityView({}).isConfigured).toBe(false)
   })
 })
 

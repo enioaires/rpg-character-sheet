@@ -51,7 +51,7 @@ const fixtureA = {
   level: 7,
   currentXP: 57,
   vitality: { race: 200, class: 250 },
-  currentVitality: { notavel: 0, ferido: 1000 },
+  currentVitality: { notavel: 0, ferido: 1000, current: 1070 },
   maxBerkana: 170,
   currentBerkana: 85,
   berkanaBonus: 15,
@@ -80,17 +80,22 @@ beforeEach(() => {
 })
 
 describe('BasicInfoTab: Vitalidade e Berkana', () => {
-  it('Vitalidade mostra totais, estágio, posição, linha atual e botões', async () => {
+  it('Vitalidade mostra total único, uma barra, campos editáveis e botões', async () => {
     const html = await render(fixtureA, true)
 
-    expect(html).toContain('13.160')
-    expect(html).toContain('19.200')
-    expect(html).toContain('2/6')
-    expect(html).toContain('text-vitality-ferido')
-    expect(html).toContain('atual')
+    expect(html).toContain('1.070')
+    expect(html).toContain('5.350')
+    expect(html).toContain('width:20%')
+    expect(html).toContain('Atual')
+    expect(html).toContain('Base da raça')
+    expect(html).toContain('Base da classe')
+    expect(html).toContain('Por nível')
     expect(html).toContain('Dano')
     expect(html).toContain('Cura')
-    expect(html).toContain('O dano desce do Notável até o Coma.')
+    expect(html).not.toContain('Ferido')
+    expect(html).not.toContain('Notável')
+    expect(html).not.toContain('O dano desce')
+    expect(html).not.toMatch(/\d\/6/)
   })
 
   it('Berkana mostra estado, botões e a barra em 50%', async () => {
@@ -119,10 +124,10 @@ describe('BasicInfoTab: Vitalidade e Berkana', () => {
     expect(openSheet).toHaveBeenCalledTimes(0)
   })
 
-  it('vitalidade não configurada mostra o rótulo neutro e nenhum Coma', async () => {
+  it('vitalidade não configurada mostra o rótulo neutro e a barra vazia', async () => {
     const html = await render({ ...fixtureA, level: 0, vitality: { race: 0, class: 0 }, currentVitality: {} }, true)
     expect(html).toContain('Sem vitalidade definida')
-    expect(html).not.toContain('text-vitality-coma')
+    expect(html).toContain('width:0%')
   })
 })
 
@@ -217,7 +222,7 @@ describe('BasicInfoTab: Armas, Armadura e Linguagens', () => {
     for (const text of ['role="button"', 'Outra', 'Máximo de 3 armas.', 'Nome da Arma 2', 'aria-pressed']) {
       expect(html).not.toContain(text)
     }
-    for (const text of ['Dano', 'Cura', 'Gastar', 'Recuperar', 'Espada Longa', 'Adaga', 'Malashin', '16', '13.160']) {
+    for (const text of ['Dano', 'Cura', 'Gastar', 'Recuperar', 'Espada Longa', 'Adaga', 'Malashin', '16', '1.070']) {
       expect(html).toContain(text)
     }
   })

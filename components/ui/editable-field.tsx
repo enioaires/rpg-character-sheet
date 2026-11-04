@@ -40,8 +40,9 @@ type SectionData = Record<string, Record<string, Record<string, unknown>>>
 /**
  * Constrói o objeto de update baseado na seção e campo que está sendo editado
  * Preserva valores existentes para campos aninhados
+ * Exportado para teste: campo simples mescla a seção existente (chaves antigas preservadas)
  */
-function buildUpdateData(
+export function buildUpdateData(
   section: string,
   field: string,
   value: FieldValue,

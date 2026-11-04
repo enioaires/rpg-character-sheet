@@ -4,20 +4,18 @@
 
 import {
   calculateAttributeTotal,
-  calculateVitalityLevels,
-  calculateVitalityTotal,
+  calculateMaxVitality,
   canLevelUp,
   getAttributeLevelBonus,
   getBerkanaState,
-  getCurrentVitalityStage,
   getXPRequiredForNextLevel,
   resolveBerkanaPool,
-  resolveCurrentVitalityLevels,
+  resolveCurrentVitality,
   toAttributeValue,
   toVitalityBase,
 } from '@/lib/calculations'
-import type { AttributeValue, CurrentVitalityInput, VitalityBase, VitalityStageKey } from '@/lib/calculations'
-import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES, VITALITY_LEVELS } from '@/lib/constants/character'
+import type { AttributeValue, StoredCurrentVitality, VitalityBase } from '@/lib/calculations'
+import { ATTRIBUTES, ATTRIBUTE_LABELS, STANDARD_LANGUAGES } from '@/lib/constants/character'
 
 // ============================================
 // BARRAS
@@ -36,41 +34,27 @@ export function getFillPercent(current: number, max: number): number {
 // VITALIDADE
 // ============================================
 
-export interface VitalityRowView {
-  key: VitalityStageKey
-  current: number
-  max: number
-  percent: number
-  isCurrent: boolean
-}
-
 interface VitalityViewInput {
   level?: number | null
   vitality?: Partial<VitalityBase> | null
-  currentVitality?: CurrentVitalityInput
+  currentVitality?: StoredCurrentVitality
 }
 
+/**
+ * Total único de vitalidade: máximo = raça + classe + por nível × nível.
+ * Atual ausente ou null = vida cheia; as chaves antigas de estágio não entram em nenhum número.
+ */
 export function buildVitalityView({ level, vitality, currentVitality }: VitalityViewInput) {
-  const maxLevels = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
-  const current = resolveCurrentVitalityLevels(currentVitality, maxLevels)
-  const stage = getCurrentVitalityStage(current, maxLevels)
-
-  const rows: VitalityRowView[] = VITALITY_LEVELS.map((key) => ({
-    key,
-    current: current[key],
-    max: maxLevels[key],
-    percent: getFillPercent(current[key], maxLevels[key]),
-    isCurrent: key === stage,
-  }))
+  const base = toVitalityBase(vitality)
+  const max = calculateMaxVitality(base, level || 0)
+  const current = resolveCurrentVitality(currentVitality, max)
 
   return {
-    maxLevels,
+    base,
+    max,
     current,
-    currentTotal: calculateVitalityTotal(current),
-    maxTotal: calculateVitalityTotal(maxLevels),
-    stage,
-    stagePosition: stage ? VITALITY_LEVELS.indexOf(stage) + 1 : null,
-    rows,
+    percent: getFillPercent(current, max),
+    isConfigured: max > 0,
   }
 }
 

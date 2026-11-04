@@ -4,6 +4,10 @@
 // (ver o plano da tarefa rápida 261101-iig). Nunca edite um valor para
 // acompanhar uma fórmula alterada: um teste falhando significa que o CALC-01
 // mudou um número derivado.
+//
+// Exceção autorizada: a regra de vitalidade mudou por decisão do dono na tarefa
+// 261103-uyi (total único: raça + classe + por nível × nível). Os testes de
+// vitalidade fixam a regra nova; atributos, perícias, Berkana e XP seguem intocados.
 
 import { describe, expect, it } from 'bun:test'
 import * as calculations from '@/lib/calculations'
@@ -15,6 +19,8 @@ import {
   calculateAttributeTotal,
   applyVitalityDamage,
   applyVitalityHeal,
+  calculateMaxVitality,
+  resolveCurrentVitality,
   calculateAvailableSkillPoints,
   calculateLevelUpSkillPoints,
   calculateMaxBerkana,
@@ -190,7 +196,7 @@ describe('calculateAllAttributes', () => {
 // ============================================
 
 describe('calculateVitalityLevels', () => {
-  const vitality = { race: 200, class: 250 }
+  const vitality = { race: 200, class: 250, perLevel: 700 }
 
   it('nível 0 calcula os seis estágios', () => {
     expect(calculateVitalityLevels(vitality, 0)).toEqual({
@@ -248,7 +254,7 @@ describe('calculateVitalityLevels', () => {
   })
 
   it('não limita estágios negativos (valor fixado como está)', () => {
-    expect(calculateVitalityLevels({ race: 30, class: 20 }, 0)).toEqual({
+    expect(calculateVitalityLevels({ race: 30, class: 20, perLevel: 700 }, 0)).toEqual({
       notavel: 50,
       ferido: 30,
       gravementeFerido: 10,
@@ -533,7 +539,7 @@ describe('processLevelUp', () => {
     const result = processLevelUp({
       level: 0,
       currentXP: 15,
-      vitality: { race: 200, class: 250 },
+      vitality: { race: 200, class: 250, perLevel: 700 },
       maxBerkana: 999,
       berkanaBonus: 5
     })
@@ -541,14 +547,7 @@ describe('processLevelUp', () => {
       level: 1,
       currentXP: 5,
       maxBerkana: 115,
-      vitalityLevels: {
-        notavel: 900,
-        ferido: 860,
-        gravementeFerido: 820,
-        condenado: 780,
-        incapacitado: 740,
-        coma: 700
-      },
+      maxVitality: 1150,
       xpUsedForLevelUp: 10,
       newSkillPointsAvailable: 10
     })
@@ -559,7 +558,7 @@ describe('processLevelUp', () => {
       processLevelUp({
         level: 0,
         currentXP: 9,
-        vitality: { race: 200, class: 250 },
+        vitality: { race: 200, class: 250, perLevel: 700 },
         maxBerkana: 100,
         berkanaBonus: 0
       })
@@ -571,7 +570,7 @@ describe('processLevelUp', () => {
       processLevelUp({
         level: 99,
         currentXP: 100000,
-        vitality: { race: 200, class: 250 },
+        vitality: { race: 200, class: 250, perLevel: 700 },
         maxBerkana: 100,
         berkanaBonus: 0
       })
@@ -640,27 +639,69 @@ describe('toSkillValue', () => {
 // não de uma função do commit 832fa9b.
 describe('toVitalityBase', () => {
   it('mantém valores numéricos', () => {
-    expect(toVitalityBase({ race: 20, class: 30 })).toEqual({ race: 20, class: 30 })
+    expect(toVitalityBase({ race: 20, class: 30, perLevel: 650 })).toEqual({ race: 20, class: 30, perLevel: 650 })
   })
 
-  it('undefined, null e objeto vazio viram zeros', () => {
-    const zeros = { race: 0, class: 0 }
-    expect(toVitalityBase(undefined)).toEqual(zeros)
-    expect(toVitalityBase(null)).toEqual(zeros)
-    expect(toVitalityBase({})).toEqual(zeros)
+  it('undefined, null e objeto vazio viram zeros com perLevel 700', () => {
+    const defaults = { race: 0, class: 0, perLevel: 700 }
+    expect(toVitalityBase(undefined)).toEqual(defaults)
+    expect(toVitalityBase(null)).toEqual(defaults)
+    expect(toVitalityBase({})).toEqual(defaults)
   })
 
-  it('campo ausente vira 0', () => {
-    expect(toVitalityBase({ race: 60 })).toEqual({ race: 60, class: 0 })
+  it('campo ausente vira 0 (perLevel ausente vira 700)', () => {
+    expect(toVitalityBase({ race: 60 })).toEqual({ race: 60, class: 0, perLevel: 700 })
   })
 
-  it('campo nulo vira 0', () => {
-    const raw = { race: null, class: 45 } as unknown as Partial<VitalityBase>
-    expect(toVitalityBase(raw)).toEqual({ race: 0, class: 45 })
+  it('campo nulo vira 0 (perLevel nulo vira 700)', () => {
+    const raw = { race: null, class: 45, perLevel: null } as unknown as Partial<VitalityBase>
+    expect(toVitalityBase(raw)).toEqual({ race: 0, class: 45, perLevel: 700 })
   })
 
-  it('campo NaN vira 0', () => {
-    expect(toVitalityBase({ race: NaN, class: 10 })).toEqual({ race: 0, class: 10 })
+  it('campo NaN vira 0 (perLevel NaN vira 700)', () => {
+    expect(toVitalityBase({ race: NaN, class: 10, perLevel: NaN })).toEqual({ race: 0, class: 10, perLevel: 700 })
+  })
+
+  it('perLevel 0 gravado continua 0', () => {
+    expect(toVitalityBase({ perLevel: 0 })).toEqual({ race: 0, class: 0, perLevel: 0 })
+  })
+})
+
+describe('calculateMaxVitality', () => {
+  it('raça + classe + por nível × nível', () => {
+    const base = { race: 3500, class: 3500, perLevel: 700 }
+    expect(calculateMaxVitality(base, 0)).toBe(7000)
+    expect(calculateMaxVitality(base, 1)).toBe(7700)
+    expect(calculateMaxVitality(base, 5)).toBe(10500)
+    expect(calculateMaxVitality(base, 10)).toBe(14000)
+    expect(calculateMaxVitality({ race: 200, class: 250, perLevel: 700 }, 7)).toBe(5350)
+  })
+
+  it('por nível 0 dá só as bases', () => {
+    expect(calculateMaxVitality({ race: 200, class: 250, perLevel: 0 }, 9)).toBe(450)
+  })
+})
+
+describe('resolveCurrentVitality', () => {
+  it('ausente, nulo, vazio ou só chaves antigas devolve o máximo', () => {
+    expect(resolveCurrentVitality(undefined, 7000)).toBe(7000)
+    expect(resolveCurrentVitality(null, 7000)).toBe(7000)
+    expect(resolveCurrentVitality({}, 7000)).toBe(7000)
+    expect(resolveCurrentVitality({ current: null }, 7000)).toBe(7000)
+    expect(
+      resolveCurrentVitality({ notavel: 0, ferido: 1, gravementeFerido: 2, condenado: 3, incapacitado: 4, coma: 5 }, 7000)
+    ).toBe(7000)
+  })
+
+  it('valor gravado é mantido, inclusive 0 e acima do máximo', () => {
+    expect(resolveCurrentVitality({ current: 1234 }, 7000)).toBe(1234)
+    expect(resolveCurrentVitality({ current: 0 }, 7000)).toBe(0)
+    expect(resolveCurrentVitality({ current: 9000 }, 7000)).toBe(9000)
+  })
+
+  it('não numérico ou NaN devolve o máximo', () => {
+    expect(resolveCurrentVitality({ current: '5' as unknown as number }, 7000)).toBe(7000)
+    expect(resolveCurrentVitality({ current: NaN }, 7000)).toBe(7000)
   })
 })
 
@@ -720,10 +761,10 @@ function legacyTotal(levels: Record<string, number>): number {
 
 const VIT_LEVELS_GRID = [0, 1, 4, 5, 7, 10]
 const VIT_BASES_GRID: VitalityBase[] = [
-  { race: 0, class: 0 },
-  { race: 30, class: 30 },
-  { race: 200, class: 250 },
-  { race: 999, class: 1 }
+  { race: 0, class: 0, perLevel: 700 },
+  { race: 30, class: 30, perLevel: 700 },
+  { race: 200, class: 250, perLevel: 700 },
+  { race: 999, class: 1, perLevel: 700 }
 ]
 const VIT_DAMAGE_GRID = [1, 7, 100, 3600, 1000000]
 
@@ -783,7 +824,7 @@ describe('applyVitalityDamage', () => {
   })
 
   it('drena Notável antes de Ferido e transborda o resto para o próximo nível', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const result = applyVitalityDamage(undefined, maxima, 4000)
     expect(result.notavel).toBe(0)
     expect(result.ferido).toBe(3040)
@@ -791,7 +832,7 @@ describe('applyVitalityDamage', () => {
   })
 
   it('nunca grava valor negativo e mantém chaves desconhecidas', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const result = applyVitalityDamage({ ...maxima, extra: 'x' } as never, maxima, 1000000)
     for (const key of Object.keys(maxima) as Array<keyof VitalityLevels>) {
       expect(result[key]).toBeGreaterThanOrEqual(0)
@@ -800,7 +841,7 @@ describe('applyVitalityDamage', () => {
   })
 
   it('caso de máximo negativo (base 30/30, nível 0, dano 1000000) fica igual ao oráculo', () => {
-    const maxima = calculateVitalityLevels({ race: 30, class: 30 }, 0)
+    const maxima = calculateVitalityLevels({ race: 30, class: 30, perLevel: 700 }, 0)
     const expected = legacyApplyDamage(undefined, { ...maxima }, 1000000)
     expect(applyVitalityDamage(undefined, maxima, 1000000)).toEqual(expected as VitalityLevels)
   })
@@ -820,7 +861,7 @@ describe('resolveCurrentVitalityLevels', () => {
   })
 
   it('entrada nula ou indefinida devolve os máximos', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     expect(resolveCurrentVitalityLevels(null, maxima)).toEqual(maxima)
     expect(resolveCurrentVitalityLevels(undefined, maxima)).toEqual(maxima)
   })
@@ -838,7 +879,7 @@ describe('calculateVitalityTotal', () => {
   })
 
   it('base 200/250 nível 7 soma 19200', () => {
-    expect(calculateVitalityTotal(calculateVitalityLevels({ race: 200, class: 250 }, 7))).toBe(19200)
+    expect(calculateVitalityTotal(calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7))).toBe(19200)
   })
 
   it('trata valores não finitos como 0 (regra || 0)', () => {
@@ -848,7 +889,7 @@ describe('calculateVitalityTotal', () => {
 })
 
 describe('getCurrentVitalityStage', () => {
-  const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+  const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
   const stageOf = (stored: LegacyVitality | null | undefined) =>
     getCurrentVitalityStage(resolveCurrentVitalityLevels(stored, maxima), maxima)
 
@@ -868,7 +909,7 @@ describe('getCurrentVitalityStage', () => {
   })
 
   it('vitalidade não configurada (máximos somam <= 0) devolve null', () => {
-    const zero = calculateVitalityLevels({ race: 0, class: 0 }, 0)
+    const zero = calculateVitalityLevels({ race: 0, class: 0, perLevel: 700 }, 0)
     expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(undefined, zero), zero)).toBeNull()
     const zeros = { notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }
     expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(zeros, zero), zero)).toBeNull()
@@ -935,13 +976,13 @@ describe('applyVitalityHeal', () => {
   })
 
   it('nível acima do máximo (notavel = max+50) mantém o valor', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const result = applyVitalityHeal({ ...maxima, notavel: maxima.notavel + 50 }, maxima, 1000000)
     expect(result.notavel).toBe(maxima.notavel + 50)
   })
 
   describe('o nível mais fundo drenado enche primeiro', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const damaged = applyVitalityDamage(undefined, maxima, 8000)
 
     it('o dano de 8000 deixa notavel 0, ferido 0 e gravementeFerido 2320', () => {
@@ -970,14 +1011,14 @@ describe('applyVitalityHeal', () => {
   })
 
   it('{notavel:100, ferido:0} com o resto cheio: cura 50 vai para ferido', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const result = applyVitalityHeal({ ...maxima, notavel: 100, ferido: 0 }, maxima, 50)
     expect(result.ferido).toBe(50)
     expect(result.notavel).toBe(100)
   })
 
   it('não muta o objeto de entrada', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250 }, 7)
+    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
     const input = { ...applyVitalityDamage(undefined, maxima, 8000), extra: 'x' }
     const snapshot = structuredClone(input)
     applyVitalityHeal(input, maxima, 500)
@@ -1140,6 +1181,7 @@ const TESTED_FUNCTIONS = [
   'calculateAvailableSkillPoints',
   'calculateLevelUpSkillPoints',
   'calculateMaxBerkana',
+  'calculateMaxVitality',
   'calculateRemainingSkillPoints',
   'calculateSkillTotal',
   'calculateTotalSkillPoints',
@@ -1160,6 +1202,7 @@ const TESTED_FUNCTIONS = [
   'processLevelUp',
   'recoverBerkana',
   'resolveBerkanaPool',
+  'resolveCurrentVitality',
   'resolveCurrentVitalityLevels',
   'spendBerkana',
   'toAttributeValue',
@@ -1175,6 +1218,6 @@ describe('exports de lib/calculations', () => {
       .map(([name]) => name)
       .sort()
     expect(exported).toEqual([...TESTED_FUNCTIONS].sort())
-    expect(TESTED_FUNCTIONS.length).toBe(35)
+    expect(TESTED_FUNCTIONS.length).toBe(37)
   })
 })

@@ -1,6 +1,6 @@
 // lib/calculations/index.ts
 
-import { VITALITY_LEVELS } from '@/lib/constants/character'
+import { DEFAULT_VITALITY_PER_LEVEL, VITALITY_LEVELS } from '@/lib/constants/character'
 
 // ============================================
 // TIPOS PARA CÁLCULOS
@@ -15,6 +15,7 @@ export interface AttributeValue {
 export interface VitalityBase {
   race: number
   class: number
+  perLevel: number
 }
 
 // type (não interface): precisa ser atribuível ao índice JSON de updateCharacterSchema
@@ -104,6 +105,27 @@ export function calculateVitalityLevels(vitality: VitalityBase, level: number): 
     incapacitado: baseLevels.incapacitado * multiplier,
     coma: baseLevels.coma * multiplier
   }
+}
+
+/**
+ * Vitalidade máxima (total único)
+ * Fórmula: race + class + perLevel × nível
+ * Ex.: 3500 + 3500 + 700 × nível; nível 0 = só as bases
+ */
+export function calculateMaxVitality(vitality: VitalityBase, level: number): number {
+  return vitality.race + vitality.class + vitality.perLevel * level
+}
+
+// currentVitality como vem do banco: `current` ausente ou null = vida cheia, chaves antigas permitidas
+export type StoredCurrentVitality = { current?: number | null; [key: string]: unknown } | null | undefined
+
+/**
+ * Vitalidade atual do total único
+ * Ausente ou null = vida cheia; sem teto: um atual acima do máximo (edição manual) é mantido
+ */
+export function resolveCurrentVitality(currentVitality: StoredCurrentVitality, max: number): number {
+  const stored = currentVitality?.current
+  return typeof stored === 'number' && Number.isFinite(stored) ? stored : max
 }
 
 // ============================================
@@ -471,7 +493,7 @@ export function processLevelUp(currentData: {
   const newCurrentXP = currentXP - xpUsed
 
   // Recalcular stats derivados
-  const newVitalityLevels = calculateVitalityLevels(vitality, newLevel)
+  const newMaxVitality = calculateMaxVitality(vitality, newLevel)
   const newMaxBerkana = calculateMaxBerkana(newLevel, getBaseBerkana(), berkanaBonus)
 
   return {
@@ -479,7 +501,7 @@ export function processLevelUp(currentData: {
     currentXP: newCurrentXP,
     maxBerkana: newMaxBerkana,
     // Vitalidade atual se mantém, apenas o máximo muda
-    vitalityLevels: newVitalityLevels,
+    maxVitality: newMaxVitality,
     // Retornar info adicional
     xpUsedForLevelUp: xpUsed,
     newSkillPointsAvailable: getSkillPointsPerLevel()
@@ -515,12 +537,15 @@ export function toSkillValue(raw: Partial<SkillValue> | null | undefined): Skill
 
 /**
  * Normalizar vitalidade base vinda de JSON solto
- * Campos ausentes, nulos, NaN ou vazios viram 0 (regra `|| 0`)
+ * race e class: campos ausentes, nulos, NaN ou vazios viram 0 (regra `|| 0`)
+ * perLevel: o número gravado quando é finito (0 incluído); ausente, nulo ou não finito vira 700
  */
 export function toVitalityBase(raw: Partial<VitalityBase> | null | undefined): VitalityBase {
+  const perLevel = raw?.perLevel
   return {
     race: raw?.race || 0,
-    class: raw?.class || 0
+    class: raw?.class || 0,
+    perLevel: typeof perLevel === 'number' && Number.isFinite(perLevel) ? perLevel : DEFAULT_VITALITY_PER_LEVEL
   }
 }
 

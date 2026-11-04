@@ -1,6 +1,6 @@
 // components/character/basic-info/vitality-card.tsx
-// Card Vitalidade. Não grava nada: Dano e Cura abrem a sheet da barra inferior,
-// que é a única origem das gravações de vitalidade.
+// Card Vitalidade (total único). Dano e Cura abrem a sheet da barra inferior; os campos
+// inline gravam currentVitality.current e vitality.race/class/perLevel, mesclados por buildUpdateData.
 
 import { Heart, HeartPulse, Swords } from 'lucide-react'
 
@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/button'
 import { EditableNumberField } from '@/components/ui/editable-field'
 import { NumericDisplay } from '@/components/ui/numeric-display'
 import { SectionCard } from '@/components/ui/section-card'
-import { VITALITY_LEVELS } from '@/lib/constants/character'
 import { cn } from '@/lib/utils'
 
-import { formatGameNumber, VITALITY_STAGE_DISPLAY } from '../resource-display'
+import { formatGameNumber } from '../resource-display'
 import { useQuickSheet } from '../quick-sheets/quick-sheet-context'
 import { buildVitalityView } from './basic-info-model'
 
@@ -26,15 +25,8 @@ export function VitalityCard({ character, characterId, isEditMode }: VitalityCar
   const { level, vitality = {}, currentVitality = {} } = character
   const view = buildVitalityView({ level, vitality, currentVitality })
   const { openSheet } = useQuickSheet()
-  const stageDisplay = view.stage ? VITALITY_STAGE_DISPLAY[view.stage] : null
 
-  const badge = stageDisplay ? (
-    <span className={cn(BADGE_CLASS, stageDisplay.borderClassName, stageDisplay.textClassName)}>
-      <stageDisplay.Icon className="size-4" aria-hidden="true" />
-      {stageDisplay.label}
-      <span className="font-numeric tabular-nums opacity-80">{`${view.stagePosition}/${VITALITY_LEVELS.length}`}</span>
-    </span>
-  ) : (
+  const badge = view.isConfigured ? undefined : (
     <span className={cn(BADGE_CLASS, 'border-border text-muted-foreground')}>
       <Heart className="size-4" aria-hidden="true" />
       Sem vitalidade definida
@@ -45,22 +37,12 @@ export function VitalityCard({ character, characterId, isEditMode }: VitalityCar
     <SectionCard title="Vitalidade" data-section="vitality" action={badge}>
       <NumericDisplay
         size="hero"
-        value={formatGameNumber(view.currentTotal)}
-        max={formatGameNumber(view.maxTotal)}
+        value={formatGameNumber(view.current)}
+        max={formatGameNumber(view.max)}
       />
 
-      <div aria-hidden="true" className="flex h-2.5 gap-[3px]">
-        {view.rows.map((row) => (
-          <div
-            key={row.key}
-            className="flex flex-1 justify-end overflow-hidden rounded-[1px] bg-vitality-track"
-          >
-            <div
-              className={VITALITY_STAGE_DISPLAY[row.key].bgClassName}
-              style={{ width: `${row.percent}%` }}
-            />
-          </div>
-        ))}
+      <div aria-hidden="true" className="h-2.5 overflow-hidden rounded-[1px] bg-vitality-track">
+        <div className="h-full bg-vitality-notavel" style={{ width: `${view.percent}%` }} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -84,51 +66,33 @@ export function VitalityCard({ character, characterId, isEditMode }: VitalityCar
         </Button>
       </div>
 
-      <div className="flex flex-col">
-        {view.rows.map((row) => {
-          const display = VITALITY_STAGE_DISPLAY[row.key]
-          return (
-            <div
-              key={row.key}
-              className={cn(
-                'grid min-h-11 -mx-2 grid-cols-[22px_1fr_auto] items-center gap-2.5 rounded-(--radius) px-2',
-                row.isCurrent && 'bg-muted'
-              )}
-            >
-              <display.Icon
-                className={cn('size-[18px]', view.stage ? display.textClassName : 'text-muted-foreground')}
-                aria-hidden="true"
-              />
-              <span className="flex min-w-0 items-center gap-2 text-[15px]">
-                <span className={row.isCurrent ? 'font-bold' : 'font-normal'}>{display.label}</span>
-                {row.isCurrent && (
-                  <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">atual</span>
-                )}
-              </span>
-              <span className="flex items-baseline justify-end gap-1">
-                <EditableNumberField
-                  characterId={characterId}
-                  currentCharacterData={character}
-                  section="currentVitality"
-                  field={row.key}
-                  value={row.current}
-                  displayClassName="justify-end px-1 text-[17px] font-semibold"
-                  isEditMode={isEditMode}
-                />
-                <span className="font-numeric text-sm tabular-nums text-muted-foreground">{`/ ${row.max}`}</span>
-              </span>
-            </div>
-          )
-        })}
+      <div className="grid min-h-11 -mx-2 grid-cols-[22px_1fr_auto] items-center gap-2.5 rounded-(--radius) px-2">
+        <Heart
+          className={cn('size-[18px]', view.isConfigured ? 'text-vitality-notavel' : 'text-muted-foreground')}
+          aria-hidden="true"
+        />
+        <span className="text-[15px] font-semibold">Atual</span>
+        <span className="flex items-baseline justify-end gap-1">
+          <EditableNumberField
+            characterId={characterId}
+            currentCharacterData={character}
+            section="currentVitality"
+            field="current"
+            value={view.current}
+            displayClassName="justify-end px-1 text-[17px] font-semibold"
+            isEditMode={isEditMode}
+          />
+          <span className="font-numeric text-sm tabular-nums text-muted-foreground">{`/ ${view.max}`}</span>
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <EditableNumberField
           characterId={characterId}
           currentCharacterData={character}
           section="vitality"
           field="race"
-          value={vitality.race || 0}
+          value={view.base.race}
           label="Base da raça"
           isEditMode={isEditMode}
         />
@@ -137,13 +101,20 @@ export function VitalityCard({ character, characterId, isEditMode }: VitalityCar
           currentCharacterData={character}
           section="vitality"
           field="class"
-          value={vitality.class || 0}
+          value={view.base.class}
           label="Base da classe"
           isEditMode={isEditMode}
         />
+        <EditableNumberField
+          characterId={characterId}
+          currentCharacterData={character}
+          section="vitality"
+          field="perLevel"
+          value={view.base.perLevel}
+          label="Por nível"
+          isEditMode={isEditMode}
+        />
       </div>
-
-      <span className="text-[13px] text-muted-foreground">O dano desce do Notável até o Coma.</span>
     </SectionCard>
   )
 }
