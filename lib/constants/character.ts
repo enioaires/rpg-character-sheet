@@ -58,6 +58,69 @@ export const SKILLS = [
   'velocidade'
 ] as const
 
+export type AttributeKey = (typeof ATTRIBUTES)[number]
+export type SkillKey = (typeof SKILLS)[number]
+
+// Siglas dos atributos, mostradas na legenda das perícias
+export const ATTRIBUTE_ABBREVIATIONS: Record<AttributeKey, string> = {
+  agilidade: 'AGI',
+  carisma: 'CAR',
+  coragem: 'COR',
+  destreza: 'DES',
+  esquiva: 'ESQ',
+  força: 'FOR',
+  inteligencia: 'INT',
+  iniciativa: 'INI',
+  intimidar: 'ITM',
+  manobra: 'MAN',
+  reflexos: 'REF',
+  sabedoria: 'SAB',
+  vigor: 'VIG',
+  vontade: 'VON'
+}
+
+// Atributo que limita os pontos distribuídos de cada perícia (tabela do dono, 2026-11-04).
+// oficios usa inteligencia: o "ESP" da tabela foi confirmado como INT.
+// Record<SkillKey, ...> faz o TypeScript recusar uma perícia sem atributo.
+export const SKILL_ATTRIBUTES: Record<SkillKey, AttributeKey> = {
+  acrobacia: 'agilidade',
+  atuação: 'carisma',
+  avaliar: 'inteligencia',
+  ataqueSupresa: 'manobra',
+  blefar: 'carisma',
+  concentração: 'inteligencia',
+  controleArcano: 'sabedoria',
+  controleEmocional: 'inteligencia',
+  combateDesarmado: 'agilidade',
+  conhecimentoArcano: 'sabedoria',
+  conhecimentoPolitico: 'sabedoria',
+  conhecimentoHistorico: 'sabedoria',
+  conhecimentoReligioso: 'sabedoria',
+  conhecimentoNatureza: 'sabedoria',
+  conhecimentoMilitar: 'sabedoria',
+  cura: 'sabedoria',
+  cavalgar: 'manobra',
+  duelo: 'destreza',
+  dissuadir: 'carisma',
+  diplomacia: 'carisma',
+  discernir: 'sabedoria',
+  dissimulação: 'inteligencia',
+  empatia: 'carisma',
+  escalar: 'força',
+  equilibrio: 'agilidade',
+  furtar: 'destreza',
+  furtividade: 'agilidade',
+  nadar: 'manobra',
+  oficios: 'inteligencia',
+  percepção: 'inteligencia',
+  prontidão: 'reflexos',
+  persuadir: 'carisma',
+  sobrevivência: 'sabedoria',
+  suportar: 'vigor',
+  salvar: 'iniciativa',
+  velocidade: 'vigor'
+}
+
 // Nomes amigáveis dos atributos
 export const ATTRIBUTE_LABELS: Record<string, string> = {
   agilidade: 'Agilidade',

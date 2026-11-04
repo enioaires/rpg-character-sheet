@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from 'bun:test'
 import * as calculations from '@/lib/calculations'
+import { ATTRIBUTES, SKILLS, type SkillKey } from '@/lib/constants/character'
 import {
   calculateAllAttributes,
   calculateAllSkills,
@@ -33,6 +34,7 @@ import {
   getBaseBerkana,
   getBerkanaState,
   getDefaultSkills,
+  getSkillDistributionCap,
   getSkillLevelBonus,
   getSkillPointsPerLevel,
   getTotalXPForLevel,
@@ -829,6 +831,98 @@ describe('getBerkanaState', () => {
 })
 
 // ============================================
+// TETO DE DISTRIBUÍDOS DA PERÍCIA
+// ============================================
+
+// Tabela do dono (2026-11-04), escrita à mão: não copia SKILL_ATTRIBUTES
+const EXPECTED_SKILL_ATTRIBUTES: Record<SkillKey, string> = {
+  acrobacia: 'agilidade',
+  combateDesarmado: 'agilidade',
+  equilibrio: 'agilidade',
+  furtividade: 'agilidade',
+  atuação: 'carisma',
+  blefar: 'carisma',
+  dissuadir: 'carisma',
+  diplomacia: 'carisma',
+  empatia: 'carisma',
+  persuadir: 'carisma',
+  avaliar: 'inteligencia',
+  concentração: 'inteligencia',
+  controleEmocional: 'inteligencia',
+  dissimulação: 'inteligencia',
+  oficios: 'inteligencia',
+  percepção: 'inteligencia',
+  ataqueSupresa: 'manobra',
+  cavalgar: 'manobra',
+  nadar: 'manobra',
+  controleArcano: 'sabedoria',
+  conhecimentoArcano: 'sabedoria',
+  conhecimentoPolitico: 'sabedoria',
+  conhecimentoHistorico: 'sabedoria',
+  conhecimentoReligioso: 'sabedoria',
+  conhecimentoNatureza: 'sabedoria',
+  conhecimentoMilitar: 'sabedoria',
+  cura: 'sabedoria',
+  discernir: 'sabedoria',
+  sobrevivência: 'sabedoria',
+  duelo: 'destreza',
+  furtar: 'destreza',
+  escalar: 'força',
+  prontidão: 'reflexos',
+  suportar: 'vigor',
+  velocidade: 'vigor',
+  salvar: 'iniciativa'
+}
+
+describe('getSkillDistributionCap', () => {
+  it('usa o total do atributo relacionado (exemplo do dono: INT 20 no nível 0)', () => {
+    expect(getSkillDistributionCap('concentração', { inteligencia: { race: 12, class: 5, bonus: 3 } }, 0)).toBe(20)
+  })
+
+  it('soma o bônus de nível do atributo e bate com calculateAttributeTotal', () => {
+    const attrs = { inteligencia: { race: 12, class: 5, bonus: 3 } }
+    expect(getSkillDistributionCap('concentração', attrs, 10)).toBe(22)
+    expect(getSkillDistributionCap('concentração', attrs, 10)).toBe(
+      calculateAttributeTotal(toAttributeValue(attrs.inteligencia), 10)
+    )
+  })
+
+  it('atributos undefined, null ou vazios valem só o bônus de nível', () => {
+    for (const attrs of [undefined, null, {}]) {
+      expect(getSkillDistributionCap('percepção', attrs, 7)).toBe(1)
+      expect(getSkillDistributionCap('percepção', attrs, 0)).toBe(0)
+    }
+  })
+
+  it('total negativo vira 0', () => {
+    expect(getSkillDistributionCap('percepção', { inteligencia: { race: -5 } }, 0)).toBe(0)
+  })
+
+  it('atributo nulo ou não objeto não quebra', () => {
+    expect(getSkillDistributionCap('percepção', { inteligencia: null }, 5)).toBe(1)
+    const bad = { inteligencia: 'x' } as unknown as Record<string, null>
+    expect(getSkillDistributionCap('percepção', bad, 5)).toBe(1)
+  })
+
+  it("'escalar' lê 'força' com cedilha", () => {
+    expect(getSkillDistributionCap('escalar', { forca: { race: 9 }, força: { race: 4 } }, 0)).toBe(4)
+  })
+
+  it('mapeia cada uma das 36 perícias para o atributo da tabela do dono', () => {
+    const attrs: Record<string, { race: number }> = {}
+    ATTRIBUTES.forEach((key, index) => {
+      attrs[key] = { race: index + 1 }
+    })
+    expect(SKILLS.length).toBe(36)
+    for (const skill of SKILLS) {
+      const attribute = EXPECTED_SKILL_ATTRIBUTES[skill]
+      expect(attribute).toBeDefined()
+      expect(getSkillDistributionCap(skill, attrs, 0)).toBe(attrs[attribute].race)
+    }
+  })
+})
+
+// ============================================
 // COBERTURA DOS EXPORTS
 // ============================================
 
@@ -854,6 +948,7 @@ const TESTED_FUNCTIONS = [
   'getBaseBerkana',
   'getBerkanaState',
   'getDefaultSkills',
+  'getSkillDistributionCap',
   'getSkillLevelBonus',
   'getSkillPointsPerLevel',
   'getTotalXPForLevel',
@@ -878,6 +973,6 @@ describe('exports de lib/calculations', () => {
       .map(([name]) => name)
       .sort()
     expect(exported).toEqual([...TESTED_FUNCTIONS].sort())
-    expect(TESTED_FUNCTIONS.length).toBe(34)
+    expect(TESTED_FUNCTIONS.length).toBe(35)
   })
 })

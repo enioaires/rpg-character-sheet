@@ -1,6 +1,7 @@
 // lib/calculations/index.ts
 
-import { DEFAULT_VITALITY_PER_LEVEL } from '@/lib/constants/character'
+import { DEFAULT_VITALITY_PER_LEVEL, SKILL_ATTRIBUTES } from '@/lib/constants/character'
+import type { SkillKey } from '@/lib/constants/character'
 
 // ============================================
 // TIPOS PARA CÁLCULOS
@@ -285,6 +286,24 @@ export function calculateRemainingSkillPoints(skills: Record<string, SkillValue>
  */
 export function calculateAvailableSkillPoints(skills: Record<string, SkillValue>, level: number): number {
   return Math.max(0, calculateRemainingSkillPoints(skills, calculateLevelUpSkillPoints(level)))
+}
+
+// JSON solto da coluna attributes: campos ausentes ou nulos viram 0 em toAttributeValue
+export type StoredAttributes = Record<string, Partial<AttributeValue> | null | undefined>
+
+/**
+ * Teto de pontos DISTRIBUÍDOS de uma perícia
+ * Fórmula: max(0, total do atributo relacionado), o mesmo número do card de atributos
+ * (raça + classe + bônus + bônus de nível do atributo). O bônus da perícia, a base 1
+ * e o bônus de nível da perícia não contam. Total 0 ou negativo vira 0.
+ */
+export function getSkillDistributionCap(
+  skillKey: SkillKey,
+  attributes: StoredAttributes | null | undefined,
+  level: number
+): number {
+  const attribute = toAttributeValue(attributes?.[SKILL_ATTRIBUTES[skillKey]])
+  return Math.max(0, calculateAttributeTotal(attribute, level))
 }
 
 // ============================================
