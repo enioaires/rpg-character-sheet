@@ -6,10 +6,10 @@ current_phase: 1
 current_phase_name: Dead Code Cleanup & Calculation Source of Truth
 status: planning
 stopped_at: Roadmap created; ready to plan Phase 1
-last_updated: "2026-11-04T01:33:26.244Z"
-last_activity: 2026-11-01
+last_updated: "2026-11-04T14:27:12.338Z"
+last_activity: 2026-11-03
 last_activity_desc: Roadmap created (4 phases, 17/17 v1 requirements mapped)
-state_head: 7ef2134b2c5ed270a9a0a7402bfadbd8bfaa1b42
+state_head: dd9de6663a7598738c00b7b46f34a306aa09b2a9
 progress:
   total_phases: 4
   completed_phases: 0
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 Phase: 1 of 4 (Dead Code Cleanup & Calculation Source of Truth)
 Plan: 0 of 0 in current phase
 Status: Ready to plan
-Last activity: 2026-11-03 - Completed quick task 261103-uyi: nova regra de vitalidade (raça + classe + por nível, total único)
+Last activity: 2026-11-04 - Completed quick task 261104-fp8: teto de perícia pelo atributo relacionado
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -99,6 +99,7 @@ None yet.
 | 261101-mvy | Redesign Magias & Talentos tab (DS-06): restyle components/character/spells-talents/*.tsx and spells-talents-tab.tsx to the design magias screen: Magias/Talentos segmented toggle, search field, "Nova" button when unlocked, horizontal level filter chips, cards grouped by level, collapsible rows (name, type/sub line, Berkana cost badge, "1× ao dia" badge for talents), expanded body with damage highlight, 2-column stats, description with preserved line breaks, and Editar/Excluir when unlocked. Keep the existing create/edit/delete dialogs, the EditableScalingField level scaling and all persisted fields unchanged | 2026-11-01 | a7e1c23 | — | .planning/quick/261101-mvy-redesign-magias-talentos-tab-ds-06-restyle-components-charac |
 | 261101-mvz | Redesign Anotações tab (DS-07): restyle components/character/notes-tab.tsx and components/character/notes/*.tsx to the design anotacoes screen: header with count, Ordenar/Concluir toggle and new-note button when writable, search field, collapsed note cards with serif title and one-line preview, expand to show formatted content and Editar/Excluir, reorder mode with grip icon and up/down 44px arrow buttons (using the existing moveNote), corrupted-notes alert with "Copiar texto original" (clipboard of the raw notes string) and legacy-notes alert with "Migrar anotações" wired to the existing one-time migration. Keep lib/notes.ts guarantees, the escape-then-format renderer from lib/notes-format.ts (never render unescaped HTML) and existing tests passing. Final gate for the whole batch: npx tsc --noEmit, bun run lint, bun test and bun run build all pass | 2026-11-01 | 1d5830f | — | .planning/quick/261101-mvz-redesign-anota-es-tab-ds-07-restyle-components-character-not |
 | 261103-uyi | nova regra de vitalidade: raça + classe + por nível, total único | 2026-11-03 | 7ef2134 | — | [261103-uyi-nova-regra-de-vitalidade-raca-classe-por](./quick/261103-uyi-nova-regra-de-vitalidade-raca-classe-por/) |
+| 261104-fp8 | teto de perícia pelo atributo relacionado | 2026-11-04 | dd9de66 | — | [261104-fp8-teto-de-per-cia-pelo-atributo-relacionad](./quick/261104-fp8-teto-de-per-cia-pelo-atributo-relacionad/) |
 
 ## Deferred Items
 
