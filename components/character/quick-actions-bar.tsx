@@ -12,14 +12,12 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { BERKANA_STATE_DISPLAY, VITALITY_STAGE_DISPLAY, formatGameNumber } from '@/components/character/resource-display'
+import { BERKANA_STATE_DISPLAY, formatGameNumber } from '@/components/character/resource-display'
 import {
-  calculateVitalityLevels,
-  calculateVitalityTotal,
+  calculateMaxVitality,
   getBerkanaState,
-  getCurrentVitalityStage,
   resolveBerkanaPool,
-  resolveCurrentVitalityLevels,
+  resolveCurrentVitality,
   toVitalityBase,
 } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
@@ -43,13 +41,10 @@ export function QuickActionsBar({ character, isEditMode, onToggleEditMode, onOpe
   const [isVisible, setIsVisible] = useState(true)
 
   // Valores vêm todos dos helpers de lib/calculations (mesma fonte dos cards e das sheets)
-  const maxLevels = calculateVitalityLevels(toVitalityBase(character.vitality), character.level || 0)
-  const currentLevels = resolveCurrentVitalityLevels(character.currentVitality, maxLevels)
-  const currentTotal = calculateVitalityTotal(currentLevels)
-  const maxTotal = calculateVitalityTotal(maxLevels)
-  const stage = getCurrentVitalityStage(currentLevels, maxLevels)
-  const stageDisplay = stage ? VITALITY_STAGE_DISPLAY[stage] : null
-  const StageIcon = stageDisplay?.Icon ?? Heart
+  const max = calculateMaxVitality(toVitalityBase(character.vitality), character.level || 0)
+  const current = resolveCurrentVitality(character.currentVitality, max)
+  const isConfigured = max > 0
+  const vitalityColorClass = isConfigured ? 'text-vitality-notavel' : 'text-muted-foreground'
 
   const pool = resolveBerkanaPool(character)
   const berkanaDisplay = BERKANA_STATE_DISPLAY[getBerkanaState(pool.current, pool.max)]
@@ -71,7 +66,7 @@ export function QuickActionsBar({ character, isEditMode, onToggleEditMode, onOpe
     )
   }
 
-  const vitalityLabel = `Vitalidade ${formatGameNumber(currentTotal)} de ${formatGameNumber(maxTotal)}${stageDisplay ? `, ${stageDisplay.label}` : ''}`
+  const vitalityLabel = `Vitalidade ${formatGameNumber(current)} de ${formatGameNumber(max)}`
 
   return (
     <div className="sticky bottom-0 z-20 border-t bg-card shadow-[0_-8px_24px_-12px_oklch(0_0_0/0.5)]">
@@ -83,22 +78,13 @@ export function QuickActionsBar({ character, isEditMode, onToggleEditMode, onOpe
             aria-label={vitalityLabel}
             className={MAIN_BUTTON_CLASS}
           >
-            <StageIcon
-              className={cn('size-[22px]', stageDisplay ? stageDisplay.textClassName : 'text-muted-foreground')}
-              aria-hidden="true"
-            />
+            <Heart className={cn('size-[22px]', vitalityColorClass)} aria-hidden="true" />
             <span className="flex min-w-0 flex-col leading-[1.1]">
               <span className="font-numeric text-2xl font-semibold tabular-nums">
-                {formatGameNumber(currentTotal)}
+                {formatGameNumber(current)}
+                <span className="text-[15px] font-medium text-muted-foreground">/{formatGameNumber(max)}</span>
               </span>
-              <span
-                className={cn(
-                  'text-xs font-semibold whitespace-nowrap',
-                  stageDisplay ? stageDisplay.textClassName : 'text-muted-foreground'
-                )}
-              >
-                {stageDisplay ? stageDisplay.shortLabel : 'Vitalidade'}
-              </span>
+              <span className={cn('text-xs font-semibold whitespace-nowrap', vitalityColorClass)}>Vitalidade</span>
             </span>
           </button>
 

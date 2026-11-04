@@ -35,7 +35,7 @@ function barCharacter(overrides: Record<string, unknown>): CharacterData {
   return {
     level: 7,
     vitality: { race: 200, class: 250 },
-    currentVitality: { notavel: 0, ferido: 1000 },
+    currentVitality: { notavel: 0, ferido: 1000, current: 1070 },
     maxBerkana: 170,
     currentBerkana: 0,
     berkanaBonus: 0,
@@ -54,11 +54,13 @@ describe('QuickActionsBar', () => {
   it('mostra vitalidade atual, nível, Berkana esgotada e as ações (desbloqueada)', () => {
     const out = renderBar(barCharacter({}), true)
 
-    // ferido 1000 + os outros níveis no máximo (fallback por nível dentro do objeto)
-    expect(out).toContain(formatGameNumber(13160))
-    expect(out).toContain('13.160')
-    expect(out).toContain('Ferido')
-    expect(out).toContain('text-vitality-ferido')
+    // total único: atual 1070 de máximo 200 + 250 + 700 × 7 = 5350 (chaves antigas ignoradas)
+    expect(out).toContain(formatGameNumber(1070))
+    expect(out).toContain('1.070')
+    expect(out).toContain('/5.350')
+    expect(out).toContain('aria-label="Vitalidade 1.070 de 5.350"')
+    expect(out).not.toContain('Ferido')
+    expect(out).not.toContain('text-vitality-ferido')
 
     // DB-07: Berkana gravada em 0 aparece como 0 e Esgotada (não volta ao máximo)
     expect(out).toContain('170')
@@ -82,7 +84,7 @@ describe('QuickActionsBar', () => {
     expect(out).not.toMatch(/(?:text|bg|border)-(?:red|green|yellow|orange|blue|amber|lime|emerald|slate|gray|zinc|neutral|stone)-\d/)
   })
 
-  it('vitalidade 0/0 com currentVitality zerado mostra o rótulo neutro e nenhum nível Coma', () => {
+  it('vitalidade 0/0 com chaves antigas zeradas e sem current mostra 0 de 0 em tom neutro', () => {
     const out = renderBar(
       barCharacter({
         vitality: { race: 0, class: 0 },
@@ -91,8 +93,8 @@ describe('QuickActionsBar', () => {
       }),
       true
     )
-    expect(out).toContain('Vitalidade')
-    expect(out).not.toContain('text-vitality-coma')
+    expect(out).toContain('aria-label="Vitalidade 0 de 0"')
+    expect(out).toContain('text-muted-foreground')
   })
 })
 

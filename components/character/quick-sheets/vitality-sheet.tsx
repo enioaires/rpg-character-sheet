@@ -8,20 +8,17 @@ import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { NumericDisplay } from '@/components/ui/numeric-display'
 import { AmountEntry } from '@/components/character/quick-sheets/amount-entry'
-import { VITALITY_STAGE_DISPLAY, formatGameNumber } from '@/components/character/resource-display'
+import { formatGameNumber } from '@/components/character/resource-display'
 import { isCharacterConflictError } from '@/lib/api/character-concurrency'
 import {
   applyVitalityDamage,
   applyVitalityHeal,
-  calculateVitalityLevels,
-  calculateVitalityTotal,
-  getCurrentVitalityStage,
-  resolveCurrentVitalityLevels,
+  calculateMaxVitality,
+  resolveCurrentVitality,
+  restoreVitality,
   toVitalityBase,
-  type VitalityLevels,
+  type CurrentVitalityValue,
 } from '@/lib/calculations'
-import { VITALITY_LEVELS } from '@/lib/constants/character'
-import { cn } from '@/lib/utils'
 import type { CharacterData, UpdateCharacterMutation } from '@/components/character/types'
 
 const VITALITY_CHIPS = [100, 500, 1000, 5000] as const
@@ -49,17 +46,13 @@ export function VitalitySheet({
   const [pendingAction, setPendingAction] = useState<VitalityAction | null>(null)
 
   const { level, vitality, currentVitality } = character
-  const maxLevels = calculateVitalityLevels(toVitalityBase(vitality), level || 0)
-  const current = resolveCurrentVitalityLevels(currentVitality, maxLevels)
-  const currentTotal = calculateVitalityTotal(current)
-  const maxTotal = calculateVitalityTotal(maxLevels)
-  const stage = getCurrentVitalityStage(current, maxLevels)
-  const stageDisplay = stage ? VITALITY_STAGE_DISPLAY[stage] : null
+  const max = calculateMaxVitality(toVitalityBase(vitality), level || 0)
+  const current = resolveCurrentVitality(currentVitality, max)
 
   const amountValue = parseInt(amount, 10) || 0
   const isBusy = updateCharacterMutation.isPending || pendingAction !== null
-  const isConfigured = stage !== null
-  const hasNothingToHeal = VITALITY_LEVELS.every((key) => current[key] >= maxLevels[key])
+  const isConfigured = max > 0
+  const hasNothingToHeal = current >= max
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setAmount('')
@@ -69,7 +62,7 @@ export function VitalitySheet({
   // Todas as gravações passam pelo mesmo mutateAsync (fila serial + expectedUpdatedAt)
   const write = async (
     action: VitalityAction,
-    nextVitality: VitalityLevels,
+    nextVitality: CurrentVitalityValue,
     messages: { success: string; error: string; log: string },
     closeAfter: boolean
   ) => {
@@ -95,7 +88,7 @@ export function VitalitySheet({
   const handleDamage = () =>
     write(
       'damage',
-      applyVitalityDamage(currentVitality, maxLevels, amountValue),
+      applyVitalityDamage(currentVitality, max, amountValue),
       {
         success: `${formatGameNumber(amountValue)} de dano aplicado!`,
         error: 'Erro ao aplicar dano',
@@ -107,7 +100,7 @@ export function VitalitySheet({
   const handleHeal = () =>
     write(
       'heal',
-      applyVitalityHeal(currentVitality, maxLevels, amountValue),
+      applyVitalityHeal(currentVitality, max, amountValue),
       {
         success: `${formatGameNumber(amountValue)} de vitalidade curada!`,
         error: 'Erro ao curar vitalidade',
@@ -116,11 +109,11 @@ export function VitalitySheet({
       true
     )
 
-  // Mesmo payload do antigo "Vida Máxima"
+  // Restaura: atual = máximo
   const handleRestore = () =>
     write(
       'restore',
-      maxLevels,
+      restoreVitality(currentVitality, max),
       {
         success: 'Vitalidade restaurada ao máximo!',
         error: 'Erro ao restaurar vitalidade',
@@ -129,22 +122,11 @@ export function VitalitySheet({
       false
     )
 
-  const stageLabelAfter = (levels: VitalityLevels) => {
-    const next = getCurrentVitalityStage(resolveCurrentVitalityLevels(levels, maxLevels), maxLevels)
-    return next ? VITALITY_STAGE_DISPLAY[next].label : 'Vitalidade'
-  }
-
   const previewText = (() => {
     if (amountValue <= 0) return 'Digite o valor ou use os atalhos.'
-    const afterDamage = resolveCurrentVitalityLevels(
-      applyVitalityDamage(currentVitality, maxLevels, amountValue),
-      maxLevels
-    )
-    const afterHeal = resolveCurrentVitalityLevels(
-      applyVitalityHeal(currentVitality, maxLevels, amountValue),
-      maxLevels
-    )
-    return `Dano → ${formatGameNumber(calculateVitalityTotal(afterDamage))} (${stageLabelAfter(afterDamage)}) · Cura → ${formatGameNumber(calculateVitalityTotal(afterHeal))} (${stageLabelAfter(afterHeal)})`
+    const afterDamage = resolveCurrentVitality(applyVitalityDamage(currentVitality, max, amountValue), max)
+    const afterHeal = resolveCurrentVitality(applyVitalityHeal(currentVitality, max, amountValue), max)
+    return `Dano → ${formatGameNumber(afterDamage)} · Cura → ${formatGameNumber(afterHeal)}`
   })()
 
   const actionDisabled = !isEditMode || amountValue <= 0 || isBusy || !isConfigured
@@ -154,20 +136,10 @@ export function VitalitySheet({
       <div className="flex items-center justify-between gap-2">
         <NumericDisplay
           size="lg"
-          value={formatGameNumber(currentTotal)}
-          max={formatGameNumber(maxTotal)}
+          value={formatGameNumber(current)}
+          max={formatGameNumber(max)}
         />
-        {stageDisplay && stage ? (
-          <span
-            className={cn('inline-flex items-center gap-1.5 text-sm font-semibold', stageDisplay.textClassName)}
-          >
-            <stageDisplay.Icon className="size-4" aria-hidden="true" />
-            {stageDisplay.label}
-            <span className="font-normal text-muted-foreground">
-              {VITALITY_LEVELS.indexOf(stage) + 1}/6
-            </span>
-          </span>
-        ) : (
+        {!isConfigured && (
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
             <Heart className="size-4" aria-hidden="true" />
             Sem vitalidade definida
