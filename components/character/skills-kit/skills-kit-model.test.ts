@@ -220,6 +220,92 @@ describe('buildSkillStepUpdate', () => {
   })
 })
 
+// ============================================
+// TETO DE DISTRIBUÍDOS (261104-fp8)
+// ============================================
+
+describe('teto de distribuídos na linha', () => {
+  it('abaixo do teto: max 21, sigla INT, sem marca e total intacto', () => {
+    const row = buildSkillRow(mixedSkills, 'percepção', 7, { inteligencia: { race: 20 } })
+    expect(row.max).toBe(21)
+    expect(row.attributeAbbr).toBe('INT')
+    expect(row.isOverCap).toBe(false)
+    expect(row.distributed).toBe(17)
+    expect(row.total).toBe(legacyTotal(mixedSkills, 'percepção', 7))
+  })
+
+  it('acima do teto: marca, sem recortar o gravado', () => {
+    const row = buildSkillRow(mixedSkills, 'percepção', 7, { inteligencia: { race: 10 } })
+    expect(row.max).toBe(11)
+    expect(row.isOverCap).toBe(true)
+    expect(row.distributed).toBe(17)
+    expect(row.total).toBe(legacyTotal(mixedSkills, 'percepção', 7))
+  })
+
+  it('o bônus da perícia não conta para o teto', () => {
+    const row = buildSkillRow({ duelo: { distributed: 13, bonus: 7 } }, 'duelo', 0, {
+      destreza: { race: 13 },
+    })
+    expect(row.max).toBe(13)
+    expect(row.isOverCap).toBe(false)
+  })
+
+  it('sem atributos usa só o bônus de nível e as siglas da tabela', () => {
+    const acrobacia = buildSkillRow({}, 'acrobacia', 10)
+    expect(acrobacia.max).toBe(2)
+    expect(acrobacia.attributeAbbr).toBe('AGI')
+    expect(buildSkillRow({}, 'escalar', 10).attributeAbbr).toBe('FOR')
+  })
+
+  it('buildSkillGroups repassa os atributos e todas as linhas têm sigla', () => {
+    const groups = buildSkillGroups(mixedSkills, 7, 'todas', null, { inteligencia: { race: 20 } })
+    const rows = groups.flatMap((group) => group.rows)
+    expect(rows.find((row) => row.key === 'percepção')?.max).toBe(21)
+    expect(rows.length).toBe(36)
+    expect(rows.every((row) => row.attributeAbbr.length > 0)).toBe(true)
+  })
+})
+
+describe('buildSkillStepUpdate com teto', () => {
+  const capSkills: LooseSkills = { cura: { distributed: 4, bonus: 1, extra: 'y' } }
+  const distributedOf = (skills: LooseSkills, update: ReturnType<typeof buildSkillStepUpdate>) =>
+    (update.skills as Record<string, { distributed: number }>).cura.distributed
+
+  it('+1 sobe até o teto e +3 é limitado a ele, preservando extras', () => {
+    const up = buildSkillStepUpdate(capSkills, 'cura', 'distributed', 1, 5)
+    expect((up.skills as Record<string, unknown>).cura).toEqual({ distributed: 5, bonus: 1, extra: 'y' })
+    expect(distributedOf(capSkills, buildSkillStepUpdate(capSkills, 'cura', 'distributed', 3, 5))).toBe(5)
+  })
+
+  it('no teto continua no teto', () => {
+    const atCap: LooseSkills = { cura: { distributed: 5, bonus: 0 } }
+    expect(distributedOf(atCap, buildSkillStepUpdate(atCap, 'cura', 'distributed', 1, 5))).toBe(5)
+  })
+
+  it('acima do teto: + não sobe nem desce, − reduz', () => {
+    const over: LooseSkills = { cura: { distributed: 8, bonus: 0 } }
+    expect(distributedOf(over, buildSkillStepUpdate(over, 'cura', 'distributed', 1, 5))).toBe(8)
+    expect(distributedOf(over, buildSkillStepUpdate(over, 'cura', 'distributed', -1, 5))).toBe(7)
+  })
+
+  it('teto 0 trava o +', () => {
+    const zero: LooseSkills = { cura: { distributed: 0, bonus: 0 } }
+    expect(distributedOf(zero, buildSkillStepUpdate(zero, 'cura', 'distributed', 1, 0))).toBe(0)
+  })
+
+  it('o bônus ignora o teto', () => {
+    const zero: LooseSkills = { cura: { distributed: 0, bonus: 0 } }
+    const up = buildSkillStepUpdate(zero, 'cura', 'bonus', 1, 0).skills as Record<string, { bonus: number }>
+    expect(up.cura.bonus).toBe(1)
+  })
+
+  it('não altera a entrada', () => {
+    const before = structuredClone(capSkills)
+    buildSkillStepUpdate(capSkills, 'cura', 'distributed', 1, 5)
+    expect(capSkills).toEqual(before)
+  })
+})
+
 describe('formatSkillTotalCaption', () => {
   it('mostra o bônus de nível real', () => {
     expect(formatSkillTotalCaption(7)).toBe('Total = 1 + distribuídos + bônus + 1 de nível')

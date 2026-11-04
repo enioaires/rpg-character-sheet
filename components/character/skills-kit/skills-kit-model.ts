@@ -6,14 +6,24 @@ import {
   calculateSkillTotal,
   calculateTotalSkillPoints,
   calculateUsedSkillPoints,
+  getSkillDistributionCap,
   getSkillLevelBonus,
   toSkillValue,
   type SkillValue,
+  type StoredAttributes,
 } from '@/lib/calculations'
-import { DEFAULT_ADVENTURE_KIT, SKILLS, SKILL_LABELS } from '@/lib/constants/character'
+import {
+  ATTRIBUTE_ABBREVIATIONS,
+  DEFAULT_ADVENTURE_KIT,
+  SKILLS,
+  SKILL_ATTRIBUTES,
+  SKILL_LABELS,
+  type SkillKey,
+} from '@/lib/constants/character'
 import type { AdventureKitItem, UpdateCharacterRequest } from '@/lib/schemas/character'
 
-export type SkillKey = (typeof SKILLS)[number]
+// A definição mora em lib/constants/character; reexportada para os imports atuais
+export type { SkillKey }
 export type SkillFilter = 'uso' | 'todas'
 export type SkillStepField = 'distributed' | 'bonus'
 
@@ -76,6 +86,11 @@ export interface SkillRowModel {
   total: number
   inUse: boolean
   detail: string
+  // Teto de pontos distribuídos (total do atributo relacionado) e sigla desse atributo
+  max: number
+  attributeAbbr: string
+  // Distribuídos acima do teto (o atributo caiu depois): só marca, nunca recorta o gravado
+  isOverCap: boolean
 }
 
 /**
@@ -102,9 +117,12 @@ export function buildSkillRow(
   skills: StoredSkills | null | undefined,
   key: SkillKey,
   level: number | null | undefined,
+  attributes?: StoredAttributes | null,
 ): SkillRowModel {
+  // Sem atributos, todos valem 0. Os valores gravados nunca são recortados pelo teto
   const value = toSkillValue((skills || {})[key])
   const inUse = value.distributed !== 0 || value.bonus !== 0
+  const max = getSkillDistributionCap(key, attributes, level || 0)
   return {
     key,
     label: SKILL_LABELS[key],
@@ -113,6 +131,9 @@ export function buildSkillRow(
     total: calculateSkillTotal(value, level || 0),
     inUse,
     detail: inUse ? `${value.distributed} + ${value.bonus}` : '',
+    max,
+    attributeAbbr: ATTRIBUTE_ABBREVIATIONS[SKILL_ATTRIBUTES[key]],
+    isOverCap: value.distributed > max,
   }
 }
 
@@ -132,11 +153,12 @@ export function buildSkillGroups(
   level: number | null | undefined,
   filter: SkillFilter,
   openSkill: SkillKey | null,
+  attributes?: StoredAttributes | null,
 ): Array<{ name: string; rows: SkillRowModel[] }> {
   return SKILL_GROUPS.map((group) => ({
     name: group.name,
     rows: group.skills
-      .map((key) => buildSkillRow(skills, key, level))
+      .map((key) => buildSkillRow(skills, key, level, attributes))
       .filter((row) => filter === 'todas' || row.inUse || row.key === openSkill),
   })).filter((group) => group.rows.length > 0)
 }
@@ -152,20 +174,28 @@ export function formatSkillTotalCaption(level: number | null | undefined): strin
 /**
  * Payload do passo +/- de uma perícia. Mesma expressão do antigo +1/+2/+3:
  * espalha as perícias e a perícia atual, e nunca desce de 0.
+ * O teto (distributedCap) só vale para distribuídos num passo +: sobe até o teto e um
+ * valor já acima dele nunca é reduzido aqui. O − e o bônus não têm teto.
  */
 export function buildSkillStepUpdate(
   skills: StoredSkills | null | undefined,
   key: SkillKey,
   field: SkillStepField,
   delta: number,
+  distributedCap?: number,
 ): { skills: UpdateCharacterRequest['skills'] } {
   const current = skills || {}
   const skill = current[key] || { distributed: 0, bonus: 0 }
+  const base = skill[field] || 0
+  let next = base + delta
+  if (field === 'distributed' && delta > 0 && distributedCap !== undefined) {
+    next = Math.max(base, Math.min(next, distributedCap))
+  }
   const merged = {
     ...current,
     [key]: {
       ...skill,
-      [field]: Math.max(0, (skill[field] || 0) + delta),
+      [field]: Math.max(0, next),
     },
   }
   return { skills: merged as UpdateCharacterRequest['skills'] }

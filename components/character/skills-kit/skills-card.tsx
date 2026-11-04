@@ -19,6 +19,7 @@ import {
   getSkillPointSummary,
   type SkillFilter,
   type SkillKey,
+  type SkillRowModel,
   type SkillStepField,
 } from './skills-kit-model'
 import { SkillRow } from './skill-row'
@@ -35,7 +36,7 @@ export function SkillsCard({
   updateCharacterMutation,
   onOpenSkillsOverview,
 }: SkillsCardProps) {
-  const { level, skills = {} } = character
+  const { level, skills = {}, attributes } = character
   // Abre em "Em uso" quando há perícias com pontos; senão "Todas", para não mostrar lista vazia
   const [filter, setFilter] = useState<SkillFilter>(() =>
     countSkillsInUse(skills) > 0 ? 'uso' : 'todas',
@@ -44,14 +45,14 @@ export function SkillsCard({
 
   const { available, used, remaining } = getSkillPointSummary(skills, level)
   const inUseCount = countSkillsInUse(skills)
-  const groups = buildSkillGroups(skills, level, filter, openSkill)
+  const groups = buildSkillGroups(skills, level, filter, openSkill, attributes)
   const levelBonus = getSkillLevelBonus(level || 0)
 
   // Os erros sobem para o stepper, que mostra o estado e o botão de tentar de novo
-  const handleStep = async (key: SkillKey, field: SkillStepField, delta: number) => {
+  const handleStep = async (row: SkillRowModel, field: SkillStepField, delta: number) => {
     await updateCharacterMutation.mutateAsync({
       id: characterId,
-      data: buildSkillStepUpdate(skills, key, field, delta),
+      data: buildSkillStepUpdate(skills, row.key, field, delta, row.max),
     })
   }
 
@@ -132,7 +133,7 @@ export function SkillsCard({
               characterId={characterId}
               character={character}
               isStepDisabled={updateCharacterMutation.isPending}
-              onStep={(field, delta) => handleStep(row.key, field, delta)}
+              onStep={(field, delta) => handleStep(row, field, delta)}
             />
           ))}
         </div>
