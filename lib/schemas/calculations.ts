@@ -14,15 +14,11 @@ export const attributeValueSchema = z.object({
 export const vitalityBaseSchema = z.object({
   race: z.number(),
   class: z.number(),
+  perLevel: z.number(),
 })
 
-export const vitalityLevelsSchema = z.object({
-  notavel: z.number(),
-  ferido: z.number(),
-  gravementeFerido: z.number(),
-  condenado: z.number(),
-  incapacitado: z.number(),
-  coma: z.number(),
+export const currentVitalitySchema = z.object({
+  current: z.number().nullable(),
 })
 
 export const skillValueSchema = z.object({

@@ -11,9 +11,10 @@ import {
   calculateMaxBerkana,
   calculateRemainingSkillPoints,
   calculateUsedSkillPoints,
-  calculateVitalityLevels,
+  calculateMaxVitality,
   getBaseBerkana,
   toSkillValue,
+  toVitalityBase,
   type AttributeValue,
   type SkillValue,
   type VitalityBase
@@ -143,11 +144,12 @@ export const useDeleteCharacter = () => {
 /**
  * Hook para calcular stats derivados em tempo real (client-side)
  * Útil para preview antes de salvar
+ * calculatedVitality é a vitalidade máxima (número)
  */
 export const useCalculateDerivedStats = (characterData: {
   level: number
   attributes: Record<string, AttributeValue>
-  vitality: VitalityBase | null | undefined
+  vitality: Partial<VitalityBase> | null | undefined
   skills: Record<string, SkillValue>
   maxBerkana: number
   berkanaBonus: number
@@ -158,7 +160,7 @@ export const useCalculateDerivedStats = (characterData: {
     const { level, attributes, vitality, skills, berkanaBonus } = characterData
 
     const calculatedAttributes = calculateAllAttributes(attributes || {}, level)
-    const calculatedVitality = vitality ? calculateVitalityLevels(vitality, level) : null
+    const calculatedVitality = vitality ? calculateMaxVitality(toVitalityBase(vitality), level) : null
     const calculatedBerkana = calculateMaxBerkana(level, getBaseBerkana(), berkanaBonus)
     const calculatedSkills = calculateAllSkills(skills || {}, level)
 

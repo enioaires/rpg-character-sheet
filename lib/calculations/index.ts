@@ -1,6 +1,6 @@
 // lib/calculations/index.ts
 
-import { DEFAULT_VITALITY_PER_LEVEL, VITALITY_LEVELS } from '@/lib/constants/character'
+import { DEFAULT_VITALITY_PER_LEVEL } from '@/lib/constants/character'
 
 // ============================================
 // TIPOS PARA CÁLCULOS
@@ -16,16 +16,6 @@ export interface VitalityBase {
   race: number
   class: number
   perLevel: number
-}
-
-// type (não interface): precisa ser atribuível ao índice JSON de updateCharacterSchema
-export type VitalityLevels = {
-  notavel: number
-  ferido: number
-  gravementeFerido: number
-  condenado: number
-  incapacitado: number
-  coma: number
 }
 
 export interface SkillValue {
@@ -79,35 +69,6 @@ export function calculateAllAttributes(attributes: Record<string, AttributeValue
 // ============================================
 
 /**
- * Calcular vitalidade máxima por nível
- * Fórmula: cada nível multiplicado por (nível atual + 1)
- */
-export function calculateVitalityLevels(vitality: VitalityBase, level: number): VitalityLevels {
-  const baseTotal = vitality.race + vitality.class
-
-  const baseLevels = {
-    notavel: baseTotal,
-    ferido: baseTotal - 20,
-    gravementeFerido: baseTotal - 40,
-    condenado: baseTotal - 60,
-    incapacitado: baseTotal - 80,
-    coma: baseTotal - 100
-  }
-
-  // Multiplicar cada nível pela fórmula (nível atual + 1)
-  const multiplier = level + 1
-
-  return {
-    notavel: baseLevels.notavel * multiplier,
-    ferido: baseLevels.ferido * multiplier,
-    gravementeFerido: baseLevels.gravementeFerido * multiplier,
-    condenado: baseLevels.condenado * multiplier,
-    incapacitado: baseLevels.incapacitado * multiplier,
-    coma: baseLevels.coma * multiplier
-  }
-}
-
-/**
  * Vitalidade máxima (total único)
  * Fórmula: race + class + perLevel × nível
  * Ex.: 3500 + 3500 + 700 × nível; nível 0 = só as bases
@@ -151,35 +112,6 @@ export function calculateMaxBerkana(level: number, baseValue: number, bonus: num
 // RECURSOS EM JOGO: VITALIDADE E BERKANA
 // ============================================
 
-export type VitalityStageKey = keyof VitalityLevels
-
-// O JSON armazenado de currentVitality também pode trazer chaves desconhecidas em tempo de execução
-export type CurrentVitalityInput = Partial<Record<VitalityStageKey, number | null>> | null | undefined
-
-/**
- * Vitalidade atual por nível: o valor armazenado quando não é undefined nem null,
- * senão o máximo do nível. Retorna um objeto novo, só com as seis chaves.
- */
-export function resolveCurrentVitalityLevels(currentVitality: CurrentVitalityInput, maxLevels: VitalityLevels): VitalityLevels {
-  const stored = currentVitality ?? {}
-  const resolved = {} as VitalityLevels
-
-  for (const vitalityKey of VITALITY_LEVELS) {
-    const value = stored[vitalityKey]
-    resolved[vitalityKey] = value !== undefined && value !== null ? value : maxLevels[vitalityKey]
-  }
-
-  return resolved
-}
-
-/**
- * Soma dos seis níveis de vitalidade, cada um com `|| 0`.
- * Serve para o total atual (níveis resolvidos) e para o total máximo.
- */
-export function calculateVitalityTotal(levels: VitalityLevels): number {
-  return VITALITY_LEVELS.reduce((sum, vitalityKey) => sum + (levels[vitalityKey] || 0), 0)
-}
-
 // JsonValue recursivo, no mesmo formato que z.json() aceita
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
@@ -216,22 +148,6 @@ export function applyVitalityHeal(currentVitality: StoredCurrentVitality, max: n
  */
 export function restoreVitality(currentVitality: StoredCurrentVitality, max: number): CurrentVitalityValue {
   return withCurrent(currentVitality, Math.max(0, max))
-}
-
-/**
- * Nível de vitalidade em que o personagem está: o primeiro, na ordem em que o dano drena,
- * com valor atual > 0; Coma quando todos estão em 0 ou menos.
- * Retorna null quando a vitalidade não está configurada (máximos somam <= 0).
- * Posição "N/6" = VITALITY_LEVELS.indexOf(nível) + 1.
- */
-export function getCurrentVitalityStage(current: VitalityLevels, maxLevels: VitalityLevels): VitalityStageKey | null {
-  if (calculateVitalityTotal(maxLevels) <= 0) return null
-
-  for (const vitalityKey of VITALITY_LEVELS) {
-    if (current[vitalityKey] > 0) return vitalityKey
-  }
-
-  return 'coma'
 }
 
 export type BerkanaStateKey = 'cheia' | 'metade' | 'esgotada' | 'disponivel'

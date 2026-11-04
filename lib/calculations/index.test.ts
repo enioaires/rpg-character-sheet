@@ -11,7 +11,6 @@
 
 import { describe, expect, it } from 'bun:test'
 import * as calculations from '@/lib/calculations'
-import { VITALITY_LEVELS } from '@/lib/constants/character'
 import {
   calculateAllAttributes,
   calculateAllSkills,
@@ -29,13 +28,10 @@ import {
   calculateSkillTotal,
   calculateTotalSkillPoints,
   calculateUsedSkillPoints,
-  calculateVitalityLevels,
-  calculateVitalityTotal,
   canLevelUp,
   getAttributeLevelBonus,
   getBaseBerkana,
   getBerkanaState,
-  getCurrentVitalityStage,
   getDefaultSkills,
   getSkillLevelBonus,
   getSkillPointsPerLevel,
@@ -45,7 +41,6 @@ import {
   processLevelUp,
   recoverBerkana,
   resolveBerkanaPool,
-  resolveCurrentVitalityLevels,
   spendBerkana,
   toAttributeValue,
   toSkillValue,
@@ -53,8 +48,7 @@ import {
   validateSkillDistribution,
   type AttributeValue,
   type SkillValue,
-  type VitalityBase,
-  type VitalityLevels
+  type VitalityBase
 } from '@/lib/calculations'
 
 // ============================================
@@ -189,80 +183,6 @@ describe('calculateAllAttributes', () => {
 
   it('objeto vazio resulta em objeto vazio', () => {
     expect(calculateAllAttributes({}, 5)).toEqual({})
-  })
-})
-
-// ============================================
-// VITALIDADE
-// ============================================
-
-describe('calculateVitalityLevels', () => {
-  const vitality = { race: 200, class: 250, perLevel: 700 }
-
-  it('nível 0 calcula os seis estágios', () => {
-    expect(calculateVitalityLevels(vitality, 0)).toEqual({
-      notavel: 450,
-      ferido: 430,
-      gravementeFerido: 410,
-      condenado: 390,
-      incapacitado: 370,
-      coma: 350
-    })
-  })
-
-  it('nível 4 calcula os seis estágios', () => {
-    expect(calculateVitalityLevels(vitality, 4)).toEqual({
-      notavel: 2250,
-      ferido: 2150,
-      gravementeFerido: 2050,
-      condenado: 1950,
-      incapacitado: 1850,
-      coma: 1750
-    })
-  })
-
-  it('nível 5 calcula os seis estágios', () => {
-    expect(calculateVitalityLevels(vitality, 5)).toEqual({
-      notavel: 2700,
-      ferido: 2580,
-      gravementeFerido: 2460,
-      condenado: 2340,
-      incapacitado: 2220,
-      coma: 2100
-    })
-  })
-
-  it('nível 9 calcula os seis estágios', () => {
-    expect(calculateVitalityLevels(vitality, 9)).toEqual({
-      notavel: 4500,
-      ferido: 4300,
-      gravementeFerido: 4100,
-      condenado: 3900,
-      incapacitado: 3700,
-      coma: 3500
-    })
-  })
-
-  it('nível 10 calcula os seis estágios', () => {
-    expect(calculateVitalityLevels(vitality, 10)).toEqual({
-      notavel: 4950,
-      ferido: 4730,
-      gravementeFerido: 4510,
-      condenado: 4290,
-      incapacitado: 4070,
-      coma: 3850
-    })
-  })
-
-  it('não limita estágios negativos (valor fixado como está)', () => {
-    expect(calculateVitalityLevels({ race: 30, class: 20, perLevel: 700 }, 0)).toEqual({
-      notavel: 50,
-      ferido: 30,
-      gravementeFerido: 10,
-      condenado: -10,
-      incapacitado: -30,
-      coma: -50
-    })
   })
 })
 
@@ -710,132 +630,6 @@ describe('resolveCurrentVitality', () => {
 // RECURSOS EM JOGO: VITALIDADE
 // ============================================
 
-// Oráculos congelados: cópias fiéis da lógica do commit-base 13eb61f
-// (components/character/basic-info/vitality-card.tsx e quick-actions-bar.tsx).
-// NUNCA edite estes oráculos: eles provam que os helpers extraídos escrevem
-// exatamente o que o app escrevia antes da extração.
-
-type LegacyVitality = Record<string, unknown>
-
-function legacyResolve(
-  currentVitality: LegacyVitality | null | undefined,
-  calculatedVitality: Record<string, number>,
-  vitalityKey: string
-): number {
-  const stored = (currentVitality ?? {})[vitalityKey] as number | null | undefined
-  return stored !== undefined && stored !== null ? stored : calculatedVitality[vitalityKey]
-}
-
-function legacyTotal(levels: Record<string, number>): number {
-  return Object.values(levels).reduce((sum, val) => sum + (val || 0), 0)
-}
-
-const VIT_LEVELS_GRID = [0, 1, 4, 5, 7, 10]
-const VIT_BASES_GRID: VitalityBase[] = [
-  { race: 0, class: 0, perLevel: 700 },
-  { race: 30, class: 30, perLevel: 700 },
-  { race: 200, class: 250, perLevel: 700 },
-  { race: 999, class: 1, perLevel: 700 }
-]
-const VIT_DAMAGE_GRID = [1, 7, 100, 3600, 1000000]
-
-function vitStoredShapes(maxima: VitalityLevels): Array<[string, LegacyVitality | null | undefined]> {
-  return [
-    ['undefined', undefined],
-    ['null', null],
-    ['{}', {}],
-    ['todos 0', { notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }],
-    ['{notavel:5}', { notavel: 5 }],
-    ['{notavel:null, ferido:12}', { notavel: null, ferido: 12 }],
-    ['máximos explícitos', { ...maxima }],
-    ['notavel = max+50', { ...maxima, notavel: maxima.notavel + 50 }],
-    ['máximos + chave desconhecida', { ...maxima, extra: 'x' }]
-  ]
-}
-
-function vitGrid(): Array<{
-  level: number
-  base: VitalityBase
-  maxima: VitalityLevels
-}> {
-  const cases: Array<{ level: number; base: VitalityBase; maxima: VitalityLevels }> = []
-  for (const level of VIT_LEVELS_GRID) {
-    for (const base of VIT_BASES_GRID) {
-      cases.push({ level, base, maxima: calculateVitalityLevels(toVitalityBase(base), level) })
-    }
-  }
-  return cases
-}
-
-describe('resolveCurrentVitalityLevels', () => {
-  it('é igual ao fallback por nível do card em toda a grade', () => {
-    for (const { maxima } of vitGrid()) {
-      for (const [, stored] of vitStoredShapes(maxima)) {
-        const resolved = resolveCurrentVitalityLevels(structuredClone(stored), maxima)
-        for (const key of VITALITY_LEVELS) {
-          expect(resolved[key]).toBe(legacyResolve(stored, { ...maxima }, key))
-        }
-        expect(Object.keys(resolved).sort()).toEqual([...VITALITY_LEVELS].sort())
-      }
-    }
-  })
-
-  it('entrada nula ou indefinida devolve os máximos', () => {
-    const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
-    expect(resolveCurrentVitalityLevels(null, maxima)).toEqual(maxima)
-    expect(resolveCurrentVitalityLevels(undefined, maxima)).toEqual(maxima)
-  })
-})
-
-describe('calculateVitalityTotal', () => {
-  it('é igual ao reduce antigo da barra para máximos e para atuais resolvidos', () => {
-    for (const { maxima } of vitGrid()) {
-      expect(calculateVitalityTotal(maxima)).toBe(legacyTotal({ ...maxima }))
-      for (const [, stored] of vitStoredShapes(maxima)) {
-        const resolved = resolveCurrentVitalityLevels(stored, maxima)
-        expect(calculateVitalityTotal(resolved)).toBe(legacyTotal({ ...resolved }))
-      }
-    }
-  })
-
-  it('base 200/250 nível 7 soma 19200', () => {
-    expect(calculateVitalityTotal(calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7))).toBe(19200)
-  })
-
-  it('trata valores não finitos como 0 (regra || 0)', () => {
-    const levels = { notavel: NaN, ferido: 10, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }
-    expect(calculateVitalityTotal(levels)).toBe(10)
-  })
-})
-
-describe('getCurrentVitalityStage', () => {
-  const maxima = calculateVitalityLevels({ race: 200, class: 250, perLevel: 700 }, 7)
-  const stageOf = (stored: LegacyVitality | null | undefined) =>
-    getCurrentVitalityStage(resolveCurrentVitalityLevels(stored, maxima), maxima)
-
-  it('ficha cheia está em Notável', () => {
-    expect(stageOf(undefined)).toBe('notavel')
-  })
-
-  it('primeiro nível, na ordem do dano, com valor maior que 0', () => {
-    expect(stageOf({ notavel: 0, ferido: 1000 })).toBe('ferido')
-    expect(stageOf({ notavel: 0, ferido: 0, gravementeFerido: 5 })).toBe('gravementeFerido')
-    expect(stageOf({ notavel: 10, ferido: 0 })).toBe('notavel')
-  })
-
-  it('tudo em 0 é Coma, inclusive depois de dano enorme', () => {
-    expect(stageOf({ notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 })).toBe('coma')
-    expect(stageOf({ notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: -5 })).toBe('coma')
-  })
-
-  it('vitalidade não configurada (máximos somam <= 0) devolve null', () => {
-    const zero = calculateVitalityLevels({ race: 0, class: 0, perLevel: 700 }, 0)
-    expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(undefined, zero), zero)).toBeNull()
-    const zeros = { notavel: 0, ferido: 0, gravementeFerido: 0, condenado: 0, incapacitado: 0, coma: 0 }
-    expect(getCurrentVitalityStage(resolveCurrentVitalityLevels(zeros, zero), zero)).toBeNull()
-  })
-})
-
 describe('applyVitalityDamage', () => {
   it('subtrai do atual; sem current parte do máximo', () => {
     expect(applyVitalityDamage(undefined, 7000, 1000)).toEqual({ current: 6000 })
@@ -1055,13 +849,10 @@ const TESTED_FUNCTIONS = [
   'calculateSkillTotal',
   'calculateTotalSkillPoints',
   'calculateUsedSkillPoints',
-  'calculateVitalityLevels',
-  'calculateVitalityTotal',
   'canLevelUp',
   'getAttributeLevelBonus',
   'getBaseBerkana',
   'getBerkanaState',
-  'getCurrentVitalityStage',
   'getDefaultSkills',
   'getSkillLevelBonus',
   'getSkillPointsPerLevel',
@@ -1073,7 +864,6 @@ const TESTED_FUNCTIONS = [
   'resolveBerkanaPool',
   'resolveCurrentVitality',
   'restoreVitality',
-  'resolveCurrentVitalityLevels',
   'spendBerkana',
   'toAttributeValue',
   'toSkillValue',
@@ -1088,6 +878,6 @@ describe('exports de lib/calculations', () => {
       .map(([name]) => name)
       .sort()
     expect(exported).toEqual([...TESTED_FUNCTIONS].sort())
-    expect(TESTED_FUNCTIONS.length).toBe(38)
+    expect(TESTED_FUNCTIONS.length).toBe(34)
   })
 })

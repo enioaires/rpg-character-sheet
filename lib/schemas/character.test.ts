@@ -81,10 +81,23 @@ describe('updateCharacterSchema aceita os formatos da UI', () => {
   it('DEFAULT_ADVENTURE_KIT e fallbacks sanitizados da página', () => {
     expect(ok({ adventureKit: DEFAULT_ADVENTURE_KIT })).toBe(true)
     expect(ok({ vitality: { race: 0, class: 0 } })).toBe(true)
+    expect(ok({ vitality: { race: 3500, class: 3500, perLevel: 700 } })).toBe(true)
     expect(
       ok({ armor: { name: '', description: '', totalVitality: 0, currentVitality: 0 } }),
     ).toBe(true)
     expect(ok({ finances: { ouro: 0, prata: 0, cobre: 0, imperano: 0, joias: 0 } })).toBe(true)
+  })
+
+  it('currentVitality novo, antigo e misturado', () => {
+    expect(ok({ currentVitality: { current: 5000, notavel: 0, ferido: -20 } })).toBe(true)
+    expect(ok({ currentVitality: { current: null } })).toBe(true)
+    expect(ok({ currentVitality: {} })).toBe(true)
+  })
+
+  it('getDefaultCharacterData() nasce com perLevel 700 e currentVitality sem current', () => {
+    const data = getDefaultCharacterData()
+    expect(data.vitality).toEqual({ race: 0, class: 0, perLevel: 700 })
+    expect(data.currentVitality).toEqual({})
   })
 
   it('entradas parciais e tolerantes', () => {
@@ -172,7 +185,8 @@ describe('updateCharacterSchema rejeita JSON malformado', () => {
     ['attributes leaf string', { attributes: { agilidade: { race: '10' } } }],
     ['vitality array', { vitality: [] }],
     ['currentVitality null', { currentVitality: null }],
-    ['currentVitality leaf string', { currentVitality: { ferido: '5' } }],
+    ['currentVitality leaf string', { currentVitality: { current: '5' } }],
+    ['vitality perLevel string', { vitality: { perLevel: '700' } }],
     ['skills negative distributed', { skills: { acrobacia: { distributed: -1 } } }],
     ['skills distributed string', { skills: { acrobacia: { distributed: 'x' } } }],
     ['armor string', { armor: 'x' }],

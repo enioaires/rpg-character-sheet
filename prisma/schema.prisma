@@ -35,11 +35,13 @@ model Character {
   // Json: { agilidade: { race: 10, class: 12, bonus: 2 }, carisma: { race: 8, class: 10, bonus: 1 }, ... }
   attributes Json
 
-  // Vitalidade (calculada automaticamente)
-  // Json: { race: 200, class: 250 }
+  // Vitalidade base: máxima = race + class + perLevel × nível (perLevel ausente = 700)
+  // Json: { race: 3500, class: 3500, perLevel: 700 }
   vitality Json
 
-  // Json: { notavel: 450, ferido: 430, gravementeFerido: 410, condenado: 390, incapacitado: 370, coma: 350 }
+  // Vitalidade atual: total único em current (ausente ou null = vida cheia)
+  // Linhas antigas ainda trazem as chaves de estágio (notavel, ferido, ...): preservadas, não lidas
+  // Json: { current: 9100 }
   currentVitality Json
 
   // Berkana (Mana)

@@ -1,3 +1,5 @@
+import { DEFAULT_VITALITY_PER_LEVEL } from '@/lib/constants/character'
+
 // Valores padrão para criação de personagem
 export const getDefaultCharacterData = () => ({
   // Nível e XP
@@ -23,15 +25,9 @@ export const getDefaultCharacterData = () => ({
   },
 
   // Vitalidade base
-  vitality: { race: 0, class: 0 },
-  currentVitality: {
-    notavel: 0,
-    ferido: 0,
-    gravementeFerido: 0,
-    condenado: 0,
-    incapacitado: 0,
-    coma: 0,
-  },
+  vitality: { race: 0, class: 0, perLevel: DEFAULT_VITALITY_PER_LEVEL },
+  // Sem current: vida cheia (atual = máximo) até a primeira gravação
+  currentVitality: {},
 
   // Berkana
   maxBerkana: 100,

@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import {
   attributeValueSchema,
+  currentVitalitySchema,
   skillValueSchema,
   vitalityBaseSchema,
-  vitalityLevelsSchema,
 } from '@/lib/schemas/calculations'
 
 // Limites de paginação: page <= 10000 mantém o skip do Prisma abaixo de 999.900
@@ -164,10 +164,12 @@ export const attributesFieldSchema = z.record(
   attributeValueSchema.partial().catchall(jsonExtra),
 )
 
+// perLevel ausente = 700, resolvido em toVitalityBase
 export const vitalityFieldSchema = vitalityBaseSchema.partial().catchall(jsonExtra)
 
-// Sem mínimo: restoreFullHealth grava estágios negativos quando raça + classe < 100
-export const currentVitalityFieldSchema = vitalityLevelsSchema.partial().catchall(jsonExtra)
+// current ausente ou null = vida cheia. Chaves antigas de estágio (linhas anteriores à regra de total único)
+// caem no catchall: não são mais lidas, mas são preservadas nas gravações
+export const currentVitalityFieldSchema = currentVitalitySchema.partial().catchall(jsonExtra)
 
 // distributed >= 0 é garantido por todos os escritores de perícias
 export const skillsFieldSchema = z.record(

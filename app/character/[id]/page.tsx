@@ -105,10 +105,7 @@ export default function CharacterPage() {
     // Garantir objetos válidos
     attributes: character.attributes || {},
     vitality: character.vitality || { race: 0, class: 0 },
-    currentVitality: character.currentVitality || {
-      notavel: 0, ferido: 0, gravementeFerido: 0,
-      condenado: 0, incapacitado: 0, coma: 0
-    },
+    currentVitality: character.currentVitality || {},
     skills: character.skills || {},
     armor: character.armor || {
       name: '', description: '', totalVitality: 0, currentVitality: 0

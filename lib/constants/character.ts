@@ -155,22 +155,3 @@ export const STANDARD_LANGUAGES = [
 
 // Vitalidade ganha por nível quando vitality.perLevel não está gravado (linhas antigas)
 export const DEFAULT_VITALITY_PER_LEVEL = 700
-
-// Nomes das vitalidades
-export const VITALITY_LEVELS = [
-  'notavel',
-  'ferido',
-  'gravementeFerido',
-  'condenado',
-  'incapacitado',
-  'coma'
-] as const
-
-export const VITALITY_LABELS: Record<string, string> = {
-  notavel: 'Notável',
-  ferido: 'Ferido',
-  gravementeFerido: 'Gravemente Ferido',
-  condenado: 'Condenado',
-  incapacitado: 'Incapacitado',
-  coma: 'Coma'
-}

@@ -8,7 +8,7 @@ import {
   calculateMaxBerkana,
   calculateRemainingSkillPoints,
   calculateUsedSkillPoints,
-  calculateVitalityLevels,
+  calculateMaxVitality,
   getBaseBerkana,
   toAttributeValue,
   toSkillValue,
@@ -112,6 +112,7 @@ export const useIsFieldEditing = (section: string, field: string) => {
 
 /**
  * Hook para stats calculados em tempo real
+ * calculatedVitality é a vitalidade máxima (número)
  */
 export const useCalculatedStats = () => {
   return useCharacterStore(state => {
@@ -128,7 +129,7 @@ export const useCalculatedStats = () => {
 
     const calculatedAttributes = calculateAllAttributes(attributeRecord, level)
     const calculatedVitality = vitality
-      ? calculateVitalityLevels(toVitalityBase(vitality as Partial<VitalityBase>), level)
+      ? calculateMaxVitality(toVitalityBase(vitality as Partial<VitalityBase>), level)
       : null
     const calculatedBerkana = calculateMaxBerkana(level, getBaseBerkana(), berkanaBonus)
     const calculatedSkills = calculateAllSkills(skillRecord, level)
