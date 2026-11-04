@@ -1,6 +1,15 @@
 ---
-gsd_state_version: '1.0'
+gsd_state_version: "1.0"
+milestone: v1.1
+milestone_name: Code Quality & Reliability
+current_phase: 1
+current_phase_name: Dead Code Cleanup & Calculation Source of Truth
 status: planning
+stopped_at: Roadmap created; ready to plan Phase 1
+last_updated: "2026-11-04T01:33:26.244Z"
+last_activity: 2026-11-01
+last_activity_desc: Roadmap created (4 phases, 17/17 v1 requirements mapped)
+state_head: 7ef2134b2c5ed270a9a0a7402bfadbd8bfaa1b42
 progress:
   total_phases: 4
   completed_phases: 0
@@ -23,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 Phase: 1 of 4 (Dead Code Cleanup & Calculation Source of Truth)
 Plan: 0 of 0 in current phase
 Status: Ready to plan
-Last activity: 2026-11-01 — Roadmap created (4 phases, 17/17 v1 requirements mapped)
+Last activity: 2026-11-03 - Completed quick task 261103-uyi: nova regra de vitalidade (raça + classe + por nível, total único)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -89,6 +98,7 @@ None yet.
 | 261101-mvx | Redesign Perícias & Kit tab (DS-05): rebuild components/character/skills-kit-tab.tsx to the design pericias screen and split it into components/character/skills-kit/ cards (each file under ~300 lines): skill points summary (Disponíveis/Gastos/Restantes with the remaining color), "Em uso / Todas" segmented filter, skills grouped by category with expandable rows showing distributed+bonus detail, total, and minus/plus steppers for distributed and bonus when unlocked; Finanças tiles; Kit de Aventureiro with custom items first, add item, and collapsible "Itens padrão · N". Keep the current skill-point pool, totals and persisted keys exactly as today (do not fix the known SKILLS key mismatch or pool question here); writes through the existing mutation | 2026-11-01 | b94f7e7 | — | .planning/quick/261101-mvx-redesign-per-cias-kit-tab-ds-05-rebuild-components-character |
 | 261101-mvy | Redesign Magias & Talentos tab (DS-06): restyle components/character/spells-talents/*.tsx and spells-talents-tab.tsx to the design magias screen: Magias/Talentos segmented toggle, search field, "Nova" button when unlocked, horizontal level filter chips, cards grouped by level, collapsible rows (name, type/sub line, Berkana cost badge, "1× ao dia" badge for talents), expanded body with damage highlight, 2-column stats, description with preserved line breaks, and Editar/Excluir when unlocked. Keep the existing create/edit/delete dialogs, the EditableScalingField level scaling and all persisted fields unchanged | 2026-11-01 | a7e1c23 | — | .planning/quick/261101-mvy-redesign-magias-talentos-tab-ds-06-restyle-components-charac |
 | 261101-mvz | Redesign Anotações tab (DS-07): restyle components/character/notes-tab.tsx and components/character/notes/*.tsx to the design anotacoes screen: header with count, Ordenar/Concluir toggle and new-note button when writable, search field, collapsed note cards with serif title and one-line preview, expand to show formatted content and Editar/Excluir, reorder mode with grip icon and up/down 44px arrow buttons (using the existing moveNote), corrupted-notes alert with "Copiar texto original" (clipboard of the raw notes string) and legacy-notes alert with "Migrar anotações" wired to the existing one-time migration. Keep lib/notes.ts guarantees, the escape-then-format renderer from lib/notes-format.ts (never render unescaped HTML) and existing tests passing. Final gate for the whole batch: npx tsc --noEmit, bun run lint, bun test and bun run build all pass | 2026-11-01 | 1d5830f | — | .planning/quick/261101-mvz-redesign-anota-es-tab-ds-07-restyle-components-character-not |
+| 261103-uyi | nova regra de vitalidade: raça + classe + por nível, total único | 2026-11-03 | 7ef2134 | — | [261103-uyi-nova-regra-de-vitalidade-raca-classe-por](./quick/261103-uyi-nova-regra-de-vitalidade-raca-classe-por/) |
 
 ## Deferred Items
 
